@@ -32,7 +32,7 @@ python -m pip install -r requirements-repro.txt
 python scripts/verify_reproduction.py
 python server.py --host 127.0.0.1 --port 8000
 ```
-**操作示例**（基础仿真实验室功能，还有其他功能可以参见教程）：
+### **操作示例**（基础仿真实验室功能，还有其他功能可以参见教程）：
 
 浏览器打开 <http://127.0.0.1:8000>。可以直接在Agent对话栏输入：
 
