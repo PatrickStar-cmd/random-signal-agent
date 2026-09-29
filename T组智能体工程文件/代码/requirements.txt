@@ -1,0 +1,2 @@
+# The core server uses only Python standard library plus numpy.
+numpy>=1.24

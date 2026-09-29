@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>随机信号智能体交互演示</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --ink: #162033;
+      --muted: #64748b;
+      --line: #d7dee8;
+      --teal: #0f766e;
+      --blue: #2563eb;
+      --red: #dc2626;
+      --amber: #d97706;
+      --violet: #7c3aed;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: center;
+      padding: 18px 24px;
+      background: #111827;
+      color: #f8fafc;
+      border-bottom: 4px solid var(--teal);
+    }
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+    }
+    main {
+      display: grid;
+      grid-template-columns: 340px minmax(0, 1fr);
+      gap: 16px;
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+    aside, section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    aside {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+      padding: 16px;
+    }
+    section {
+      padding: 16px;
+      min-width: 0;
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 17px;
+      line-height: 1.3;
+    }
+    label {
+      display: grid;
+      gap: 5px;
+      margin: 10px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    input, select, button {
+      font: inherit;
+    }
+    input[type="number"], input[type="range"], select {
+      width: 100%;
+    }
+    input[type="number"], select {
+      height: 34px;
+      padding: 5px 8px;
+      color: var(--ink);
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #fff;
+    }
+    input[type="file"] {
+      width: 100%;
+      color: var(--muted);
+    }
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    button {
+      min-height: 36px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #ffffff;
+      color: var(--ink);
+      cursor: pointer;
+    }
+    button.primary {
+      background: var(--teal);
+      border-color: var(--teal);
+      color: #ffffff;
+      font-weight: 700;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .mode {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .mode button {
+      border: 0;
+      border-radius: 0;
+      background: #ffffff;
+    }
+    .mode button.active {
+      background: #dff6f2;
+      color: #0f766e;
+      font-weight: 700;
+    }
+    .control-block {
+      padding: 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fbfdff;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(120px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .metric {
+      min-height: 80px;
+      padding: 10px;
+      border: 1px solid #dce3ed;
+      border-radius: 8px;
+      background: #ffffff;
+    }
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .metric strong {
+      display: block;
+      margin-top: 6px;
+      font-size: 21px;
+      color: var(--teal);
+    }
+    .metric small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    .tabs button {
+      border: 0;
+      border-bottom: 3px solid transparent;
+      border-radius: 0;
+      background: transparent;
+      min-height: 40px;
+      padding: 0 10px;
+    }
+    .tabs button.active {
+      color: var(--teal);
+      border-bottom-color: var(--teal);
+      font-weight: 700;
+    }
+    .workspace {
+      display: grid;
+      gap: 14px;
+    }
+    canvas {
+      width: 100%;
+      height: 280px;
+      border: 1px solid #dce3ed;
+      border-radius: 8px;
+      background: #ffffff;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 9px 10px;
+      border-bottom: 1px solid #e2e8f0;
+      text-align: left;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+    .log {
+      min-height: 110px;
+      margin: 0;
+      padding: 10px;
+      border: 1px solid #dce3ed;
+      border-radius: 8px;
+      background: #0f172a;
+      color: #e2e8f0;
+      overflow: auto;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 5px 10px;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: #e2e8f0;
+      background: #1f2937;
+      font-size: 13px;
+    }
+    .hidden { display: none; }
+    @media (max-width: 980px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+      .metrics {
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+      }
+      .split {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>随机信号智能体交互演示</h1>
+    <div class="status-pill" id="sourceStatus">模拟信号</div>
+  </header>
+
+  <main>
+    <aside>
+      <div class="control-block">
+        <h2>采集模块</h2>
+        <div class="mode" role="tablist">
+          <button id="modeSim" class="active" type="button">模拟采集</button>
+          <button id="modeFile" type="button">文件提交</button>
+        </div>
+        <div id="simControls">
+          <label>采样率 Hz
+            <input id="sampleRate" type="number" min="20" max="5000" step="10" value="200">
+          </label>
+          <label>采集时长 s
+            <input id="duration" type="number" min="1" max="60" step="1" value="8">
+          </label>
+          <label>主频 Hz
+            <input id="baseFrequency" type="number" min="0.5" max="200" step="0.5" value="8">
+          </label>
+          <label>噪声强度
+            <input id="noiseStd" type="range" min="0" max="2" step="0.05" value="0.55">
+          </label>
+          <label>脉冲干扰概率
+            <input id="impulseProbability" type="range" min="0" max="0.08" step="0.002" value="0.012">
+          </label>
+          <div class="button-row">
+            <button class="primary" id="acquireButton" type="button">采集</button>
+            <button id="streamButton" type="button">实时采集</button>
+          </div>
+        </div>
+        <div id="fileControls" class="hidden">
+          <label>采样率 Hz
+            <input id="fileSampleRate" type="number" min="20" max="5000" step="10" value="200">
+          </label>
+          <label>信号文件
+            <input id="signalFile" type="file" accept=".csv,.txt,.dat">
+          </label>
+        </div>
+      </div>
+
+      <div class="control-block">
+        <h2>噪声预处理模块</h2>
+        <label>平滑窗口
+          <input id="smoothWindow" type="range" min="1" max="31" step="2" value="7">
+        </label>
+        <label>异常点阈值 σ
+          <input id="sigmaThreshold" type="range" min="1.5" max="5" step="0.1" value="3">
+        </label>
+        <label>
+          <span><input id="repairImpulses" type="checkbox" checked> 脉冲异常点修复</span>
+        </label>
+        <label>
+          <span><input id="removeMean" type="checkbox" checked> 去均值</span>
+        </label>
+        <button class="primary" id="preprocessButton" type="button">执行预处理</button>
+      </div>
+
+      <div class="control-block">
+        <h2>分析模块</h2>
+        <button class="primary" id="analysisButton" type="button">时域/频域分析</button>
+      </div>
+    </aside>
+
+    <section>
+      <div class="metrics" id="metrics"></div>
+      <div class="tabs">
+        <button class="active" data-tab="signal" type="button">信号</button>
+        <button data-tab="time" type="button">时域</button>
+        <button data-tab="frequency" type="button">频域</button>
+        <button data-tab="trace" type="button">智能体轨迹</button>
+      </div>
+      <div class="workspace">
+        <div id="tabSignal">
+          <canvas id="signalChart" width="1000" height="320"></canvas>
+        </div>
+        <div id="tabTime" class="hidden split">
+          <canvas id="corrChart" width="1000" height="320"></canvas>
+          <table id="timeTable"></table>
+        </div>
+        <div id="tabFrequency" class="hidden split">
+          <canvas id="spectrumChart" width="1000" height="320"></canvas>
+          <table id="freqTable"></table>
+        </div>
+        <div id="tabTrace" class="hidden">
+          <pre class="log" id="traceLog"></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      mode: "simulation",
+      bundle: null,
+      processed: null,
+      analysis: null,
+      timer: null,
+      visibleSamples: 0,
+      trace: []
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function mulberry32(seed) {
+      return function() {
+        let t = seed += 0x6D2B79F5;
+        t = Math.imul(t ^ t >>> 15, t | 1);
+        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    function randn(rng) {
+      const u = Math.max(rng(), 1e-12);
+      const v = Math.max(rng(), 1e-12);
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    function log(agent, action, detail) {
+      state.trace.push({ agent, action, detail });
+      $("traceLog").textContent = state.trace
+        .map(item => `${item.agent} | ${item.action} | ${item.detail}`)
+        .join("\n");
+    }
+
+    function generateSignal() {
+      const sampleRate = Number($("sampleRate").value);
+      const duration = Number($("duration").value);
+      const baseFrequency = Number($("baseFrequency").value);
+      const noiseStd = Number($("noiseStd").value);
+      const impulseProbability = Number($("impulseProbability").value);
+      const count = Math.max(8, Math.floor(sampleRate * duration));
+      const seed = Math.floor(Date.now() + performance.now() * 1000 + Math.random() * 1e9) >>> 0;
+      const rng = mulberry32(seed);
+      const time = new Array(count);
+      const clean = new Array(count);
+      const observed = new Array(count);
+      const impulses = new Array(count).fill(false);
+      let ar = 0;
+
+      for (let i = 0; i < count; i++) {
+        const t = i / sampleRate;
+        time[i] = t;
+        const carrier = 1.2 * Math.sin(2 * Math.PI * baseFrequency * t);
+        const harmonic = 0.28 * Math.sin(2 * Math.PI * baseFrequency * 2.4 * t + 0.7);
+        const trend = 0.18 * Math.sin(2 * Math.PI * 0.35 * t);
+        ar = 0.86 * ar + Math.sqrt(1 - 0.86 * 0.86) * noiseStd * randn(rng);
+        const white = noiseStd * 0.32 * randn(rng);
+        const impulse = rng() < impulseProbability
+          ? (rng() < 0.5 ? -1 : 1) * (2 + 1.6 * rng())
+          : 0;
+        impulses[i] = impulse !== 0;
+        clean[i] = carrier + harmonic + trend;
+        observed[i] = clean[i] + ar + white + impulse;
+      }
+
+      state.bundle = { time, clean, observed, sampleRate, baseFrequency, impulses, hasCleanReference: true };
+      state.processed = null;
+      state.analysis = null;
+      state.visibleSamples = count;
+      state.trace = [];
+      log("SensorAgent", "模拟采集", `采样率 ${sampleRate} Hz，样本数 ${count}，随机种子 ${seed}`);
+      $("sourceStatus").textContent = "模拟信号";
+      renderAll();
+    }
+
+    function parseFileText(text, sampleRate) {
+      const rows = [];
+      text.split(/\r?\n/).forEach(line => {
+        const parts = line.trim().split(/[\s,;，]+/).filter(Boolean);
+        if (!parts.length) return;
+        const nums = parts.map(Number);
+        if (nums.every(Number.isFinite)) rows.push(nums);
+      });
+      if (!rows.length) return null;
+      let time, observed;
+      if (rows[0].length >= 2) {
+        time = rows.map(row => row[0]);
+        observed = rows.map(row => row[1]);
+        if (time.length > 1) {
+          const dt = median(diff(time).filter(v => v > 0));
+          sampleRate = dt > 0 ? 1 / dt : sampleRate;
+        }
+      } else {
+        observed = rows.map(row => row[0]);
+        time = observed.map((_, i) => i / sampleRate);
+      }
+      return {
+        time,
+        clean: observed.slice(),
+        observed,
+        sampleRate,
+        baseFrequency: 0,
+        impulses: new Array(observed.length).fill(false),
+        hasCleanReference: false
+      };
+    }
+
+    function setMode(mode) {
+      state.mode = mode;
+      $("modeSim").classList.toggle("active", mode === "simulation");
+      $("modeFile").classList.toggle("active", mode === "file");
+      $("simControls").classList.toggle("hidden", mode !== "simulation");
+      $("fileControls").classList.toggle("hidden", mode !== "file");
+      $("sourceStatus").textContent = mode === "simulation" ? "模拟信号" : "文件信号";
+    }
+
+    function preprocess() {
+      if (!state.bundle) generateSignal();
+      const input = state.bundle.observed;
+      const windowSize = Number($("smoothWindow").value);
+      const sigma = Number($("sigmaThreshold").value);
+      const repair = $("repairImpulses").checked;
+      const removeMean = $("removeMean").checked;
+      const medianValue = median(input);
+      const mad = median(input.map(v => Math.abs(v - medianValue)));
+      const robustSigma = mad > 1e-12 ? 1.4826 * mad : std(input);
+      const upper = medianValue + sigma * robustSigma;
+      const lower = medianValue - sigma * robustSigma;
+      const anomalyMask = input.map(v => v > upper || v < lower);
+      const repaired = input.slice();
+
+      if (repair) {
+        anomalyMask.forEach((flag, idx) => {
+          if (!flag) return;
+          const left = Math.max(0, idx - 4);
+          const right = Math.min(input.length, idx + 5);
+          const local = [];
+          for (let i = left; i < right; i++) if (i !== idx) local.push(input[i]);
+          repaired[idx] = local.length ? median(local) : medianValue;
+        });
+      }
+
+      const removedMean = removeMean ? mean(repaired) : 0;
+      const centered = repaired.map(v => v - removedMean);
+      const signal = movingAverage(centered, windowSize);
+      state.processed = { signal, anomalyMask, removedMean, smoothingWindow: windowSize };
+      log("PreprocessAgent", "噪声预处理", `异常点 ${anomalyMask.filter(Boolean).length} 个，平滑窗口 ${windowSize}`);
+      renderAll();
+    }
+
+    function analyze() {
+      if (!state.processed) preprocess();
+      const y = state.processed.signal;
+      const timeFeatures = timeDomain(y);
+      const frequencyFeatures = frequencyDomain(y, state.bundle.sampleRate);
+      const rawSnr = state.bundle.hasCleanReference ? snr(state.bundle.clean, state.bundle.observed) : null;
+      const processedSnr = state.bundle.hasCleanReference ? snr(state.bundle.clean, y) : null;
+      const anomalyRate = state.processed.anomalyMask.filter(Boolean).length / y.length;
+      const decision = decide(processedSnr, anomalyRate, frequencyFeatures, timeFeatures);
+      state.analysis = { timeFeatures, frequencyFeatures, rawSnr, processedSnr, anomalyRate, decision };
+      log("FeatureAgent", "时域/频域分析", `主频 ${frequencyFeatures.dominantFrequency.toFixed(2)} Hz，谱熵 ${frequencyFeatures.spectralEntropy.toFixed(3)}`);
+      log("DecisionAgent", "控制决策", `${decision.status}，${decision.level}`);
+      renderAll();
+    }
+
+    function decide(processedSnr, anomalyRate, freq, time) {
+      let status;
+      let level;
+      const actions = [];
+      if (processedSnr === null) {
+        status = "已分析";
+        level = "自适应滤波";
+        actions.push("上传信号缺少干净参考，SNR 不作为真实质量指标");
+      } else if (processedSnr < 3) {
+        status = "噪声占优";
+        level = "强滤波";
+        actions.push("扩大平滑窗口");
+      } else if (processedSnr < 8) {
+        status = "可用但需抑噪";
+        level = "中等滤波";
+        actions.push("保持鲁棒异常点抑制");
+      } else {
+        status = "稳定";
+        level = "轻滤波";
+        actions.push("降低平滑强度");
+      }
+      if (anomalyRate > 0.015) actions.push("检查脉冲干扰源");
+      if (freq.spectralEntropy > 0.55) actions.push("检查宽带噪声源");
+      if (time.lag1Autocorrelation > 0.85) actions.push("可引入 AR 或卡尔曼预测");
+      return { status, level, actions };
+    }
+
+    function mean(arr) { return arr.reduce((a, b) => a + b, 0) / Math.max(arr.length, 1); }
+    function variance(arr) {
+      const m = mean(arr);
+      return mean(arr.map(v => (v - m) ** 2));
+    }
+    function std(arr) { return Math.sqrt(variance(arr)); }
+    function median(arr) {
+      const sorted = arr.slice().sort((a, b) => a - b);
+      const n = sorted.length;
+      if (!n) return 0;
+      return n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+    }
+    function diff(arr) {
+      const out = [];
+      for (let i = 1; i < arr.length; i++) out.push(arr[i] - arr[i - 1]);
+      return out;
+    }
+    function movingAverage(arr, windowSize) {
+      const w = Math.max(1, windowSize | 0);
+      if (w === 1) return arr.slice();
+      const half = Math.floor(w / 2);
+      return arr.map((_, idx) => {
+        let s = 0;
+        let c = 0;
+        for (let j = idx - half; j <= idx + half; j++) {
+          const k = Math.max(0, Math.min(arr.length - 1, j));
+          s += arr[k];
+          c += 1;
+        }
+        return s / c;
+      });
+    }
+    function autocorrelation(arr, maxLag) {
+      const m = mean(arr);
+      const centered = arr.map(v => v - m);
+      const denom = centered.reduce((s, v) => s + v * v, 0) || 1;
+      const out = [1];
+      for (let lag = 1; lag <= maxLag; lag++) {
+        let s = 0;
+        for (let i = 0; i < centered.length - lag; i++) s += centered[i] * centered[i + lag];
+        out.push(s / denom);
+      }
+      return out;
+    }
+    function timeDomain(arr) {
+      const m = mean(arr);
+      const sd = std(arr);
+      const centered = arr.map(v => v - m);
+      const corr = autocorrelation(arr, 24);
+      let zeroCross = 0;
+      for (let i = 1; i < arr.length; i++) if ((arr[i - 1] >= 0) !== (arr[i] >= 0)) zeroCross++;
+      return {
+        mean: m,
+        variance: variance(arr),
+        std: sd,
+        rms: Math.sqrt(mean(arr.map(v => v * v))),
+        peakToPeak: Math.max(...arr) - Math.min(...arr),
+        skewness: mean(centered.map(v => v ** 3)) / (sd ** 3 + 1e-12),
+        kurtosis: mean(centered.map(v => v ** 4)) / (sd ** 4 + 1e-12),
+        zeroCrossingRate: zeroCross / Math.max(arr.length - 1, 1),
+        lag1Autocorrelation: corr[1] || 0,
+        autocorrelation: corr
+      };
+    }
+    function frequencyDomain(arr, sampleRate) {
+      const maxN = Math.min(2048, arr.length);
+      const step = Math.max(1, Math.floor(arr.length / maxN));
+      const sampled = [];
+      for (let i = 0; i < arr.length && sampled.length < maxN; i += step) sampled.push(arr[i]);
+      const n = sampled.length;
+      const m = mean(sampled);
+      const frequencies = [];
+      const power = [];
+      for (let k = 0; k <= Math.floor(n / 2); k++) {
+        let real = 0;
+        let imag = 0;
+        for (let i = 0; i < n; i++) {
+          const window = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / Math.max(n - 1, 1));
+          const value = (sampled[i] - m) * window;
+          const angle = -2 * Math.PI * k * i / n;
+          real += value * Math.cos(angle);
+          imag += value * Math.sin(angle);
+        }
+        frequencies.push(k * sampleRate / (n * step));
+        power.push(k === 0 ? 0 : real * real + imag * imag);
+      }
+      const total = power.reduce((a, b) => a + b, 0) || 1;
+      let dominantIndex = 0;
+      power.forEach((v, i) => { if (v > power[dominantIndex]) dominantIndex = i; });
+      const centroid = power.reduce((s, p, i) => s + frequencies[i] * p, 0) / total;
+      const bandwidth = Math.sqrt(power.reduce((s, p, i) => s + ((frequencies[i] - centroid) ** 2) * p, 0) / total);
+      const entropyRaw = power.reduce((s, p) => {
+        const q = p / total;
+        return q > 0 ? s - q * Math.log2(q) : s;
+      }, 0);
+      const spectralEntropy = entropyRaw / Math.log2(power.length + 1e-12);
+      return {
+        frequencies,
+        power,
+        dominantFrequency: frequencies[dominantIndex] || 0,
+        spectralCentroid: centroid,
+        spectralBandwidth: bandwidth,
+        spectralEntropy
+      };
+    }
+    function snr(clean, observed) {
+      const n = Math.min(clean.length, observed.length);
+      let signalPower = 0;
+      let noisePower = 0;
+      for (let i = 0; i < n; i++) {
+        signalPower += clean[i] * clean[i];
+        noisePower += (observed[i] - clean[i]) ** 2;
+      }
+      return 10 * Math.log10((signalPower / n) / ((noisePower / n) + 1e-12));
+    }
+
+    function decimate(x, y, maxPoints = 900) {
+      const step = Math.max(1, Math.ceil(y.length / maxPoints));
+      const xs = [];
+      const ys = [];
+      for (let i = 0; i < y.length; i += step) {
+        xs.push(x[i]);
+        ys.push(y[i]);
+      }
+      return { x: xs, y: ys };
+    }
+
+    function drawLineChart(canvas, x, series, title) {
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width;
+      const h = canvas.height;
+      const pad = 40;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = "#cbd5e1";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad, h - pad);
+      ctx.lineTo(w - pad, h - pad);
+      ctx.moveTo(pad, pad);
+      ctx.lineTo(pad, h - pad);
+      ctx.stroke();
+      ctx.fillStyle = "#334155";
+      ctx.font = "14px Microsoft YaHei, Segoe UI, Arial";
+      ctx.fillText(title, pad, 24);
+
+      const allY = series.flatMap(item => item.y);
+      const xMin = Math.min(...x);
+      const xMax = Math.max(...x);
+      let yMin = Math.min(...allY);
+      let yMax = Math.max(...allY);
+      if (Math.abs(yMax - yMin) < 1e-12) { yMin -= 1; yMax += 1; }
+
+      series.forEach((item, idx) => {
+        ctx.strokeStyle = item.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        item.y.forEach((value, i) => {
+          const px = pad + (x[i] - xMin) / ((xMax - xMin) || 1) * (w - 2 * pad);
+          const py = h - pad - (value - yMin) / ((yMax - yMin) || 1) * (h - 2 * pad);
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+        ctx.fillStyle = item.color;
+        ctx.fillRect(pad + idx * 130, 36, 18, 4);
+        ctx.fillStyle = "#475569";
+        ctx.fillText(item.name, pad + 24 + idx * 130, 42);
+      });
+    }
+
+    function renderMetrics() {
+      const metrics = [];
+      if (state.bundle) {
+        metrics.push(["样本数", String(state.bundle.observed.length), "采集模块"]);
+        metrics.push(["采样率", `${state.bundle.sampleRate.toFixed(1)} Hz`, "采集模块"]);
+      }
+      if (state.processed) {
+        metrics.push(["异常点", String(state.processed.anomalyMask.filter(Boolean).length), "预处理模块"]);
+      }
+      if (state.analysis) {
+        metrics.push(["状态", state.analysis.decision.status, state.analysis.decision.level]);
+        metrics.push(["主频", `${state.analysis.frequencyFeatures.dominantFrequency.toFixed(2)} Hz`, "频域分析"]);
+        metrics.push(["RMS", state.analysis.timeFeatures.rms.toFixed(3), "时域分析"]);
+      }
+      $("metrics").innerHTML = metrics.map(([label, value, note]) =>
+        `<div class="metric"><span>${label}</span><strong>${value}</strong><small>${note}</small></div>`
+      ).join("");
+    }
+
+    function tableRows(items) {
+      return `<tr><th>指标</th><th>数值</th></tr>` + items.map(([k, v]) =>
+        `<tr><td>${k}</td><td>${v}</td></tr>`
+      ).join("");
+    }
+
+    function renderAll() {
+      renderMetrics();
+      const bundle = state.bundle;
+      if (bundle) {
+        const visibleCount = state.visibleSamples || bundle.observed.length;
+        const time = bundle.time.slice(0, visibleCount);
+        const observed = bundle.observed.slice(0, visibleCount);
+        const raw = decimate(time, observed);
+        const series = [{ name: "原始", y: raw.y, color: "#0f766e" }];
+        if (state.processed) {
+          const processed = state.processed.signal.slice(0, visibleCount);
+          const proc = decimate(time, processed);
+          series.push({ name: "预处理", y: proc.y, color: "#dc2626" });
+        }
+        drawLineChart($("signalChart"), raw.x, series, "采集信号与预处理结果");
+      }
+      if (state.analysis) {
+        const corr = state.analysis.timeFeatures.autocorrelation;
+        drawLineChart(
+          $("corrChart"),
+          corr.map((_, i) => i),
+          [{ name: "自相关", y: corr, color: "#2563eb" }],
+          "自相关函数"
+        );
+        $("timeTable").innerHTML = tableRows([
+          ["均值", state.analysis.timeFeatures.mean.toFixed(5)],
+          ["方差", state.analysis.timeFeatures.variance.toFixed(5)],
+          ["标准差", state.analysis.timeFeatures.std.toFixed(5)],
+          ["RMS", state.analysis.timeFeatures.rms.toFixed(5)],
+          ["峰峰值", state.analysis.timeFeatures.peakToPeak.toFixed(5)],
+          ["零交叉率", state.analysis.timeFeatures.zeroCrossingRate.toFixed(5)],
+          ["一阶自相关", state.analysis.timeFeatures.lag1Autocorrelation.toFixed(5)]
+        ]);
+        const f = state.analysis.frequencyFeatures;
+        const spec = decimate(f.frequencies, f.power, 600);
+        drawLineChart(
+          $("spectrumChart"),
+          spec.x,
+          [{ name: "功率谱", y: spec.y, color: "#7c3aed" }],
+          "功率谱"
+        );
+        $("freqTable").innerHTML = tableRows([
+          ["主频", `${f.dominantFrequency.toFixed(5)} Hz`],
+          ["谱质心", `${f.spectralCentroid.toFixed(5)} Hz`],
+          ["谱带宽", `${f.spectralBandwidth.toFixed(5)} Hz`],
+          ["谱熵", f.spectralEntropy.toFixed(5)],
+          ["SNR", state.analysis.processedSnr === null ? "无干净参考，未计算" : `${state.analysis.processedSnr.toFixed(3)} dB`],
+          ["异常点率", `${(state.analysis.anomalyRate * 100).toFixed(3)}%`]
+        ]);
+      }
+    }
+
+    function setTab(tab) {
+      document.querySelectorAll(".tabs button").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === tab));
+      $("tabSignal").classList.toggle("hidden", tab !== "signal");
+      $("tabTime").classList.toggle("hidden", tab !== "time");
+      $("tabFrequency").classList.toggle("hidden", tab !== "frequency");
+      $("tabTrace").classList.toggle("hidden", tab !== "trace");
+      renderAll();
+    }
+
+    $("modeSim").addEventListener("click", () => setMode("simulation"));
+    $("modeFile").addEventListener("click", () => setMode("file"));
+    $("acquireButton").addEventListener("click", generateSignal);
+    $("preprocessButton").addEventListener("click", preprocess);
+    $("analysisButton").addEventListener("click", analyze);
+    $("streamButton").addEventListener("click", () => {
+      if (state.timer) {
+        clearInterval(state.timer);
+        state.timer = null;
+        $("streamButton").textContent = "实时采集";
+        log("SensorAgent", "停止实时采集", "采集窗口已暂停");
+        return;
+      }
+      generateSignal();
+      state.visibleSamples = Math.min(state.bundle.observed.length, Math.floor(state.bundle.sampleRate));
+      $("streamButton").textContent = "停止";
+      state.timer = setInterval(() => {
+        state.visibleSamples = Math.min(
+          state.bundle.observed.length,
+          state.visibleSamples + Math.floor(state.bundle.sampleRate * 0.5)
+        );
+        if (state.visibleSamples >= state.bundle.observed.length) {
+          clearInterval(state.timer);
+          state.timer = null;
+          $("streamButton").textContent = "实时采集";
+          log("SensorAgent", "实时采集完成", `累计 ${state.visibleSamples} 点`);
+        }
+        renderAll();
+      }, 500);
+    });
+    $("signalFile").addEventListener("change", (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const parsed = parseFileText(String(reader.result), Number($("fileSampleRate").value));
+        if (!parsed) {
+          alert("文件中没有可解析的数字信号。");
+          return;
+        }
+        state.bundle = parsed;
+        state.processed = null;
+        state.analysis = null;
+        state.visibleSamples = parsed.observed.length;
+        state.trace = [];
+        log("SensorAgent", "文件提交", `${file.name}，样本数 ${parsed.observed.length}`);
+        $("sourceStatus").textContent = "文件信号";
+        renderAll();
+      };
+      reader.readAsText(file, "utf-8");
+    });
+    document.querySelectorAll(".tabs button").forEach(btn => {
+      btn.addEventListener("click", () => setTab(btn.dataset.tab));
+    });
+
+    generateSignal();
+    preprocess();
+    analyze();
+  </script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+# Tested reference environment: CPython 3.12.10, Windows x64.
+numpy==2.5.3
