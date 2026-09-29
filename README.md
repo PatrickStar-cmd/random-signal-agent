@@ -11,7 +11,7 @@
 ```bash
 git clone https://github.com/PatrickStar-cmd/random-signal-agent.git
 cd random-signal-agent
-cd "T组智能体工程文件/代码"
+cd "工程文件/代码"
 python -m venv .venv
 ```
 
@@ -41,10 +41,10 @@ python server.py --host 127.0.0.1 --port 8000
 
 ## 文件与验证范围
 
-- [代码与配置](T组智能体工程文件/代码/README.md)
-- [完整运行、参数与日志说明](T组智能体工程文件/代码/docs/exec.md)
-- [检查结论与功能实现情况](T组智能体工程文件/代码/docs/review.md)
-- [算法原理](T组智能体工程文件/代码/docs/principle.md)
-- [部署说明](T组智能体工程文件/代码/DEPLOY.md)
-- [原始 PDF 配置教程](T组智能体工程文件/配置文档/随机信号智能体配置教程.pdf)
+- [代码与配置](工程文件/代码/README.md)
+- [完整运行、参数与日志说明](工程文件/代码/docs/exec.md)
+- [检查结论与功能实现情况](工程文件/代码/docs/review.md)
+- [算法原理](工程文件/代码/docs/principle.md)
+- [部署说明](工程文件/代码/DEPLOY.md)
+- [原始 PDF 配置教程](工程文件/配置文档/随机信号智能体配置教程.pdf)
 
