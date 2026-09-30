@@ -30,7 +30,8 @@ def main():
     args.output_dir.mkdir(parents=True, exist_ok=True)
     archive = args.output_dir / f'{folder}-deploy.zip'
     manifest = {**config, 'commit': commit, 'artifact': archive.name}
-    snapshot = subprocess.check_output(['git', 'archive', '--format=zip', commit], cwd=REPO)
+    snapshot = subprocess.check_output(['git', '-c', 'core.autocrlf=false', '-c', 'core.eol=lf',
+                                        'archive', '--format=zip', commit], cwd=REPO)
     timestamp = int(subprocess.check_output(['git', 'show', '-s', '--format=%ct', commit], cwd=REPO, text=True).strip())
     date = datetime.fromtimestamp(timestamp, timezone.utc).timetuple()[:6]
     # Fixed timestamps, permissions and uncompressed storage make the archive
