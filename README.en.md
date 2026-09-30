@@ -23,11 +23,13 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 
 ## 🧭 Explore
 
-| | | |
-| --- | --- | --- |
-| [✨ Features](#en-features) | [🎬 Interface](#en-interface) | [🚀 Quick start](#en-quick-start) |
-| [🧪 First experiment](#en-first-experiment) | [🏗️ How it works](#en-workflow) | [⚙️ Configuration](#en-configuration) |
-| [📊 Example results](#en-results) | [🔧 Troubleshooting](#en-troubleshooting) | [📚 Documentation](#en-documentation) |
+| Get started | Learn more |
+| --- | --- |
+| [✨ Features](#en-features) | [🏗️ How it works](#en-workflow) |
+| [🎬 Interface](#en-interface) | [⚙️ Configuration](#en-configuration) |
+| [🚀 Quick start](#en-quick-start) | [📊 Example results](#en-results) |
+| [🧪 First experiment](#en-first-experiment) | [🔧 Troubleshooting](#en-troubleshooting) |
+| [📚 Documentation](#en-documentation) | [🤝 Contributing](#en-contributing) |
 
 <a id="en-features"></a>
 
@@ -187,7 +189,7 @@ The saved showcase uses a random process with mixed noise: **200 Hz**, **8 secon
 | Processed SNR | 4.781 dB |
 | SNR improvement | 1.922 dB |
 
-These values describe this saved experiment, rather than every signal or filter configuration.
+Results depend on the input signal and filter parameters.
 
 [Sample CSV](docs/data/sample.csv) · [Analysis results](docs/data/result.json) · [Experiment configuration](工程文件/代码/config/showcase.json) · [Reproduction guide](docs/README.en.md)
 
@@ -240,6 +242,8 @@ The check covers health, Web assets, Agent mode, streaming, CSV upload, and synt
 | [Changelog](CHANGELOG.md) | Release history. |
 
 The code and algorithm guides are in Chinese. The [original PDF setup guide](工程文件/配置文档/随机信号智能体配置教程.pdf) is also included.
+
+<a id="en-contributing"></a>
 
 ## 🤝 Contributing
 

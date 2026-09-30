@@ -24,11 +24,13 @@
 
 ## 🧭 快速导航
 
-| | | |
-| --- | --- | --- |
-| [✨ 核心功能](#zh-features) | [🎬 界面展示](#zh-interface) | [🚀 快速开始](#zh-quick-start) |
-| [🧪 第一个实验](#zh-first-experiment) | [🏗️ 工作流程](#zh-workflow) | [⚙️ 配置说明](#zh-configuration) |
-| [📊 实验结果](#zh-results) | [🔧 常见问题](#zh-troubleshooting) | [📚 项目文档](#zh-documentation) |
+| 开始使用 | 了解项目 |
+| --- | --- |
+| [✨ 核心功能](#zh-features) | [🏗️ 工作流程](#zh-workflow) |
+| [🎬 界面展示](#zh-interface) | [⚙️ 配置说明](#zh-configuration) |
+| [🚀 快速开始](#zh-quick-start) | [📊 实验结果](#zh-results) |
+| [🧪 第一个实验](#zh-first-experiment) | [🔧 常见问题](#zh-troubleshooting) |
+| [📚 项目文档](#zh-documentation) | [🤝 参与改进](#zh-contributing) |
 
 <a id="zh-features"></a>
 
@@ -240,6 +242,8 @@ Docker Compose 读取代码目录下的 `.env`。Docker 参数、HTTPS 部署与
 
 仓库也包含[原始 PDF 配置教程](工程文件/配置文档/随机信号智能体配置教程.pdf)。
 
+<a id="zh-contributing"></a>
+
 ## 🤝 参与改进
 
 欢迎通过 Issue 或 Pull Request 提交问题修复、信号处理方法、实验样例和文档改进。报告问题时请提供 Python 版本、输入参数、复现步骤及相关日志；改进算法时请附上可复现信号与处理前后的对比。
@@ -269,11 +273,13 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 
 ## 🧭 Explore
 
-| | | |
-| --- | --- | --- |
-| [✨ Features](#en-features) | [🎬 Interface](#en-interface) | [🚀 Quick start](#en-quick-start) |
-| [🧪 First experiment](#en-first-experiment) | [🏗️ How it works](#en-workflow) | [⚙️ Configuration](#en-configuration) |
-| [📊 Example results](#en-results) | [🔧 Troubleshooting](#en-troubleshooting) | [📚 Documentation](#en-documentation) |
+| Get started | Learn more |
+| --- | --- |
+| [✨ Features](#en-features) | [🏗️ How it works](#en-workflow) |
+| [🎬 Interface](#en-interface) | [⚙️ Configuration](#en-configuration) |
+| [🚀 Quick start](#en-quick-start) | [📊 Example results](#en-results) |
+| [🧪 First experiment](#en-first-experiment) | [🔧 Troubleshooting](#en-troubleshooting) |
+| [📚 Documentation](#en-documentation) | [🤝 Contributing](#en-contributing) |
 
 <a id="en-features"></a>
 
@@ -433,7 +439,7 @@ The saved showcase uses a random process with mixed noise: **200 Hz**, **8 secon
 | Processed SNR | 4.781 dB |
 | SNR improvement | 1.922 dB |
 
-These values describe this saved experiment, rather than every signal or filter configuration.
+Results depend on the input signal and filter parameters.
 
 [Sample CSV](docs/data/sample.csv) · [Analysis results](docs/data/result.json) · [Experiment configuration](工程文件/代码/config/showcase.json) · [Reproduction guide](docs/README.en.md)
 
@@ -486,6 +492,8 @@ The check covers health, Web assets, Agent mode, streaming, CSV upload, and synt
 | [Changelog](CHANGELOG.md) | Release history. |
 
 The code and algorithm guides are in Chinese. The [original PDF setup guide](工程文件/配置文档/随机信号智能体配置教程.pdf) is also included.
+
+<a id="en-contributing"></a>
 
 ## 🤝 Contributing
 
