@@ -65,6 +65,22 @@ class HTTPRegressionTests(unittest.TestCase):
     def test_negative_content_length_returns_400(self):
         self.assert_bad_request('/api/chat', b'', {'Content-Length': '-1'})
 
+    def test_invalid_microphone_sample_rate_returns_400(self):
+        for rate in ('bad', 'nan', 'inf', 0, -1, None, []):
+            with self.subTest(rate=rate):
+                body = json.dumps({'sample_rate': rate, 'samples': [0, 1]}).encode()
+                self.assert_bad_request('/api/microphone', body)
+        self.agent.use_microphone_samples.assert_not_called()
+
+    def test_invalid_upload_sample_rate_returns_400(self):
+        for rate in ('bad', 'nan', 'inf', '0', '-1'):
+            body = ('--rate\r\nContent-Disposition: form-data; name="sample_rate"\r\n\r\n'
+                    + rate + '\r\n--rate--\r\n').encode()
+            with self.subTest(rate=rate):
+                self.assert_bad_request('/api/upload', body,
+                    {'Content-Type': 'multipart/form-data; boundary=rate'})
+        self.agent.use_uploaded_file.assert_not_called()
+
 
 if __name__ == '__main__':
     log_dir = ROOT / 'logs' / 'regression'
