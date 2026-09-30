@@ -219,6 +219,13 @@ def load_signal_file(path: str | Path, sample_rate: float = 200.0) -> SignalBund
     if not rows:
         raise ValueError(f"No numeric signal samples found in {file_path}")
 
+    columns = 2 if len(rows[0]) >= 2 else 1
+    for row_number, row in enumerate(rows, start=1):
+        if len(row) < columns or (columns == 1 and len(row) != 1):
+            raise ValueError(f"Inconsistent signal columns at numeric row {row_number}")
+        if not np.all(np.isfinite(row[:columns])):
+            raise ValueError(f"Signal values must be finite at numeric row {row_number}")
+
     if len(rows[0]) >= 2:
         time = np.asarray([row[0] for row in rows], dtype=float)
         observed = np.asarray([row[1] for row in rows], dtype=float)
