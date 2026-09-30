@@ -35,6 +35,8 @@ python scripts/test_regressions.py
 
 复制 `config/server.env.example` 为 `config/server.env` 并填写。Shell 配置值有空格时需正确引用，建议 URL、模型名和密钥均不含空格；不要把说明文字填成实际值。
 
+配置值可使用匹配的外层单引号或双引号，Windows 脚本去掉外层引号后保留值内部的空格、等号及 `$`，不执行变量展开。Bash 启动脚本按 Shell 规则读取配置；跨平台保留包含 `$` 的字面值时使用单引号。例如 `RS_AGENT_PORT="8123"` 和 `RS_AGENT_LLM_MODEL='demo model'` 都能由 Windows 脚本读取。
+
 | 参数 | 含义及默认值 |
 | --- | --- |
 | `RS_AGENT_HOST` | 脚本监听地址，默认 `0.0.0.0`；本机推荐 `127.0.0.1` |
