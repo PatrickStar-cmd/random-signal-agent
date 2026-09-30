@@ -25,6 +25,23 @@ from src.advanced_analysis import estimate_welch_psd
 
 
 class SpectrumRegressionTests(unittest.TestCase):
+    def test_welch_integrates_to_unit_tone_power_for_both_parities(self):
+        rate = 2000
+        for count in (255, 256):
+            tone = np.sin(2 * np.pi * 8 * np.arange(count) / count)
+            result = estimate_welch_psd(tone, rate, count, 0)
+            integrated = sum(result['power']) * rate / count
+            with self.subTest(count=count):
+                self.assertAlmostEqual(integrated, .5, delta=1e-5)
+                self.assertAlmostEqual(result['dominant_frequency_hz'], 8 * rate / count)
+
+    def test_welch_nyquist_bin_is_not_doubled(self):
+        count = 256
+        samples = (-1.0) ** np.arange(count)
+        result = estimate_welch_psd(samples, count, count, 0)
+        self.assertAlmostEqual(sum(result['power']), 1.0, delta=1e-8)
+        self.assertEqual(result['dominant_frequency_hz'], count / 2)
+
     def test_constant_signals_have_no_ac_entropy_or_peaks(self):
         for level in (0.0, 2.0):
             samples = np.full(256, level)
