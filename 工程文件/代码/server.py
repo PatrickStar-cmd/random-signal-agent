@@ -18,7 +18,7 @@ import traceback
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from src.dialogue_agent import RandomSignalDialogueAgent
 
@@ -55,26 +55,30 @@ class AgentRequestHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
-        if parsed.path in ["/", "/chat", "/index.html"]:
+        path = unquote(parsed.path)
+        if "\x00" in path:
+            self._send_json({"error": "Not found"}, status=HTTPStatus.NOT_FOUND)
+            return
+        if path in ["/", "/chat", "/index.html"]:
             self._send_file(STATIC_DIR / "chat.html", "text/html; charset=utf-8")
             return
-        if parsed.path == "/api/health":
+        if path == "/api/health":
             self._send_json({"status": "ok", "llm": AGENT.llm.status()})
             return
-        if parsed.path == "/api/state":
+        if path == "/api/state":
             query = parse_qs(parsed.query)
             session_id = query.get("session_id", ["default"])[0]
             state = AGENT.get_session(session_id)
             self._send_json({"state": AGENT.serialize_state(state)})
             return
-        if parsed.path.startswith("/outputs/"):
-            output_path = (OUTPUT_DIR / parsed.path.removeprefix("/outputs/")).resolve()
+        if path.startswith("/outputs/"):
+            output_path = (OUTPUT_DIR / path.removeprefix("/outputs/")).resolve()
             if OUTPUT_DIR.resolve() in output_path.parents and output_path.exists() and output_path.is_file():
                 self._send_file(output_path, self._content_type(output_path))
                 return
             self._send_json({"error": "Not found"}, status=HTTPStatus.NOT_FOUND)
             return
-        static_path = (STATIC_DIR / parsed.path.lstrip("/")).resolve()
+        static_path = (STATIC_DIR / path.lstrip("/")).resolve()
         if STATIC_DIR.resolve() in static_path.parents and static_path.is_file():
             self._send_file(static_path, self._content_type(static_path))
             return
