@@ -11,6 +11,7 @@ import array
 import base64
 import cgi
 import json
+import math
 import secrets
 import sys
 import traceback
@@ -35,6 +36,16 @@ def _json_bytes(payload: dict) -> bytes:
 
 def _truthy(value: object) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _positive_sample_rate(value: object) -> float:
+    try:
+        rate = float(value)
+    except (ValueError, TypeError) as exc:
+        raise ValueError("sample_rate must be a finite positive number") from exc
+    if not math.isfinite(rate) or rate <= 0:
+        raise ValueError("sample_rate must be a finite positive number")
+    return rate
 
 
 class AgentRequestHandler(BaseHTTPRequestHandler):
@@ -115,7 +126,11 @@ class AgentRequestHandler(BaseHTTPRequestHandler):
             if payload is None:
                 return
             session_id = str(payload.get("session_id") or "default")
-            sample_rate = float(payload.get("sample_rate") or 0)
+            try:
+                sample_rate = _positive_sample_rate(payload.get("sample_rate"))
+            except ValueError as exc:
+                self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+                return
             samples = payload.get("samples")
             if not isinstance(samples, list):
                 pcm16 = payload.get("pcm16")
@@ -176,7 +191,11 @@ class AgentRequestHandler(BaseHTTPRequestHandler):
             },
         )
         session_id = str(form.getvalue("session_id") or "default")
-        sample_rate = float(form.getvalue("sample_rate") or 200.0)
+        try:
+            sample_rate = _positive_sample_rate(form.getvalue("sample_rate") or 200.0)
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+            return
         agent_mode = _truthy(form.getvalue("agent_mode"))
         tool_library: dict | None = None
         raw_tool_library = form.getvalue("tool_library")
