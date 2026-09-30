@@ -7,6 +7,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import warnings
 import urllib.error
 import urllib.request
 from unittest.mock import Mock, patch
@@ -18,8 +19,26 @@ os.environ['RS_AGENT_LLM_ENABLED'] = '0'
 import numpy as np
 import server
 from src.acquisition import load_signal_file
-from src.signal_processing import SignalConfig, generate_random_signal, robust_preprocess
+from src.signal_processing import SignalConfig, generate_random_signal, robust_preprocess, extract_time_features
 from src.preprocessing import PREPROCESS_METHODS, PreprocessConfig, preprocess_signal
+
+
+class StatisticsRegressionTests(unittest.TestCase):
+    def test_singleton_time_features_are_finite_without_warnings(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter('error', RuntimeWarning)
+            features = extract_time_features(np.array([2.0]))
+        self.assertEqual(features['zero_crossing_rate'], 0)
+        self.assertEqual(features['mean'], 2)
+        self.assertEqual(features['rms'], 2)
+        self.assertEqual(features['variance'], 0)
+        json.dumps(features, allow_nan=False)
+
+    def test_regular_zero_crossing_rate_and_invalid_inputs(self):
+        self.assertEqual(extract_time_features(np.array([-1, 1, -1, 1]))['zero_crossing_rate'], 1)
+        for signal in ([], [[1, 2]], [float('nan')]):
+            with self.subTest(signal=signal), self.assertRaises(ValueError):
+                extract_time_features(signal)
 
 
 class PreprocessRegressionTests(unittest.TestCase):

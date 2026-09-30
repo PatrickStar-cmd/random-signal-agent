@@ -234,7 +234,7 @@ def estimate_snr(clean: np.ndarray, observed_or_processed: np.ndarray) -> float:
 
 def extract_time_features(signal: np.ndarray) -> dict[str, float]:
     """Extract time-domain random signal statistics."""
-    signal = np.asarray(signal, dtype=float)
+    signal = validate_signal_samples(signal)
     mean = float(np.mean(signal))
     centered = signal - mean
     std = float(np.std(signal))
@@ -246,7 +246,7 @@ def extract_time_features(signal: np.ndarray) -> dict[str, float]:
     root_amplitude = float(np.mean(np.sqrt(abs_signal)) ** 2) if signal.size else 0.0
     skewness = float(np.mean(centered**3) / (std**3 + 1e-12))
     kurtosis = float(np.mean(centered**4) / (std**4 + 1e-12))
-    zero_crossing_rate = float(np.mean(np.diff(np.signbit(signal)) != 0))
+    zero_crossing_rate = float(np.mean(np.diff(np.signbit(signal)) != 0)) if signal.size > 1 else 0.0
     corr = autocorrelation(signal, 12)
     return {
         "mean": mean,
