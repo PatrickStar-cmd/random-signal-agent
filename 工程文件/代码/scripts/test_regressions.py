@@ -10,6 +10,7 @@ import unittest
 import warnings
 import urllib.error
 import urllib.request
+from urllib.parse import quote
 from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -172,9 +173,13 @@ class HTTPRegressionTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.agent = Mock()
         self.agent.chat.return_value = {'ok': True}
-        self.patches = [patch.object(server, 'AGENT', self.agent)]
+        self.patches = [patch.object(server, 'AGENT', self.agent),
+                        patch.object(server, 'STATIC_DIR', self.root / 'web'),
+                        patch.object(server, 'OUTPUT_DIR', self.root / 'outputs')]
         for item in self.patches:
             item.start()
+        server.STATIC_DIR.mkdir()
+        server.OUTPUT_DIR.mkdir()
         self.httpd = server.ThreadingHTTPServer(('127.0.0.1', 0), server.AgentRequestHandler)
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()
@@ -211,6 +216,22 @@ class HTTPRegressionTests(unittest.TestCase):
 
     def test_negative_content_length_returns_400(self):
         self.assert_bad_request('/api/chat', b'', {'Content-Length': '-1'})
+
+    def test_encoded_file_names_download_correctly(self):
+        for directory, prefix in ((server.STATIC_DIR, '/'), (server.OUTPUT_DIR, '/outputs/')):
+            name = '记录 1+2.txt'
+            (directory / name).write_bytes(b'file content')
+            with self.request(prefix + quote(name)) as response:
+                self.assertEqual(response.read(), b'file content')
+
+    def test_encoded_traversal_and_null_bytes_are_rejected(self):
+        (self.root / 'secret.txt').write_bytes(b'must not be served')
+        for path in ('/%2e%2e/secret.txt', '/outputs/%2e%2e/secret.txt',
+                     '/outputs/..%5csecret.txt', '/outputs/%00.txt'):
+            with self.subTest(path=path), self.assertRaises(urllib.error.HTTPError) as caught:
+                self.request(path)
+            self.assertEqual(caught.exception.code, 404)
+            caught.exception.close()
 
     def test_invalid_microphone_sample_rate_returns_400(self):
         for rate in ('bad', 'nan', 'inf', 0, -1, None, []):
