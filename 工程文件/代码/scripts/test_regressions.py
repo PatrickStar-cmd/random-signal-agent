@@ -17,6 +17,33 @@ os.environ['RS_AGENT_LLM_ENABLED'] = '0'
 
 import numpy as np
 import server
+from src.acquisition import load_signal_file
+
+
+class FileRegressionTests(unittest.TestCase):
+    def load_text(self, text, **kwargs):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'signal.csv'
+            path.write_text(text, encoding='utf-8-sig')
+            return load_signal_file(path, **kwargs)
+
+    def test_mixed_columns_are_rejected_in_both_orders(self):
+        for text in ('time,value\n0,1\n2\n', 'value\n1\n2,3\n'):
+            with self.subTest(text=text), self.assertRaisesRegex(ValueError, 'columns'):
+                self.load_text(text)
+
+    def test_nonfinite_file_values_are_rejected(self):
+        for text in ('1\nnan\n', '1\ninf\n', '0,1\n.01,-inf\n', 'nan,1\n.01,2\n'):
+            with self.subTest(text=text), self.assertRaisesRegex(ValueError, 'finite'):
+                self.load_text(text)
+
+    def test_headers_and_extra_columns_remain_supported(self):
+        one = self.load_text('value\n1\n2\n3\n')
+        np.testing.assert_array_equal(one.observed, [1, 2, 3])
+        two = self.load_text('time,value,extra\n0,1,9\n.01,2,8\n.02,3,7\n')
+        np.testing.assert_array_equal(two.observed, [1, 2, 3])
+        self.assertAlmostEqual(two.config.sample_rate, 100)
+        self.assertFalse(two.has_clean_reference)
 
 
 class HTTPRegressionTests(unittest.TestCase):
