@@ -168,9 +168,19 @@ def moving_average(signal: np.ndarray, window: int) -> np.ndarray:
     return np.convolve(padded, kernel, mode="valid")
 
 
+def validate_signal_samples(signal: np.ndarray) -> np.ndarray:
+    """Convert a signal to a non-empty, finite, one-dimensional float array."""
+    samples = np.asarray(signal, dtype=float)
+    if samples.ndim != 1 or samples.size == 0:
+        raise ValueError("Signal must be a non-empty one-dimensional array")
+    if not np.all(np.isfinite(samples)):
+        raise ValueError("Signal samples must be finite")
+    return samples
+
+
 def robust_preprocess(signal: np.ndarray, smoothing_window: int = 7) -> PreprocessResult:
     """Suppress impulse noise, remove DC component and smooth white noise."""
-    signal = np.asarray(signal, dtype=float)
+    signal = validate_signal_samples(signal)
     median = float(np.median(signal))
     mad = float(np.median(np.abs(signal - median)))
     robust_sigma = 1.4826 * mad if mad > 1e-12 else float(np.std(signal))

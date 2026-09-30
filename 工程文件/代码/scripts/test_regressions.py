@@ -18,7 +18,30 @@ os.environ['RS_AGENT_LLM_ENABLED'] = '0'
 import numpy as np
 import server
 from src.acquisition import load_signal_file
-from src.signal_processing import SignalConfig, generate_random_signal
+from src.signal_processing import SignalConfig, generate_random_signal, robust_preprocess
+from src.preprocessing import PREPROCESS_METHODS, PreprocessConfig, preprocess_signal
+
+
+class PreprocessRegressionTests(unittest.TestCase):
+    def test_all_preprocessors_reject_invalid_signal_arrays(self):
+        bad_signals = ([], 1.0, [[1, 2], [3, 4]], [1, float('nan')], [float('inf')])
+        for method in PREPROCESS_METHODS:
+            for signal in bad_signals:
+                with self.subTest(method=method, signal=signal), self.assertRaises(ValueError):
+                    preprocess_signal(signal, PreprocessConfig(method=method))
+        for signal in bad_signals:
+            with self.subTest(legacy=True, signal=signal), self.assertRaises(ValueError):
+                robust_preprocess(signal)
+
+    def test_preprocessors_preserve_length_and_do_not_mutate_input(self):
+        signal = np.sin(np.arange(64) / 4)
+        original = signal.copy()
+        for method in PREPROCESS_METHODS:
+            with self.subTest(method=method):
+                result = preprocess_signal(signal, PreprocessConfig(method=method, sample_rate=200))
+                self.assertEqual(result.signal.shape, signal.shape)
+                self.assertTrue(np.all(np.isfinite(result.signal)))
+                np.testing.assert_array_equal(signal, original)
 
 
 class SimulationRegressionTests(unittest.TestCase):
