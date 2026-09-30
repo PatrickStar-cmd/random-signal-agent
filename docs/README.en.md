@@ -1,6 +1,6 @@
 # Experiment data
 
-<div align="justify">
+<div align="left">
 
 [简体中文](README.md) · **English**
 
@@ -17,9 +17,22 @@ python -m pip install -r requirements-repro.txt
 python scripts/build_showcase.py
 ```
 
-The configuration is in [`config/showcase.json`](../工程文件/代码/config/showcase.json) and matches the default experiment in `run_demo.py`: a sample rate of 200 Hz, an 8-second duration, an 8 Hz target frequency, amplitude 1.2, noise standard deviation 0.55, AR coefficient 0.86, impulse probability 0.012, and seed 42. The signal is a random process with mixed noise, containing 1,600 samples.
+The experiment uses a random process with mixed noise, containing **1,600 samples**. Its configuration is in [`config/showcase.json`](../工程文件/代码/config/showcase.json) and matches `run_demo.py`.
 
-With a 7-sample robust moving average, the detected dominant frequency is 8 Hz. The original SNR is approximately 2.859 dB, the processed SNR is 4.781 dB, and the improvement is 1.922 dB. Filter performance depends on the signal and parameters; dependency versions and platforms may affect the last digits of floating-point results.
+| Parameter | Value |
+| --- | ---: |
+| Sample rate | 200 Hz |
+| Duration | 8 seconds |
+| Target frequency | 8 Hz |
+| Amplitude | 1.2 |
+| Noise standard deviation | 0.55 |
+| AR coefficient | 0.86 |
+| Impulse probability | 0.012 |
+| Random seed | 42 |
+
+With a 7-sample robust moving average, the detected dominant frequency is **8 Hz**. SNR improves from **2.859 dB** to **4.781 dB**, a gain of **1.922 dB**.
+
+Filter performance depends on the signal and parameters. Dependency versions and platforms may affect the last digits of floating-point results.
 
 ## Data files
 
@@ -29,7 +42,9 @@ With a 7-sample robust moving average, the detected dominant frequency is 8 Hz. 
 | [`reference.csv`](data/reference.csv) | Four columns: time, clean reference, observations, and processed values. For offline comparison, rather than direct upload as observations. |
 | [`result.json`](data/result.json) | Generation environment, configuration, analysis metrics, execution trace, and results for all six filters. |
 
-SNR is calculated against the clean simulation signal. `sample.csv` contains only observations, so true SNR is not calculated after upload. Web Agent mode automatically searches preprocessing parameters and may produce different results from this fixed-parameter experiment.
+SNR is calculated against the clean simulation signal. `sample.csv` contains only observations, so true SNR is not calculated after upload.
+
+Web Agent mode searches preprocessing parameters automatically and may produce different results from this fixed-parameter experiment.
 
 The screenshots and walkthrough on the project home page use a **sine signal with Gaussian noise**. This experiment uses a **random process with mixed noise**.
 

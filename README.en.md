@@ -1,33 +1,42 @@
 # Random Signal Agent · Diting
 
-<div align="justify">
+<div align="left">
 
 [简体中文](README.md) · **English**
 
-**A signal analysis agent for the Random Signals course at UESTC**
+**Signal simulation, filtering, and analysis**
 
-Diting brings signal simulation, filter comparison, time and frequency analysis, and random-process analysis into a conversational Web interface. It also supports CSV/TXT files and microphone audio.
+Diting is a conversational signal analysis tool built for the Random Signals course at UESTC. Work with simulated signals, CSV/TXT files, or microphone audio in a single Web interface.
 
-The local toolchain runs without an external model. A Chat Completions-compatible model service can be connected for additional capabilities.
+The local toolchain runs without an external model. You can also connect a Chat Completions-compatible model service.
 
 [Live demo](https://patrickstar-cmd.github.io/random-signal-agent/) · [Experiment data](docs/README.en.md) · [MIT License](LICENSE)
 
 ## Features
 
+- **Reproducible simulation**: choose the sample rate, duration, target frequency, and random seed.
+- **Six preprocessing methods**: robust moving average, median, exponential smoothing, FFT low-pass, hybrid, and Kalman filtering.
+- **Signal analysis**: time-domain statistics, FFT, correlation, AR models, Welch power spectra, and residual analysis.
+- **Agent mode**: compare preprocessing methods and parameters automatically, then view analysis metrics and control recommendations.
+
+## Interface
+
 ![Diting Web interface](docs/images/web-ui.png)
 
-- **Experiments through conversation**: set the sample rate, duration, target frequency, and random seed to generate reproducible signals.
-- **Automatic filter comparison**: robust moving average, median filtering, exponential smoothing, FFT low-pass filtering, hybrid filtering, and Kalman filtering, with curves and parameter comparisons.
-- **Signal and random-process analysis**: time-domain statistics, FFT, correlation, AR models, Welch power spectra, and residual analysis.
-- **Multiple inputs**: simulated signals, CSV/TXT files, and browser microphone audio, with analysis metrics and control recommendations.
+<details>
+<summary>Agent mode walkthrough</summary>
 
 Enable Agent mode and enter an acquisition command to compare preprocessing methods and view the results.
 
 ![Agent mode walkthrough](docs/images/web-demo.gif)
 
+</details>
+
 ## Example experiment
 
-Seed 42, a sample rate of 200 Hz, an 8-second duration, an 8 Hz target frequency, and 1,600 samples. The input combines a random process with mixed noise; preprocessing uses a robust moving average with a 7-sample window.
+A random process with mixed noise, sampled at **200 Hz** for **8 seconds**: **1,600 samples**, an **8 Hz** target frequency, and **seed 42**.
+
+Preprocessing uses a robust moving average with a 7-sample window.
 
 | Metric | Result |
 | --- | ---: |
@@ -42,7 +51,7 @@ See the [experiment guide](docs/README.en.md) for parameters, file formats, and 
 
 ## Getting started
 
-Requirements: **Python 3.10–3.12**, preferably 3.12. The backend uses `cgi` and does not currently support Python 3.13 or later.
+Use **Python 3.12** (supported: 3.10–3.12). The backend depends on `cgi`, which is unavailable in Python 3.13 and later.
 
 ```bash
 git clone https://github.com/PatrickStar-cmd/random-signal-agent.git
@@ -51,7 +60,7 @@ cd "工程文件/代码"
 python -m venv .venv
 ```
 
-Windows PowerShell:
+**Windows PowerShell**
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
@@ -59,7 +68,9 @@ python -m pip install -r requirements-repro.txt
 python server.py --host 127.0.0.1 --port 8000
 ```
 
-Linux/macOS (use Python 3.12, or create the environment with `python3.12`):
+**Linux / macOS**
+
+Use Python 3.12, or create the environment above with `python3.12`.
 
 ```bash
 source .venv/bin/activate
@@ -73,9 +84,13 @@ Open <http://127.0.0.1:8000> and enter this example command in Chinese:
 
 > 采集一段 8 秒、采样率 200Hz、主频 8Hz 的正弦信号加高斯噪声，随机种子 42
 
-This generates an 8-second sine signal with Gaussian noise at a sample rate of 200 Hz and a target frequency of 8 Hz, using seed 42.
+The command generates an 8-second sine signal with Gaussian noise at 200 Hz, with an 8 Hz target frequency and seed 42.
 
-Then enter “使用滑动平均预处理并分析时域和频域特征” to apply moving-average preprocessing and analyze time and frequency features, or enable Agent mode to compare methods automatically. The same parameters and seed reproduce the same samples.
+For moving-average preprocessing and time/frequency analysis, enter:
+
+> 使用滑动平均预处理并分析时域和频域特征
+
+Alternatively, enable **Agent mode** to compare methods automatically. The same parameters and seed reproduce the same samples.
 
 ## Documentation (Chinese)
 
@@ -88,6 +103,8 @@ Then enter “使用滑动平均预处理并分析时域和频域特征” to ap
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE). Retain the license and copyright notice when using, modifying, or distributing it. Third-party dependencies and assets retain their respective licenses.
+Licensed under the [MIT License](LICENSE). Retain the license and copyright notice when using, modifying, or distributing the project.
+
+Third-party dependencies and assets retain their respective licenses.
 
 </div>
