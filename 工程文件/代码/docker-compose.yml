@@ -1,3 +1,5 @@
+name: random-signal-agent
+
 services:
   random-signal-agent:
     build: .

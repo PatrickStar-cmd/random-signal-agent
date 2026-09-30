@@ -56,6 +56,8 @@ Welch 单边功率谱缩放已修复：合并负频率功率，直流及偶数�
 
 `v0.1.0` 发布材料包括完整部署 ZIP、SHA-256 校验、版本与提交清单。打包仅使用已提交的 Git 文件，排除本地密钥、环境、上传和日志。`verify_release.py` 从解压包新建虚拟环境，安装锁定依赖、运行回归和集成检查，并使用实际系统启动脚本进行 HTTP 验收。工作流位于根目录 `.github/workflows/validate-deployment.yml`。
 
+部署验收修复了 Windows PowerShell 5 因 Python 原生 stderr 警告而终止服务的问题；警告写入日志，非零退出码仍向调用方传播。新增对应回归用例。Compose 固定项目名为 `random-signal-agent`，避免中文工作目录无法推导合法项目名。
+
 项目展示已实现：仓库首页有真实界面截图和操作 GIF；根目录 `docs/` 保存静态演示、双列上传样例、完整参考 CSV、参数与结果 JSON。采用 MIT 许可证。固定种子演示在 Python 3.12.10 / NumPy 2.5.3 中生成，桌面与 390px 手机页面无横向溢出。
 
 SVG 叠加曲线已改为共享纵轴，避免分别归一化掩盖幅值差异；对应回归用例通过。`scripts/test_regressions.py` 共 24 项通过，`scripts/verify_reproduction.py` 共 5 组通过。静态页不包含后端交互服务。
