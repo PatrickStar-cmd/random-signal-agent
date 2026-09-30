@@ -1,0 +1,10 @@
+{
+  "sample_rate": 200.0,
+  "duration": 8.0,
+  "base_frequency": 8.0,
+  "amplitude": 1.2,
+  "noise_std": 0.55,
+  "ar_coefficient": 0.86,
+  "impulse_probability": 0.012,
+  "seed": 42
+}

@@ -25,6 +25,19 @@ from src.acquisition import load_signal_file
 from src.signal_processing import SignalConfig, generate_random_signal, robust_preprocess, extract_time_features, extract_frequency_features
 from src.preprocessing import PREPROCESS_METHODS, PreprocessConfig, preprocess_signal
 from src.advanced_analysis import estimate_welch_psd
+from src.visualization import line_chart_svg
+import xml.etree.ElementTree as ET
+
+
+class VisualizationRegressionTests(unittest.TestCase):
+    def test_overlaid_series_share_the_same_amplitude_scale(self):
+        chart = ET.fromstring(line_chart_svg('comparison', [0, 1],
+            [('raw', [0, 10], '#111111'), ('processed', [0, 5], '#222222')]))
+        lines = chart.findall('{http://www.w3.org/2000/svg}polyline')
+        points = [[tuple(map(float, point.split(','))) for point in line.attrib['points'].split()]
+                  for line in lines]
+        self.assertEqual(points[0][0], points[1][0])
+        self.assertAlmostEqual(points[1][1][1], (points[0][0][1] + points[0][1][1]) / 2)
 
 
 class StartupRegressionTests(unittest.TestCase):

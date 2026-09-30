@@ -14,13 +14,14 @@ def _scale_points(
     width: int,
     height: int,
     padding: int,
+    y_bounds: tuple[float, float] | None = None,
 ) -> str:
     xs = list(x_values)
     ys = list(y_values)
     if not xs or not ys:
         return ""
     x_min, x_max = min(xs), max(xs)
-    y_min, y_max = min(ys), max(ys)
+    y_min, y_max = y_bounds if y_bounds is not None else (min(ys), max(ys))
     if abs(x_max - x_min) < 1e-12:
         x_max = x_min + 1.0
     if abs(y_max - y_min) < 1e-12:
@@ -45,8 +46,10 @@ def line_chart_svg(
     padding = 36
     polylines = []
     legends = []
+    all_values = [value for _, values, _ in series for value in values]
+    y_bounds = (min(all_values), max(all_values)) if all_values else None
     for idx, (name, y_values, color) in enumerate(series):
-        points = _scale_points(x_values, y_values, width, height, padding)
+        points = _scale_points(x_values, y_values, width, height, padding, y_bounds)
         polylines.append(
             f'<polyline points="{points}" fill="none" stroke="{color}" '
             f'stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />'
@@ -59,7 +62,7 @@ def line_chart_svg(
         )
 
     return f"""
-<svg viewBox="0 0 {width} {height}" role="img" aria-label="{html.escape(title)}">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" role="img" aria-label="{html.escape(title)}">
   <rect width="{width}" height="{height}" fill="#ffffff" rx="6"/>
   <line x1="{padding}" y1="{height - padding}" x2="{width - padding}" y2="{height - padding}" stroke="#94a3b8"/>
   <line x1="{padding}" y1="{padding}" x2="{padding}" y2="{height - padding}" stroke="#94a3b8"/>

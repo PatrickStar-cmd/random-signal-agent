@@ -1,0 +1,226 @@
+{
+  "environment": {
+    "python": "3.12.10",
+    "numpy": "2.5.3"
+  },
+  "config": {
+    "sample_rate": 200.0,
+    "duration": 8.0,
+    "base_frequency": 8.0,
+    "amplitude": 1.2,
+    "noise_std": 0.55,
+    "ar_coefficient": 0.86,
+    "impulse_probability": 0.012,
+    "seed": 42,
+    "signal_model": "random_process",
+    "waveform": "random_process",
+    "noise_model": "mixed"
+  },
+  "summary": {
+    "time_features": {
+      "mean": -0.0001261655893997271,
+      "variance": 0.7538647337943593,
+      "std": 0.8682538417964871,
+      "rms": 0.8682538509630207,
+      "peak": 2.5721342212892075,
+      "peak_to_peak": 4.62808611980169,
+      "crest_factor": 2.962421898196445,
+      "skewness": -0.06564979779557997,
+      "kurtosis": 2.335609611783081,
+      "impulse_factor": 3.554338516036516,
+      "shape_factor": 1.1998083453934576,
+      "clearance_factor": 4.0835051377511835,
+      "zero_crossing_rate": 0.08442776735459662,
+      "lag1_autocorrelation": 0.9699513851699183,
+      "lag6_autocorrelation": 0.24883378673809695
+    },
+    "frequency_features": {
+      "dominant_frequency_hz": 8.0,
+      "dominant_power": 157712.78955155762,
+      "mean_frequency_hz": 14.979777409951796,
+      "spectral_centroid_hz": 7.346701545270375,
+      "rms_frequency_hz": 8.446433829583102,
+      "frequency_variance_hz2": 17.368220842247744,
+      "frequency_std_hz": 4.167519747073521,
+      "spectral_bandwidth_hz": 4.167519747073521,
+      "spectral_entropy": 0.36351473519441174,
+      "spectral_rolloff_85_hz": 8.125,
+      "top_peaks": [
+        {
+          "frequency_hz": 8.0,
+          "power": 157712.78955155762
+        },
+        {
+          "frequency_hz": 7.875,
+          "power": 41144.27352831679
+        },
+        {
+          "frequency_hz": 8.125,
+          "power": 32792.81398111956
+        },
+        {
+          "frequency_hz": 0.125,
+          "power": 4864.532581623334
+        },
+        {
+          "frequency_hz": 0.875,
+          "power": 4674.278294152882
+        }
+      ]
+    },
+    "quality": {
+      "raw_snr_db": 2.8586184430642687,
+      "processed_snr_db": 4.780632617508033,
+      "snr_improvement_db": 1.9220141744437642,
+      "anomaly_rate": 0.001875,
+      "detected_anomaly_count": 3,
+      "has_clean_reference": true
+    }
+  },
+  "decision": {
+    "status": "可用但需抑噪",
+    "filter_level": "中等滤波",
+    "recommended_actions": [
+      "保持鲁棒异常点抑制，并使用 7-9 点平滑窗口",
+      "主频与目标频率一致，可继续跟踪该频段能量变化",
+      "时间相关性强，可引入 AR 模型或卡尔曼滤波进行预测"
+    ],
+    "control_parameters": {
+      "next_smoothing_window": 9,
+      "next_window_seconds": 8.0,
+      "track_frequency_hz": 8.0
+    }
+  },
+  "trace": [
+    {
+      "agent": "SensorAgent",
+      "action": "采集随机信号",
+      "detail": "采样率 200 Hz，时长 8.0 s，共 1600 点。"
+    },
+    {
+      "agent": "PreprocessAgent",
+      "action": "噪声预处理",
+      "detail": "检测并修复 3 个脉冲异常点，去除均值 -0.0172，滑动平均窗口 7。"
+    },
+    {
+      "agent": "FeatureAgent",
+      "action": "提取时频域特征",
+      "detail": "RMS=0.868，一阶自相关=0.970，主频=8.00 Hz，谱熵=0.364。"
+    },
+    {
+      "agent": "DecisionAgent",
+      "action": "生成控制决策",
+      "detail": "判定状态为“可用但需抑噪”，控制策略为“中等滤波”。"
+    }
+  ],
+  "comparison": [
+    {
+      "method": "robust_mean",
+      "label": "鲁棒滑动平均",
+      "parameters": {
+        "smoothing_window": 7,
+        "anomaly_threshold_sigma": 3.0,
+        "repair_impulses": true,
+        "remove_mean": true,
+        "method": "robust_mean",
+        "lowpass_cutoff_hz": null,
+        "sample_rate": 200.0,
+        "ema_alpha": 0.22,
+        "kalman_process_noise": 0.02,
+        "kalman_measurement_noise": 0.25,
+        "kalman_initial_error": 1.0
+      },
+      "snr_db": 4.780632617508033
+    },
+    {
+      "method": "median",
+      "label": "中值滤波",
+      "parameters": {
+        "smoothing_window": 7,
+        "anomaly_threshold_sigma": 3.0,
+        "repair_impulses": true,
+        "remove_mean": true,
+        "method": "median",
+        "lowpass_cutoff_hz": null,
+        "sample_rate": 200.0,
+        "ema_alpha": 0.22,
+        "kalman_process_noise": 0.02,
+        "kalman_measurement_noise": 0.25,
+        "kalman_initial_error": 1.0
+      },
+      "snr_db": 4.583042651232308
+    },
+    {
+      "method": "ema",
+      "label": "指数平滑",
+      "parameters": {
+        "smoothing_window": 7,
+        "anomaly_threshold_sigma": 3.0,
+        "repair_impulses": true,
+        "remove_mean": true,
+        "method": "ema",
+        "lowpass_cutoff_hz": null,
+        "sample_rate": 200.0,
+        "ema_alpha": 0.22,
+        "kalman_process_noise": 0.02,
+        "kalman_measurement_noise": 0.25,
+        "kalman_initial_error": 1.0
+      },
+      "snr_db": 1.8286362804607903
+    },
+    {
+      "method": "fft_lowpass",
+      "label": "FFT 低通",
+      "parameters": {
+        "smoothing_window": 7,
+        "anomaly_threshold_sigma": 3.0,
+        "repair_impulses": true,
+        "remove_mean": true,
+        "method": "fft_lowpass",
+        "lowpass_cutoff_hz": null,
+        "sample_rate": 200.0,
+        "ema_alpha": 0.22,
+        "kalman_process_noise": 0.02,
+        "kalman_measurement_noise": 0.25,
+        "kalman_initial_error": 1.0
+      },
+      "snr_db": 4.153519499449682
+    },
+    {
+      "method": "hybrid",
+      "label": "混合增强",
+      "parameters": {
+        "smoothing_window": 7,
+        "anomaly_threshold_sigma": 3.0,
+        "repair_impulses": true,
+        "remove_mean": true,
+        "method": "hybrid",
+        "lowpass_cutoff_hz": null,
+        "sample_rate": 200.0,
+        "ema_alpha": 0.22,
+        "kalman_process_noise": 0.02,
+        "kalman_measurement_noise": 0.25,
+        "kalman_initial_error": 1.0
+      },
+      "snr_db": 4.671513985324282
+    },
+    {
+      "method": "kalman",
+      "label": "卡尔曼滤波",
+      "parameters": {
+        "smoothing_window": 7,
+        "anomaly_threshold_sigma": 3.0,
+        "repair_impulses": true,
+        "remove_mean": true,
+        "method": "kalman",
+        "lowpass_cutoff_hz": null,
+        "sample_rate": 200.0,
+        "ema_alpha": 0.22,
+        "kalman_process_noise": 0.02,
+        "kalman_measurement_noise": 0.25,
+        "kalman_initial_error": 1.0
+      },
+      "snr_db": 2.1444315767211735
+    }
+  ]
+}

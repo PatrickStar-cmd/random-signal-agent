@@ -42,4 +42,8 @@ Welch 返回实信号的单边功率谱密度（采样值平方/Hz）：负频�
 
 ## 日志
 
+静态展示通过 `scripts/build_showcase.py` 对同一个 seed=42 的观测序列分别执行六种预处理，以已知干净参考计算每种方法的 SNR。图表的叠加曲线共享全局最小值和最大值形成的纵轴，保留幅值差异；显示曲线可降采样，数值指标始终由完整样本计算。上传观测 CSV 后没有干净参考，不能恢复这里的真实 SNR。
+
+GitHub Pages 直接提供生成好的 HTML、SVG 和数据文件，不执行 Python，也不接收对话或分析任务。`logs/showcase/latest.log` 记录依赖版本、生成位置、样本数量、主频与 SNR 提升；`logs/regression/latest.log` 保存边界与统一纵轴回归检查。
+
 `logs/server/server.log` 保存启动脚本输出，`logs/verification/latest.log` 保存集成检查结果，均覆盖写入。直接运行看终端；systemd/Docker 日志查看命令及全部参数见 [exec.md](exec.md)。输出数据、录音、上传文件和日志属于运行产物，不纳入仓库。
