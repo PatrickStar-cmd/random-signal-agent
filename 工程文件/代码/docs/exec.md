@@ -48,11 +48,23 @@ python scripts/test_regressions.py
 | `RS_AGENT_LOG_FILE` | 启动脚本日志路径，默认 `logs/server/server.log` |
 | `RS_AGENT_LLM_ENABLED` | 可选；`0/false/off/no` 禁用模型，否则自动检查三项配置 |
 
-模型地址、密钥、模型名为空时会尝试 `OPENAI_BASE_URL`、`OPENAI_API_KEY`、`OPENAI_MODEL`。需要强制离线时设置 `RS_AGENT_LLM_ENABLED=0`。Docker 使用 `.env.example` 复制出的 `.env`，其中四个 LLM 参数由 Compose 传入容器。Compose 端口目前固定为 8000。
+模型地址、密钥、模型名为空时会尝试 `OPENAI_BASE_URL`、`OPENAI_API_KEY`、`OPENAI_MODEL`。需要强制离线时设置 `RS_AGENT_LLM_ENABLED=0`。Docker 使用 `.env.example` 复制出的 `.env`，LLM 参数由 Compose 传入容器。`RS_AGENT_BIND_ADDRESS` 控制宿主绑定地址，默认 `127.0.0.1`；`RS_AGENT_PORT` 控制宿主端口，默认 8000，容器端口固定为 8000。
 
 PowerShell 脚本参数 `-ConfigPath` 指定配置文件（默认 `config/server.env`），`-HostName`、`-Port` 覆盖监听设置；Bash 使用 `CONFIG_PATH` 环境变量更换配置文件。直接运行服务的 `--host` 和 `--port` 默认是 `0.0.0.0`、8000。
 
 ## 结果与日志
+
+### 发布包与部署检查
+
+提交所有修改后执行 `python scripts/build_release.py`。默认打包 HEAD，`--ref` 可指定版本或提交，`--output-dir` 可指定输出目录；默认产物在 `outputs/release/`，日志覆盖写入 `logs/release/build.log`。
+
+`config/release.json` 的 `version` 为数字版本号（0.1.0），`name` 为产物前缀（random-signal-agent），`runtime_path` 为包内代码目录（工程文件/代码），`python` 为推荐 Python 版本（3.12）。ZIP 保留完整仓库结构，附加 `RELEASE.json` 记录源码提交。
+
+执行 `python scripts/verify_release.py --archive outputs/release/random-signal-agent-v0.1.0-deploy.zip`，从包中新建干净环境，安装依赖并检查实际启动；Windows 用 PowerShell 启动脚本，Linux 用 Bash。检查完成清理临时目录，报告写入 `outputs/release/verification-<系统>.json`，日志位于 `logs/release/latest.log` 与 `server.log`。Linux 跳过仅适用于 Windows 的启动配置回归用例。
+
+运行中的服务使用 `python scripts/smoke_deployment.py --base-url http://127.0.0.1:8000` 验收，会创建独立测试会话和少量合成上传/音频数据。检查参数位于 `config/deployment-check.json`：`startup_timeout` 是服务就绪等待秒数（60），`request_timeout` 是单次请求超时秒数（60），`sample_rate` 为测试采样率（200 Hz），`duration` 为仿真时长（2 秒），`frequency` 为目标主频（8 Hz），`seed` 为随机种子（42）。日志覆盖写入 `logs/deployment/latest.log`。
+
+部署 CI 对 Windows、Linux 解压包和 Linux Docker Compose 执行上述检查。Docker 启动时等待容器健康检查，并验证真实 HTTP 接口与锁定依赖；运行日志可从 Actions 工件下载。
 
 ### 静态演示生成
 

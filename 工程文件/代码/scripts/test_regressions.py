@@ -42,6 +42,26 @@ class VisualizationRegressionTests(unittest.TestCase):
 
 class StartupRegressionTests(unittest.TestCase):
     @unittest.skipUnless(os.name == 'nt' and shutil.which('powershell.exe'), 'Windows PowerShell required')
+    def test_powershell_native_warnings_are_logged_and_exit_codes_preserved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            script = ROOT / 'scripts/start_server.ps1'
+            for exit_code in (0, 3):
+                with self.subTest(exit_code=exit_code):
+                    config = temp / 'startup.env'
+                    config.write_text(f'RS_AGENT_LOG_FILE="{temp / "server.log"}"\n', encoding='utf-8')
+                    (temp / 'python.cmd').write_text(
+                        f'@echo off\necho native-started\necho native-warning 1>&2\nexit /b {exit_code}\n', encoding='ascii')
+                    env = os.environ.copy()
+                    env['PATH'] = str(temp) + os.pathsep + env.get('PATH', '')
+                    result = subprocess.run(['powershell.exe', '-NoProfile', '-ExecutionPolicy', 'Bypass',
+                                             '-File', str(script), '-ConfigPath', str(config)],
+                                            env=env, capture_output=True, text=True, timeout=15)
+                    self.assertEqual(result.returncode, exit_code, result.stderr)
+                    self.assertIn('native-started', result.stdout)
+                    self.assertIn('native-warning', result.stdout)
+
+    @unittest.skipUnless(os.name == 'nt' and shutil.which('powershell.exe'), 'Windows PowerShell required')
     def test_powershell_config_quotes_and_equals_are_preserved_correctly(self):
         with tempfile.TemporaryDirectory() as directory:
             temp = Path(directory)

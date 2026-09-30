@@ -1,0 +1,74 @@
+name: Validate deployment
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUTF8: '1'
+  RS_AGENT_LLM_ENABLED: '0'
+
+jobs:
+  package:
+    name: Clean release / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    defaults:
+      run:
+        working-directory: 工程文件/代码
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Build deployment archive
+        run: python scripts/build_release.py
+      - name: Install and verify extracted archive
+        run: python scripts/verify_release.py --archive outputs/release/random-signal-agent-v0.1.0-deploy.zip
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: release-validation-${{ runner.os }}
+          path: |
+            工程文件/代码/logs/release/
+            工程文件/代码/outputs/release/verification-*.json
+
+  docker:
+    name: Docker Compose / Linux
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 工程文件/代码
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Build and start deployment
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
+          docker compose up -d --build --wait --wait-timeout 120
+      - name: Check live HTTP endpoints and installed dependencies
+        run: |
+          python scripts/smoke_deployment.py
+          docker compose exec -T random-signal-agent python -m pip check
+      - name: Save logs and stop container
+        if: always()
+        run: |
+          mkdir -p logs/deployment
+          docker compose logs --no-color > logs/deployment/docker.log
+          docker compose down
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: docker-validation
+          path: 工程文件/代码/logs/deployment/

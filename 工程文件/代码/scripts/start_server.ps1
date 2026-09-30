@@ -44,4 +44,18 @@ if ($logDir) {
 }
 
 "Starting random signal agent at http://${hostArg}:${portArg}" | Tee-Object -FilePath $logFile
-python .\server.py --host $hostArg --port $portArg 2>&1 | Tee-Object -FilePath $logFile -Append
+# Windows PowerShell 5 treats redirected native stderr as ErrorRecord objects.
+# A Python warning must be logged without terminating the running service.
+$previousErrorActionPreference = $ErrorActionPreference
+try {
+    $ErrorActionPreference = "Continue"
+    python -u .\server.py --host $hostArg --port $portArg 2>&1 |
+        ForEach-Object { $_.ToString() } |
+        Tee-Object -FilePath $logFile -Append
+}
+finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+}
+if ($LASTEXITCODE) {
+    exit $LASTEXITCODE
+}

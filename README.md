@@ -11,7 +11,7 @@
 
 本地工具链无需外部模型即可运行，也可接入兼容 Chat Completions 的模型服务。
 
-[在线演示](https://patrickstar-cmd.github.io/random-signal-agent/) · [实验数据](docs/README.md) · [MIT 许可证](LICENSE)
+[在线演示](https://patrickstar-cmd.github.io/random-signal-agent/) · [实验数据](docs/README.md) · [安装与部署](RELEASE.md) · [MIT 许可证](LICENSE)
 
 ## 功能
 
@@ -103,7 +103,7 @@ Diting is a conversational signal analysis tool built for the Random Signals cou
 
 The local toolchain runs without an external model. You can also connect a Chat Completions-compatible model service.
 
-[Live demo](https://patrickstar-cmd.github.io/random-signal-agent/) · [Experiment data](docs/README.en.md) · [MIT License](LICENSE)
+[Live demo](https://patrickstar-cmd.github.io/random-signal-agent/) · [Experiment data](docs/README.en.md) · [Installation & deployment](RELEASE.md) · [MIT License](LICENSE)
 
 ## Features
 

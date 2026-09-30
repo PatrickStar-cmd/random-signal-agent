@@ -1,10 +1,13 @@
+name: random-signal-agent
+
 services:
   random-signal-agent:
     build: .
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${RS_AGENT_BIND_ADDRESS:-127.0.0.1}:${RS_AGENT_PORT:-8000}:8000"
     environment:
+      RS_AGENT_LLM_ENABLED: ${RS_AGENT_LLM_ENABLED:-auto}
       RS_AGENT_LLM_BASE_URL: ${RS_AGENT_LLM_BASE_URL:-}
       RS_AGENT_LLM_MODEL: ${RS_AGENT_LLM_MODEL:-}
       RS_AGENT_LLM_API_KEY: ${RS_AGENT_LLM_API_KEY:-}
