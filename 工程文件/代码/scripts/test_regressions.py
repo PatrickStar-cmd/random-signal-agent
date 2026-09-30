@@ -45,6 +45,22 @@ class FileRegressionTests(unittest.TestCase):
         self.assertAlmostEqual(two.config.sample_rate, 100)
         self.assertFalse(two.has_clean_reference)
 
+    def test_invalid_file_time_axes_are_rejected(self):
+        for text in ('0,1\n0,2\n', '.01,1\n0,2\n', '0,1\n.01,2\n.025,3\n'):
+            with self.subTest(text=text), self.assertRaisesRegex(ValueError, 'Time values'):
+                self.load_text(text)
+
+    def test_invalid_file_sample_rates_are_rejected(self):
+        for rate in (0, -1, float('nan'), float('inf')):
+            with self.subTest(rate=rate), self.assertRaisesRegex(ValueError, 'sample_rate'):
+                self.load_text('1\n2\n', sample_rate=rate)
+
+    def test_rounded_uniform_time_axis_is_accepted(self):
+        bundle = self.load_text('0,1\n.00033333,2\n.00066667,3\n')
+        self.assertAlmostEqual(bundle.config.sample_rate, 3000, delta=.1)
+        one = self.load_text('1\n2\n3\n', sample_rate=100)
+        np.testing.assert_allclose(one.time, [0, .01, .02])
+
 
 class HTTPRegressionTests(unittest.TestCase):
     def setUp(self):
