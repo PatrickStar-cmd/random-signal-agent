@@ -214,6 +214,9 @@ def load_signal_file(path: str | Path, sample_rate: float = 200.0) -> SignalBund
     - two or more numeric columns: first column is time, second column is signal
     - CSV, TXT and whitespace-separated data are accepted
     """
+    sample_rate = float(sample_rate)
+    if not np.isfinite(sample_rate) or sample_rate <= 0:
+        raise ValueError("sample_rate must be a finite positive number")
     file_path = Path(path)
     rows = _parse_numeric_rows(file_path)
     if not rows:
@@ -230,8 +233,15 @@ def load_signal_file(path: str | Path, sample_rate: float = 200.0) -> SignalBund
         time = np.asarray([row[0] for row in rows], dtype=float)
         observed = np.asarray([row[1] for row in rows], dtype=float)
         if time.size >= 2:
-            dt = float(np.median(np.diff(time)))
-            inferred_rate = 1.0 / dt if dt > 0 else sample_rate
+            intervals = np.diff(time)
+            if not np.all(np.isfinite(intervals)) or np.any(intervals <= 0):
+                raise ValueError("Time values must be strictly increasing")
+            dt = float(np.median(intervals))
+            if not np.allclose(intervals, dt, rtol=1e-3, atol=max(dt * 1e-6, 1e-12)):
+                raise ValueError("Time values must be uniformly sampled for FFT analysis")
+            inferred_rate = 1.0 / dt
+            if not np.isfinite(inferred_rate):
+                raise ValueError("Inferred sample_rate must be finite")
         else:
             inferred_rate = sample_rate
     else:
