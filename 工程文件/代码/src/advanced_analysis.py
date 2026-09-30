@@ -149,6 +149,12 @@ def estimate_welch_psd(
         spectra.append((np.abs(spectrum) ** 2) / max(scale, 1e-12))
 
     power = np.mean(np.vstack(spectra), axis=0)
+    # rfft omits negative frequencies. Fold their power into positive bins,
+    # leaving DC and the even-length Nyquist bin undoubled.
+    if segment_length % 2 == 0:
+        power[1:-1] *= 2.0
+    else:
+        power[1:] *= 2.0
     freqs = np.fft.rfftfreq(segment_length, d=1.0 / sample_rate)
     if power.size:
         power[0] = 0.0
