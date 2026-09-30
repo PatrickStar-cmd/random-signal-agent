@@ -18,6 +18,27 @@ os.environ['RS_AGENT_LLM_ENABLED'] = '0'
 import numpy as np
 import server
 from src.acquisition import load_signal_file
+from src.signal_processing import SignalConfig, generate_random_signal
+
+
+class SimulationRegressionTests(unittest.TestCase):
+    def test_invalid_simulation_parameters_are_rejected(self):
+        cases = ({'sample_rate': 0}, {'sample_rate': -1}, {'sample_rate': float('inf')},
+                 {'duration': 0}, {'duration': .001}, {'duration': float('nan')},
+                 {'noise_std': -1}, {'ar_coefficient': 1.1}, {'ar_coefficient': -1.1},
+                 {'impulse_probability': -0.1}, {'impulse_probability': 1.1},
+                 {'amplitude': float('nan')}, {'base_frequency': float('inf')})
+        for kwargs in cases:
+            with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                generate_random_signal(SignalConfig(**kwargs))
+
+    def test_valid_seeded_simulation_remains_repeatable(self):
+        first = generate_random_signal(SignalConfig(seed=42))
+        second = generate_random_signal(SignalConfig(seed=42))
+        self.assertEqual(first.observed.size, 1600)
+        self.assertTrue(np.all(np.isfinite(first.observed)))
+        np.testing.assert_array_equal(first.observed, second.observed)
+        np.testing.assert_allclose(first.observed, first.clean + first.noise)
 
 
 class FileRegressionTests(unittest.TestCase):
