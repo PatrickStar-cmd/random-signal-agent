@@ -73,6 +73,8 @@ class AgentRequestHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         if parsed.path == "/api/chat":
             payload = self._read_json()
+            if payload is None:
+                return
             session_id = str(payload.get("session_id") or "default")
             message = str(payload.get("message") or "")
             if not message.strip():
@@ -89,6 +91,8 @@ class AgentRequestHandler(BaseHTTPRequestHandler):
             return
         if parsed.path == "/api/chat/stream":
             payload = self._read_json()
+            if payload is None:
+                return
             session_id = str(payload.get("session_id") or "default")
             message = str(payload.get("message") or "")
             if not message.strip():
@@ -108,6 +112,8 @@ class AgentRequestHandler(BaseHTTPRequestHandler):
             return
         if parsed.path == "/api/microphone":
             payload = self._read_json()
+            if payload is None:
+                return
             session_id = str(payload.get("session_id") or "default")
             sample_rate = float(payload.get("sample_rate") or 0)
             samples = payload.get("samples")
@@ -136,6 +142,8 @@ class AgentRequestHandler(BaseHTTPRequestHandler):
             return
         if parsed.path == "/api/realtime/stop":
             payload = self._read_json()
+            if payload is None:
+                return
             session_id = str(payload.get("session_id") or "default")
             sample_count = payload.get("sample_count")
             try:
@@ -203,12 +211,19 @@ class AgentRequestHandler(BaseHTTPRequestHandler):
             return
         self._send_json(result)
 
-    def _read_json(self) -> dict:
-        length = int(self.headers.get("Content-Length", "0"))
-        raw = self.rfile.read(length)
-        if not raw:
-            return {}
-        return json.loads(raw.decode("utf-8"))
+    def _read_json(self) -> dict | None:
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            if length < 0:
+                raise ValueError("Content-Length must be non-negative")
+            raw = self.rfile.read(length)
+            payload = json.loads(raw.decode("utf-8")) if raw else {}
+            if not isinstance(payload, dict):
+                raise ValueError("JSON body must be an object")
+            return payload
+        except (ValueError, UnicodeError) as exc:
+            self._send_json({"error": f"invalid JSON request: {exc}"}, status=HTTPStatus.BAD_REQUEST)
+            return None
 
     def _send_json(self, payload: dict, status: HTTPStatus = HTTPStatus.OK) -> None:
         data = _json_bytes(payload)
