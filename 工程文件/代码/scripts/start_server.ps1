@@ -16,7 +16,14 @@ if (Test-Path $ConfigPath) {
             return
         }
         $parts = $line.Split("=", 2)
-        [Environment]::SetEnvironmentVariable($parts[0].Trim(), $parts[1].Trim(), "Process")
+        $value = $parts[1].Trim()
+        if ($value.Length -ge 2 -and (
+            ($value[0] -eq '"' -and $value[-1] -eq '"') -or
+            ($value[0] -eq "'" -and $value[-1] -eq "'")
+        )) {
+            $value = $value.Substring(1, $value.Length - 2)
+        }
+        [Environment]::SetEnvironmentVariable($parts[0].Trim(), $value, "Process")
     }
 }
 

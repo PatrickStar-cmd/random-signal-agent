@@ -3,6 +3,8 @@
 from pathlib import Path
 import json
 import os
+import shutil
+import subprocess
 import sys
 import tempfile
 import threading
@@ -23,6 +25,38 @@ from src.acquisition import load_signal_file
 from src.signal_processing import SignalConfig, generate_random_signal, robust_preprocess, extract_time_features, extract_frequency_features
 from src.preprocessing import PREPROCESS_METHODS, PreprocessConfig, preprocess_signal
 from src.advanced_analysis import estimate_welch_psd
+
+
+class StartupRegressionTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == 'nt' and shutil.which('powershell.exe'), 'Windows PowerShell required')
+    def test_powershell_config_quotes_and_equals_are_preserved_correctly(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            config = temp / 'config test.env'
+            log = temp / 'server log.txt'
+            config.write_text(
+                'RS_AGENT_HOST="127.0.0.1"\nRS_AGENT_PORT="8123"\n'
+                "RS_AGENT_LLM_MODEL=' demo model '\n"
+                'RS_AGENT_LLM_API_KEY="dummy$key=withEquals"\n'
+                'RS_AGENT_LLM_BASE_URL=https://provider.example.invalid/v1\n'
+                f'RS_AGENT_LOG_FILE="{log}"\n', encoding='utf-8')
+            script = ROOT / 'scripts' / 'start_server.ps1'
+            ps_quote = lambda text: "'" + str(text).replace("'", "''") + "'"
+            harness = temp / 'mock startup.ps1'
+            harness.write_text(
+                "function python { [PSCustomObject]@{model=$env:RS_AGENT_LLM_MODEL; "
+                "key=$env:RS_AGENT_LLM_API_KEY; host_name=$env:RS_AGENT_HOST; "
+                "port=$env:RS_AGENT_PORT} | ConvertTo-Json -Compress }\n"
+                f'& {ps_quote(script)} -ConfigPath {ps_quote(config)}\n', encoding='utf-8-sig')
+            result = subprocess.run(['powershell.exe', '-NoProfile', '-ExecutionPolicy', 'Bypass',
+                                     '-File', str(harness)], capture_output=True, text=True, timeout=15)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            values = json.loads(next(line for line in result.stdout.splitlines() if line.startswith('{')))
+            self.assertEqual(values['model'], ' demo model ')
+            self.assertEqual(values['key'], 'dummy$key=withEquals')
+            self.assertEqual(values['host_name'], '127.0.0.1')
+            self.assertEqual(values['port'], '8123')
+            self.assertTrue(log.is_file())
 
 
 class SpectrumRegressionTests(unittest.TestCase):
