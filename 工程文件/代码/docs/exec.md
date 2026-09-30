@@ -8,9 +8,12 @@
 python -m pip install -r requirements-repro.txt
 python -m pip check
 python scripts/verify_reproduction.py
+python scripts/test_regressions.py
 ```
 
 验证脚本不调用外部模型，自动启动临时本地 HTTP 服务并关闭，输出测试结果到终端和 `logs/verification/latest.log`，每次覆盖。Python 3.10/3.11 如需安装可用 `requirements.txt`，本次未在这两个版本运行测试。
+
+`test_regressions.py` 验证异常输入等边界行为，使用临时文件和本地 HTTP 服务，不调用外部模型；日志覆盖写入 `logs/regression/latest.log`。
 
 ## 运行入口
 
