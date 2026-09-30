@@ -19,8 +19,32 @@ os.environ['RS_AGENT_LLM_ENABLED'] = '0'
 import numpy as np
 import server
 from src.acquisition import load_signal_file
-from src.signal_processing import SignalConfig, generate_random_signal, robust_preprocess, extract_time_features
+from src.signal_processing import SignalConfig, generate_random_signal, robust_preprocess, extract_time_features, extract_frequency_features
 from src.preprocessing import PREPROCESS_METHODS, PreprocessConfig, preprocess_signal
+from src.advanced_analysis import estimate_welch_psd
+
+
+class SpectrumRegressionTests(unittest.TestCase):
+    def test_constant_signals_have_no_ac_entropy_or_peaks(self):
+        for level in (0.0, 2.0):
+            samples = np.full(256, level)
+            fft = extract_frequency_features(samples, 256)
+            welch = estimate_welch_psd(samples, 256, 256, .5)
+            for result in (fft, welch):
+                self.assertEqual(result['spectral_entropy'], 0)
+                self.assertEqual(result['dominant_frequency_hz'], 0)
+                json.dumps(result, allow_nan=False)
+            self.assertEqual(fft['top_peaks'], [])
+
+    def test_tone_entropy_is_lower_than_white_noise(self):
+        tone = np.sin(2 * np.pi * 8 * np.arange(256) / 256)
+        noise = np.random.default_rng(42).normal(size=256)
+        for analyze in (lambda x: extract_frequency_features(x, 256),
+                        lambda x: estimate_welch_psd(x, 256, 256, .5)):
+            tonal, noisy = analyze(tone), analyze(noise)
+            self.assertLess(tonal['spectral_entropy'], noisy['spectral_entropy'])
+            self.assertGreaterEqual(tonal['spectral_entropy'], 0)
+            self.assertLessEqual(noisy['spectral_entropy'], 1)
 
 
 class StatisticsRegressionTests(unittest.TestCase):

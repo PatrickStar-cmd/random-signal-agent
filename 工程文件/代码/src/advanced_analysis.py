@@ -154,7 +154,7 @@ def estimate_welch_psd(
         power[0] = 0.0
     total_power = float(np.sum(power))
     if total_power <= 1e-12:
-        probabilities = np.ones_like(power) / max(power.size, 1)
+        probabilities = np.zeros_like(power)
     else:
         probabilities = power / total_power
     dominant_idx = int(np.argmax(power)) if power.size else 0
@@ -162,6 +162,7 @@ def estimate_welch_psd(
     centroid = float(np.sum(freqs * power) / (total_power + 1e-12))
     entropy = float(-np.sum(probabilities * np.log2(probabilities + 1e-12)))
     entropy_norm = entropy / float(np.log2(power.size + 1e-12)) if power.size > 1 else 0.0
+    entropy_norm = float(np.clip(entropy_norm, 0.0, 1.0))
     return {
         "segment_length": segment_length,
         "overlap": overlap,
