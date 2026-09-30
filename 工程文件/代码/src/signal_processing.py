@@ -124,6 +124,21 @@ def _noise_component(config: SignalConfig, rng: np.random.Generator, size: int) 
 
 def generate_random_signal(config: SignalConfig) -> SignalBundle:
     """Generate a noisy simulated signal from a selected signal/noise pair."""
+    for name in ("sample_rate", "duration", "base_frequency", "amplitude", "noise_std",
+                 "ar_coefficient", "impulse_probability"):
+        if not np.isfinite(getattr(config, name)):
+            raise ValueError(f"{name} must be finite")
+    if config.sample_rate <= 0 or config.duration <= 0:
+        raise ValueError("sample_rate and duration must be positive")
+    count = config.sample_rate * config.duration
+    if not np.isfinite(count) or count < 1:
+        raise ValueError("Simulation must contain at least one sample with a finite sample count")
+    if config.noise_std < 0:
+        raise ValueError("noise_std must be non-negative")
+    if abs(config.ar_coefficient) > 1:
+        raise ValueError("ar_coefficient must be between -1 and 1")
+    if not 0 <= config.impulse_probability <= 1:
+        raise ValueError("impulse_probability must be between 0 and 1")
     rng = np.random.default_rng(config.seed)
     time = np.arange(config.sample_count) / config.sample_rate
 
