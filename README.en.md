@@ -1,5 +1,7 @@
 # Random Signal Agent · Diting
 
+<div align="justify">
+
 [简体中文](README.md) · **English**
 
 **A signal analysis agent for the Random Signals course at UESTC**
@@ -87,3 +89,5 @@ Then enter “使用滑动平均预处理并分析时域和频域特征” to ap
 ## License
 
 This project is licensed under the [MIT License](LICENSE). Retain the license and copyright notice when using, modifying, or distributing it. Third-party dependencies and assets retain their respective licenses.
+
+</div>

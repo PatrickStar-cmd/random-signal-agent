@@ -1,5 +1,7 @@
 # Experiment data
 
+<div align="justify">
+
 [简体中文](README.md) · **English**
 
 [Live demo](https://patrickstar-cmd.github.io/random-signal-agent/) · [Project home](../README.en.md)
@@ -32,3 +34,5 @@ SNR is calculated against the clean simulation signal. `sample.csv` contains onl
 The screenshots and walkthrough on the project home page use a **sine signal with Gaussian noise**. This experiment uses a **random process with mixed noise**.
 
 Run log: `工程文件/代码/logs/showcase/latest.log`.
+
+</div>
