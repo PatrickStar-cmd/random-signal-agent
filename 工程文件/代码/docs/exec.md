@@ -54,6 +54,27 @@ PowerShell 脚本参数 `-ConfigPath` 指定配置文件（默认 `config/server
 
 ## 结果与日志
 
+### 静态演示生成
+
+在代码目录执行 `python scripts/build_showcase.py`。脚本调用现有采集、预处理、分析和决策工具链，生成仓库根目录 `docs/index.html`、`docs/data/sample.csv`、`reference.csv` 和 `result.json`；这些公开固定样本作为展示材料提交 Git。日志覆盖写入 `logs/showcase/latest.log`。
+
+`config/showcase.json` 配置参数：
+
+| 参数 | 含义与当前值 |
+| --- | --- |
+| `sample_rate` | 每秒采样数，200 Hz |
+| `duration` | 采集时间，8 秒 |
+| `base_frequency` | 参考主频，8 Hz |
+| `amplitude` | 参考信号幅值，1.2 |
+| `noise_std` | 高斯噪声标准差，0.55 |
+| `ar_coefficient` | 有色噪声的 AR 系数，0.86 |
+| `impulse_probability` | 每个样本产生脉冲的概率，0.012 |
+| `seed` | 随机种子，42 |
+
+未覆盖的 `SignalConfig` 默认字段为 `signal_model=random_process`、`waveform=random_process`、`noise_model=mixed`。预处理比较使用各方法默认参数，窗口 7 点、异常阈值 3σ；完整参数记录于结果 JSON。Web Agent 自动搜索参数，所以不能直接与固定参数比较等同。
+
+GitHub Pages 从 `main` 分支 `/docs` 发布；生成结果后提交该目录更新。具体步骤见仓库根目录 [docs/README.md](../../../docs/README.md)。
+
 演示结果在 `outputs/`：`analysis_result.json` 为指标、决策和轨迹；`signal_samples.csv` 为完整样本；`demo.html` 为可视化；`design_report.md` 为报告。麦克风音频在 `outputs/audio/`，上传文件在 `uploads/`。这些运行数据均不提交 Git。
 
 启动脚本日志在 `logs/server/server.log`，每次启动覆盖；直接运行命令查看终端输出，HTTP 访问日志在代码中被关闭。systemd 使用 `journalctl -u random-signal-agent.service`；Docker 使用 `docker compose logs`。验证日志在 `logs/verification/latest.log`，结尾 `OK` 表示通过，`FAIL/ERROR` 后的回溯指出失败原因。
