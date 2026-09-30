@@ -10,7 +10,7 @@ Diting is a conversational signal analysis tool built for the Random Signals cou
 
 The local toolchain runs without an external model. You can also connect a Chat Completions-compatible model service.
 
-[Live demo](https://patrickstar-cmd.github.io/random-signal-agent/) · [Experiment data](docs/README.en.md) · [MIT License](LICENSE)
+[Live demo](https://patrickstar-cmd.github.io/random-signal-agent/) · [Experiment data](docs/README.en.md) · [Installation & deployment](RELEASE.md) · [MIT License](LICENSE)
 
 ## Features
 

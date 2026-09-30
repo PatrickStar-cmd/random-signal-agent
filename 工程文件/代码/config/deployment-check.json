@@ -1,0 +1,8 @@
+{
+  "startup_timeout": 60,
+  "request_timeout": 60,
+  "sample_rate": 200,
+  "duration": 2,
+  "frequency": 8,
+  "seed": 42
+}
