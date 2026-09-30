@@ -7,7 +7,7 @@ from typing import Any
 
 import numpy as np
 
-from .signal_processing import PreprocessResult, moving_average
+from .signal_processing import PreprocessResult, moving_average, validate_signal_samples
 
 
 @dataclass
@@ -110,7 +110,7 @@ def preprocess_signal(
     """Apply the configured noise preprocessing method."""
     cfg = config or PreprocessConfig()
     method = normalize_preprocess_method(cfg.method)
-    samples = np.asarray(signal, dtype=float)
+    samples = validate_signal_samples(signal)
 
     if method == "median":
         return _median_preprocess(samples, cfg)
