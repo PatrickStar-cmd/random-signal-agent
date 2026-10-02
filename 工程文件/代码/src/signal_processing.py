@@ -7,6 +7,9 @@ from typing import Any
 
 import numpy as np
 
+from .limits import LIMITS
+MAX_SAMPLES = LIMITS["max_samples"]
+
 
 @dataclass
 class SignalConfig:
@@ -70,6 +73,13 @@ def _sawtooth_wave(phase: np.ndarray) -> np.ndarray:
 def _signal_component(config: SignalConfig, time: np.ndarray) -> np.ndarray:
     phase = config.base_frequency * time
     waveform = config.waveform or config.signal_model
+    if waveform == "ar_process":
+        rng = np.random.default_rng(config.seed + 1)
+        innovations = rng.normal(0, config.amplitude, len(time))
+        values = np.zeros(len(time))
+        for i in range(1, len(time)):
+            values[i] = config.ar_coefficient * values[i - 1] + innovations[i] * np.sqrt(1 - config.ar_coefficient**2)
+        return values
     if waveform in {"sine", "sine_gaussian"}:
         return config.amplitude * np.sin(2 * np.pi * phase)
     if waveform == "square":
@@ -133,6 +143,12 @@ def generate_random_signal(config: SignalConfig) -> SignalBundle:
     count = config.sample_rate * config.duration
     if not np.isfinite(count) or count < 1:
         raise ValueError("Simulation must contain at least one sample with a finite sample count")
+    if count > MAX_SAMPLES:
+        raise ValueError(f"Signal exceeds the {MAX_SAMPLES} sample limit")
+    if not isinstance(config.seed, int) or not 0 <= config.seed < 2**32 - 1:
+        raise ValueError("seed must be an integer between 0 and 4294967294")
+    if config.amplitude < 0 or not 0 <= config.base_frequency < config.sample_rate / 2:
+        raise ValueError("amplitude must be non-negative and frequency below Nyquist")
     if config.noise_std < 0:
         raise ValueError("noise_std must be non-negative")
     if abs(config.ar_coefficient) > 1:
@@ -173,6 +189,8 @@ def validate_signal_samples(signal: np.ndarray) -> np.ndarray:
     samples = np.asarray(signal, dtype=float)
     if samples.ndim != 1 or samples.size == 0:
         raise ValueError("Signal must be a non-empty one-dimensional array")
+    if samples.size > MAX_SAMPLES:
+        raise ValueError(f"Signal exceeds the {MAX_SAMPLES} sample limit")
     if not np.all(np.isfinite(samples)):
         raise ValueError("Signal samples must be finite")
     return samples
@@ -352,9 +370,22 @@ def summarize_window(
 
 
 def decimate_for_export(*arrays: np.ndarray, max_points: int = 520) -> list[list[float]]:
-    """Downsample arrays for compact HTML/JSON rendering."""
+    """Shared chronological indices preserve each signal's bucket extrema."""
     if not arrays:
         return []
     count = len(arrays[0])
-    step = max(1, int(np.ceil(count / max_points)))
-    return [np.asarray(array)[::step].astype(float).tolist() for array in arrays]
+    if any(len(a) != count for a in arrays) or max_points < 2:
+        raise ValueError("Equal lengths and at least two display points are required")
+    if count <= max_points:
+        return [np.asarray(a).astype(float).tolist() for a in arrays]
+    signals = arrays[1:] or arrays
+    buckets = max(1, (max_points - 2) // (2 * len(signals)))
+    indices = {0, count - 1}
+    for bucket in np.array_split(np.arange(1, count - 1), buckets):
+        if bucket.size:
+            for signal in signals:
+                values = np.asarray(signal)[bucket]
+                indices.add(int(bucket[int(np.argmin(values))]))
+                indices.add(int(bucket[int(np.argmax(values))]))
+    selected = sorted(indices)
+    return [np.asarray(a)[selected].astype(float).tolist() for a in arrays]

@@ -18,6 +18,7 @@ os.environ['RS_AGENT_LLM_ENABLED'] = '0'
 
 import numpy as np
 import server
+from http_test_server import LiveServer
 import run_demo
 from src import dialogue_agent
 from src.signal_processing import SignalConfig, generate_random_signal
@@ -35,7 +36,7 @@ class ReproductionTests(unittest.TestCase):
         ]
         for item in cls.patches:
             item.start()
-        cls.httpd = server.ThreadingHTTPServer(('127.0.0.1', 0), server.AgentRequestHandler)
+        cls.httpd = LiveServer(server.create_app(data_dir=cls.root / 'data'))
         cls.thread = threading.Thread(target=cls.httpd.serve_forever, daemon=True)
         cls.thread.start()
         cls.base = f'http://127.0.0.1:{cls.httpd.server_port}'

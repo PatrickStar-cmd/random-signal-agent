@@ -21,6 +21,7 @@ os.environ['RS_AGENT_LLM_ENABLED'] = '0'
 
 import numpy as np
 import server
+from http_test_server import LiveServer
 from src.acquisition import load_signal_file
 from src.signal_processing import SignalConfig, generate_random_signal, robust_preprocess, extract_time_features, extract_frequency_features
 from src.preprocessing import PREPROCESS_METHODS, PreprocessConfig, preprocess_signal
@@ -238,16 +239,19 @@ class HTTPRegressionTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
-        self.agent = Mock()
+        self.agent = server.RandomSignalDialogueAgent()
+        self.agent.chat = Mock(return_value={'ok': True})
+        self.agent.use_microphone_samples = Mock()
+        self.agent.use_uploaded_file = Mock()
         self.agent.chat.return_value = {'ok': True}
-        self.patches = [patch.object(server, 'AGENT', self.agent),
+        self.patches = [patch.object(server, 'DATA_DIR', self.root / 'data'),
                         patch.object(server, 'STATIC_DIR', self.root / 'web'),
                         patch.object(server, 'OUTPUT_DIR', self.root / 'outputs')]
         for item in self.patches:
             item.start()
         server.STATIC_DIR.mkdir()
         server.OUTPUT_DIR.mkdir()
-        self.httpd = server.ThreadingHTTPServer(('127.0.0.1', 0), server.AgentRequestHandler)
+        self.httpd = LiveServer(server.create_app(agent=self.agent))
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()
         self.base = f'http://127.0.0.1:{self.httpd.server_port}'
@@ -282,7 +286,10 @@ class HTTPRegressionTests(unittest.TestCase):
             self.assertEqual(json.load(response), {'ok': True})
 
     def test_negative_content_length_returns_400(self):
-        self.assert_bad_request('/api/chat', b'', {'Content-Length': '-1'})
+        with self.assertRaises(urllib.error.HTTPError) as caught:
+            self.request('/api/chat', b'', {'Content-Length': '-1'})
+        self.assertEqual(caught.exception.code, 400)
+        caught.exception.close()
 
     def test_encoded_file_names_download_correctly(self):
         for directory, prefix in ((server.STATIC_DIR, '/'), (server.OUTPUT_DIR, '/outputs/')):

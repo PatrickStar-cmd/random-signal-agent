@@ -1,0 +1,10 @@
+{
+  "max_samples": 200000,
+  "request_bytes": 16777216,
+  "experiment_package_bytes": 67108864,
+  "workers": 2,
+  "task_capacity": 8,
+  "session_capacity": 128,
+  "candidates_per_method": 64,
+  "candidate_sample_budget": 2000000
+}

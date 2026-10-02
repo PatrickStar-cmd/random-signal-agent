@@ -40,6 +40,8 @@ from .signal_processing import (
     extract_time_features,
 )
 from .llm_client import LLMClientError, OpenAICompatibleClient
+from .tasks import emit_progress
+from .limits import LIMITS
 
 
 AUDIO_OUTPUT_DIR = Path(__file__).resolve().parents[1] / "outputs" / "audio"
@@ -68,6 +70,7 @@ class ConversationState:
     last_knowledge_topic: str | None = None
     last_knowledge_question: str | None = None
     last_intent: str | None = None
+    comparison_goal: str = "waveform"
 
 
 class RandomSignalDialogueAgent:
@@ -2473,6 +2476,7 @@ class RandomSignalDialogueAgent:
         """Serialize compact state for browser rendering."""
         payload: dict[str, Any] = {
             "session_id": state.session_id,
+            "comparison_goal": state.comparison_goal,
             "has_signal": state.bundle is not None,
             "has_processed": state.processed is not None,
             "has_summary": state.summary is not None,
@@ -2489,6 +2493,7 @@ class RandomSignalDialogueAgent:
                 "sample_count": int(state.bundle.observed.size),
                 "source": state.bundle.source,
                 "has_clean_reference": state.bundle.has_clean_reference,
+                "config": state.bundle.config.to_dict(),
             }
             if state.acquisition_plan is not None:
                 payload["signal"]["acquisition_channel"] = state.acquisition_plan.get("channel")
@@ -2584,7 +2589,7 @@ class RandomSignalDialogueAgent:
             except (TypeError, ValueError):
                 continue
         if "smoothing_window" in params:
-            params["smoothing_window"] = int(max(1, round(params["smoothing_window"])))
+            params["smoothing_window"] = int(min(511, max(1, round(params["smoothing_window"]))))
         if "anomaly_threshold_sigma" in params:
             params["anomaly_threshold_sigma"] = float(min(max(params["anomaly_threshold_sigma"], 0.5), 8.0))
         if "lowpass_cutoff_hz" in params:
@@ -2713,6 +2718,7 @@ class RandomSignalDialogueAgent:
             "status": "running",
             "arguments": self._tool_arguments(tool_name, args),
         }
+        emit_progress(tool_name, "running")
         try:
             result = fn(*args)
             call["status"] = "success"
@@ -2725,6 +2731,7 @@ class RandomSignalDialogueAgent:
         finally:
             call["duration_ms"] = round((perf_counter() - started) * 1000, 2)
             sink.append(call)
+            emit_progress(tool_name, call["status"], duration_ms=call["duration_ms"])
 
     def _tool_arguments(self, tool_name: str, args: tuple[Any, ...]) -> dict[str, Any]:
         if not args:
@@ -3298,6 +3305,8 @@ class RandomSignalDialogueAgent:
 
         for method in methods:
             method = normalize_preprocess_method(method)
+            method_started = perf_counter()
+            emit_progress(method, "running")
             processed, summary, score, searched = self._best_preprocess_candidate(
                 state,
                 text,
@@ -3308,6 +3317,8 @@ class RandomSignalDialogueAgent:
             freq = summary["frequency_features"]
             time_features = summary["time_features"]
             quality_details = self._preprocess_quality_details(state, processed, summary)
+            elapsed_ms = round((perf_counter() - method_started) * 1000, 2)
+            emit_progress(method, "success", duration_ms=elapsed_ms)
             if score > best_score:
                 best_score = score
                 best_method = processed.method
@@ -3333,6 +3344,9 @@ class RandomSignalDialogueAgent:
                     "candidate_count": searched,
                     "optimization_mode": optimization_mode,
                     "score": round(score, 3),
+                    "score_terms": self._preprocess_score_terms(state, summary, processed),
+                    "duration_ms": elapsed_ms,
+                    "rms_ratio_error": quality_details["rms_ratio_error"],
                 }
             )
 
@@ -3345,6 +3359,10 @@ class RandomSignalDialogueAgent:
         state.preprocess_comparison = {
             "recommended": best_method,
             "recommended_label": state.processed.method_label,
+            "goal": state.comparison_goal,
+            "reference_mode": "clean_reference" if state.bundle.has_clean_reference else "no_reference",
+            "score_version": "0.2.0",
+            "score_note": "相同数据与目标下的相对评分；无参考评分仅为启发式诊断，不代表真实去噪质量。",
             "optimization_mode": optimization_mode,
             "methods": sorted(comparison_rows, key=lambda item: item["score"], reverse=True),
         }
@@ -3380,6 +3398,9 @@ class RandomSignalDialogueAgent:
         best_summary: dict[str, Any] | None = None
         best_score = float("-inf")
         candidates = self._preprocess_parameter_candidates(state, text, method, optimization_mode)
+        cap = max(1, min(LIMITS["candidates_per_method"], LIMITS["candidate_sample_budget"] // len(state.bundle.observed)))
+        if len(candidates) > cap:
+            candidates = [candidates[int(i)] for i in np.linspace(0, len(candidates) - 1, cap)]
         for config in candidates:
             processed = preprocess_signal(state.bundle.observed, config)
             summary = self._candidate_preprocess_summary(state, processed)
@@ -3430,27 +3451,26 @@ class RandomSignalDialogueAgent:
         summary: dict[str, Any],
         processed: PreprocessResult,
     ) -> float:
-        quality = summary["quality"]
-        freq = summary["frequency_features"]
-        snr = quality["processed_snr_db"]
-        details = self._preprocess_quality_details(state, processed, summary)
-        score = (
-            (0.0 if snr is None else float(snr))
-            - 5.5 * float(freq["spectral_entropy"])
-            - 0.35 * float(freq["spectral_bandwidth_hz"])
-            - 14.0 * float(quality["anomaly_rate"])
-            - 6.0 * abs(details["residual_correlation"])
-            + 3.0 * details["roughness_reduction"]
-        )
-        if state.bundle is not None and state.bundle.has_clean_reference:
-            score += 6.0 * details["rmse_reduction"]
-            score += 3.0 * details["clean_correlation"]
-            score -= 2.5 * details["clean_roughness_error"]
-        else:
-            score -= 10.0 * details["rms_ratio_error"]
-        if processed.method == "hybrid" and processed.parameters.get("cutoff_hz") is not None:
-            score += 0.35
-        return score
+        return sum(self._preprocess_score_terms(state, summary, processed).values())
+
+    def _preprocess_score_terms(self, state, summary, processed) -> dict[str, float]:
+        """Dimensionless, method-neutral terms; no-reference scores are heuristics."""
+        d = self._preprocess_quality_details(state, processed, summary)
+        goal = state.comparison_goal
+        clip = lambda x: float(np.clip(x, -1, 1))
+        if state.bundle.has_clean_reference:
+            weights = {"denoise": (65, 25, 10), "waveform": (45, 45, 10), "transient": (35, 25, 40)}[goal]
+            return {"rmse_reduction": weights[0] * clip(d["rmse_reduction"]),
+                    "reference_correlation": weights[1] * clip(d["clean_correlation"]),
+                    "reference_roughness_penalty": -weights[2] * min(d["clean_roughness_error"], 1)}
+        weights = {"denoise": (40, 30, 30), "waveform": (15, 25, 60), "transient": (0, 20, 80)}[goal]
+        terms = {"roughness_reduction": weights[0] * clip(d["roughness_reduction"]),
+                 "residual_correlation_penalty": -weights[1] * abs(clip(d["residual_correlation"])),
+                 "amplitude_change_penalty": -weights[2] * min(d["rms_ratio_error"], 1)}
+        if goal == "transient":
+            original = np.max(np.abs(state.bundle.observed)) + 1e-12
+            terms["peak_change_penalty"] = -40 * min(abs(np.max(np.abs(processed.signal)) / original - 1), 1)
+        return terms
 
     def _preprocess_quality_details(
         self,

@@ -64,10 +64,13 @@ def main():
             run([sys.executable, '-m', 'venv', '.venv'])
             bin_dir = code / '.venv' / ('Scripts' if os.name == 'nt' else 'bin')
             python = bin_dir / ('python.exe' if os.name == 'nt' else 'python')
-            run([python, '-m', 'pip', 'install', '-r', 'requirements-repro.txt'])
+            run([python, '-m', 'pip', 'install', '-r', 'requirements-test.txt'])
             run([python, '-m', 'pip', 'check'])
             run([python, 'scripts/test_regressions.py'])
             run([python, 'scripts/verify_reproduction.py'])
+            run([python, 'scripts/test_workbench.py'])
+            run([python, 'scripts/benchmark_algorithms.py'])
+            report['benchmark'] = json.loads((code / 'outputs/benchmark/summary.json').read_text(encoding='utf-8'))
             env['PATH'] = str(bin_dir) + os.pathsep + env.get('PATH', '')
             with socket.socket() as sock:
                 sock.bind(('127.0.0.1', 0))
@@ -89,7 +92,7 @@ def main():
                 report['numpy'] = subprocess.check_output([str(python), '-c', 'import numpy; print(numpy.__version__)'], env=env, text=True).strip()
                 report['status'] = 'passed'
                 report['checks'] = ['archive_contents', 'sha256', 'fresh_venv_install', 'pip_check',
-                                    'regression_suite', 'integration_suite', 'real_startup_script',
+                                    'regression_suite', 'integration_suite', 'workbench_roundtrip', 'numerical_benchmark', 'real_startup_script',
                                     'health', 'web_assets', 'agent_pipeline', 'sse', 'csv_upload', 'synthetic_audio_download']
             finally:
                 if process is not None and process.poll() is None:
