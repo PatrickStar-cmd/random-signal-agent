@@ -818,21 +818,17 @@ function createSessionId() {
     }
 
     function completeAgentProgress() {
-      const progress = state.agentProgress;
-      if (!progress) return;
       clearAgentProgressTimers();
-      progress.current = progress.steps.length;
-      progress.shown = progress.steps.length;
-      progress.status = "done";
-      renderAgentProgress();
+      state.agentProgress = null;
+      $("agentProgressStatus").textContent = "已完成";
+      $("agentProgressSteps").textContent = "结果已返回并保存。";
     }
 
     function failAgentProgress() {
-      const progress = state.agentProgress;
-      if (!progress) return;
       clearAgentProgressTimers();
-      progress.status = "error";
-      renderAgentProgress();
+      state.agentProgress = null;
+      $("agentProgressStatus").textContent = "执行异常";
+      $("agentProgressSteps").textContent = "请查看错误信息；连接中断时可恢复原请求。";
     }
 
     function resetAgentProgress() {
