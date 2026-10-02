@@ -19,7 +19,7 @@ Diting turns Random Signals coursework into reproducible experiments. Generate a
 
 Built for the Random Signals course at **UESTC**. The local toolchain works without a model API key; an optional Chat Completions-compatible service adds model-assisted dialogue.
 
-[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Stable v0.1.0](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.1.0) · [📘 Installation guide](RELEASE.md)
+[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.2.0](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.2.0) · [📘 Installation guide](RELEASE.md)
 
 ## 🧭 Explore
 
@@ -70,7 +70,7 @@ Use **Python 3.12–3.14** or **Docker Compose v2**. v0.2.0 uses FastAPI; deploy
 
 ### 1. Get the project
 
-For v0.2.0, clone the source below. The previous stable [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.1.0/random-signal-agent-v0.1.0-deploy.zip) remains available; open a terminal in `工程文件/代码` inside the extracted folder.
+Download the v0.2.0 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.2.0/random-signal-agent-v0.2.0-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
 
 Or clone the repository:
 

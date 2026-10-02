@@ -6,7 +6,7 @@ v0.2.0 使用 Python 3.12–3.14 和 FastAPI/Uvicorn，已移除 `cgi`。按单�
 
 ## 本地运行
 
-克隆仓库的 v0.2.0 源码后进入 `工程文件/代码`。发布包保留完整目录结构；`server.py` 位于该子目录，不在解压包根目录。
+下载 v0.2.0 Release 的 `random-signal-agent-v0.2.0-deploy.zip` 并解压后进入 `工程文件/代码`。发布包保留完整目录结构；`server.py` 位于该子目录，不在解压包根目录。
 
 Windows（使用 Python 3.12）：
 
@@ -129,7 +129,7 @@ python scripts/smoke_deployment.py --base-url http://127.0.0.1:8000
 发布包的 SHA-256 校验文件为 `SHA256SUMS.txt`。Windows 可以执行：
 
 ```powershell
-Get-FileHash .\random-signal-agent-v0.1.0-deploy.zip -Algorithm SHA256
+Get-FileHash .\random-signal-agent-v0.2.0-deploy.zip -Algorithm SHA256
 ```
 
 Linux 执行 `sha256sum -c SHA256SUMS.txt`。发布包中的 `RELEASE.json` 记录版本和源码提交。

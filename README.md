@@ -20,7 +20,7 @@
 
 项目面向 **UESTC 随机信号课程**。本地工具链无需模型 API Key 即可运行，也可接入兼容 Chat Completions 的服务，增强对话能力。
 
-[🌐 实验预览](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 稳定版 v0.1.0](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.1.0) · [📘 安装指南](RELEASE.md)
+[🌐 实验预览](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 下载 v0.2.0](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.2.0) · [📘 安装指南](RELEASE.md)
 
 ## 🧭 快速导航
 
@@ -71,7 +71,7 @@
 
 ### 1. 获取项目
 
-v0.2.0 请使用下方源码克隆方式。也可下载上一稳定版的[部署 ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.1.0/random-signal-agent-v0.1.0-deploy.zip)，在解压目录中的 `工程文件/代码` 打开终端。
+下载并解压 v0.2.0 的[部署 ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.2.0/random-signal-agent-v0.2.0-deploy.zip)，在解压目录中的 `工程文件/代码` 打开终端。
 
 也可以克隆仓库：
 
@@ -275,7 +275,7 @@ Diting turns Random Signals coursework into reproducible experiments. Generate a
 
 Built for the Random Signals course at **UESTC**. The local toolchain works without a model API key; an optional Chat Completions-compatible service adds model-assisted dialogue.
 
-[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Stable v0.1.0](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.1.0) · [📘 Installation guide](RELEASE.md)
+[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.2.0](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.2.0) · [📘 Installation guide](RELEASE.md)
 
 ## 🧭 Explore
 
@@ -326,7 +326,7 @@ Use **Python 3.12–3.14** or **Docker Compose v2**. v0.2.0 uses FastAPI; deploy
 
 ### 1. Get the project
 
-For v0.2.0, clone the source below. The previous stable [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.1.0/random-signal-agent-v0.1.0-deploy.zip) remains available; open a terminal in `工程文件/代码` inside the extracted folder.
+Download the v0.2.0 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.2.0/random-signal-agent-v0.2.0-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
 
 Or clone the repository:
 
