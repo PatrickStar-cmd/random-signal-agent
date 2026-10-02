@@ -3,7 +3,7 @@
 # 🌊 Random Signal Agent · 谛听
 
 [![Release](https://img.shields.io/github/v/release/PatrickStar-cmd/random-signal-agent?style=flat-square)](https://github.com/PatrickStar-cmd/random-signal-agent/releases/latest)
-[![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](RELEASE.md)
+[![Python 3.12–3.14](https://img.shields.io/badge/Python-3.12%E2%80%933.14-3776AB?style=flat-square&logo=python&logoColor=white)](RELEASE.md)
 [![Deployment checks](https://github.com/PatrickStar-cmd/random-signal-agent/actions/workflows/validate-deployment.yml/badge.svg?branch=main)](https://github.com/PatrickStar-cmd/random-signal-agent/actions/workflows/validate-deployment.yml)
 [![MIT License](https://img.shields.io/badge/License-MIT-22C55E?style=flat-square)](LICENSE)
 
@@ -19,7 +19,7 @@ Diting turns Random Signals coursework into reproducible experiments. Generate a
 
 Built for the Random Signals course at **UESTC**. The local toolchain works without a model API key; an optional Chat Completions-compatible service adds model-assisted dialogue.
 
-[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.1.0](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.1.0) · [📘 Installation guide](RELEASE.md)
+[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Stable v0.1.0](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.1.0) · [📘 Installation guide](RELEASE.md)
 
 ## 🧭 Explore
 
@@ -37,6 +37,9 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 
 | Capability | What you can do |
 | --- | --- |
+| 💾 Experiment workbench | Create from templates, save, reopen or duplicate snapshots, and resume after a restart. |
+| 📦 Data and reports | Export full-resolution CSV, standalone HTML reports, manifests and portable experiment ZIPs. |
+| 🧮 Explainable comparison | Choose denoising, waveform or transient preservation; inspect score terms, parameters and timings. |
 | 🎲 Reproducible simulation | Set sample rate, duration, frequency, noise, and random seed. |
 | 🧹 Six preprocessing methods | Compare robust moving average, median, exponential smoothing, FFT low-pass, hybrid, and Kalman filtering. |
 | 📈 Time and frequency analysis | Inspect statistics, FFT peaks, correlations, and spectral features. |
@@ -48,7 +51,7 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 
 ## 🎬 Interface
 
-![Diting Web interface](docs/images/web-ui.png)
+![v0.2.0 experiment workbench](docs/images/workbench-v020.png)
 
 <details>
 <summary><strong>Watch an Agent mode experiment</strong></summary>
@@ -63,11 +66,11 @@ Enable **Agent mode**, enter an acquisition command, and follow the preprocessin
 
 ## 🚀 Quick start
 
-Use **Python 3.12** or **Docker Compose v2**. The v0.1.0 deployment package has been verified on Windows and Linux, including Docker on Linux.
+Use **Python 3.12–3.14** or **Docker Compose v2**. v0.2.0 uses FastAPI; deployment checks cover Python 3.12–3.14 on Windows and Linux, plus Docker on Linux.
 
 ### 1. Get the project
 
-Download and extract the [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.1.0/random-signal-agent-v0.1.0-deploy.zip), then open a terminal in `工程文件/代码` inside the extracted folder.
+For v0.2.0, clone the source below. The previous stable [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.1.0/random-signal-agent-v0.1.0-deploy.zip) remains available; open a terminal in `工程文件/代码` inside the extracted folder.
 
 Or clone the repository:
 
@@ -117,6 +120,9 @@ The [online preview](https://patrickstar-cmd.github.io/random-signal-agent/) sho
 <a id="en-first-experiment"></a>
 
 ## 🧪 Your first experiment
+
+Choose a template and comparison goal in the workbench, then run the six methods. Name and save a snapshot, or export an experiment ZIP to restore full samples, results and tool records later. Successful operations automatically save the current experiment.
+
 
 1. Enter this acquisition command in the chat. The example uses Chinese, as supported by the local command parser:
 
@@ -220,7 +226,7 @@ The check covers health, Web assets, Agent mode, streaming, CSV upload, and synt
 | --- | --- |
 | Why does the online preview not run new experiments? | GitHub Pages serves the saved showcase. Start the backend locally or deploy it with Docker for interactive use. |
 | Do I need an API key? | The local signal tools do not require one. Model-assisted dialogue is optional. |
-| Why does Python 3.13+ fail to start the server? | The backend uses `cgi`, which is unavailable in those versions. Use Python 3.12 with `requirements-repro.txt`. |
+| Which Python versions work? | v0.2.0 supports 3.12–3.14 and removes `cgi`. The older v0.1.0 package still requires Python 3.12. |
 | Why can I not activate the virtual environment on Windows? | The quick-start commands call `.venv\Scripts\python.exe` directly and do not require activation. |
 | Why is the microphone unavailable? | Open the app on localhost or HTTPS and allow microphone access in the browser. |
 | Why does my uploaded signal have no SNR value? | Reference-based SNR requires a clean signal. Uploaded samples and microphone audio do not provide that reference. |

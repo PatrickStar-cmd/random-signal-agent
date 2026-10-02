@@ -15,7 +15,7 @@ from typing import Any, Iterator
 
 import numpy as np
 
-from .signal_processing import SignalBundle, SignalConfig, generate_random_signal
+from .signal_processing import SignalBundle, SignalConfig, generate_random_signal, MAX_SAMPLES
 
 
 @dataclass(frozen=True)
@@ -203,6 +203,8 @@ def _parse_numeric_rows(path: Path) -> list[list[float]]:
                 break
         if numeric:
             rows.append(numeric)
+            if len(rows) > MAX_SAMPLES:
+                raise ValueError(f"Signal exceeds the {MAX_SAMPLES} sample limit")
     return rows
 
 

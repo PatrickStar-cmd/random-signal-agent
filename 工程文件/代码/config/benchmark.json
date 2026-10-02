@@ -1,0 +1,7 @@
+{
+  "waveforms": ["sine", "multi_sine", "chirp", "impulses", "ar_process"],
+  "sample_rates": [100, 400],
+  "noise_levels": [0.15, 0.55, 1.0],
+  "seeds": [7, 42, 2026],
+  "duration": 2
+}

@@ -1,8 +1,8 @@
-# v0.1.0 · Installation and deployment
+# v0.2.0 · Installation and deployment
 
-Download `random-signal-agent-v0.1.0-deploy.zip` from the [v0.1.0 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.1.0) and extract it. The package includes source code, Web assets, configuration templates, documentation, and experiment data. It requires **Python 3.12** or **Docker**; it is not a standalone executable.
+Clone the current repository for v0.2.0. A deployment archive can be built with `python scripts/build_release.py` from a committed checkout; the archive contains source, Web assets, configuration, documentation and example data. Use **Python 3.12–3.14** or **Docker**. The [previous v0.1.0 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.1.0) remains available and requires Python 3.12.
 
-Open a terminal in `random-signal-agent-v0.1.0/工程文件/代码`.
+Open a terminal in `random-signal-agent/工程文件/代码` (or `random-signal-agent-v0.2.0/工程文件/代码` in a deployment archive).
 
 ## Windows
 
@@ -27,7 +27,7 @@ cp .env.example .env
 docker compose up -d --build --wait --wait-timeout 120
 ```
 
-On Windows, use `Copy-Item .env.example .env` for the first command. Uploads and outputs are stored in local folders and survive container restarts.
+On Windows, use `Copy-Item .env.example .env` for the first command. Experiments, uploads and outputs are stored in the mounted `data/`, `uploads/` and `outputs/` folders and survive container restarts. Run one backend process; session locks are local to that process.
 
 Open <http://127.0.0.1:8000>. No model API key is required for simulation, preprocessing, and analysis. For external models or server hosting, see [deployment configuration](工程文件/代码/DEPLOY.md).
 
@@ -45,6 +45,6 @@ The check covers health, Web assets, Agent mode, streaming responses, CSV upload
 
 ## 中文说明
 
-下载部署 ZIP，解压后进入 `工程文件/代码`，按上方对应系统命令安装并启动。推荐 Python 3.12，依赖锁定为 NumPy 2.5.3。也可使用 Docker Compose；默认地址为 <http://127.0.0.1:8000>。
+v0.2.0 使用当前仓库源码，进入 `工程文件/代码` 后按上方命令启动。支持 Python 3.12–3.14，依赖版本在 `requirements-repro.txt` 固定。也可使用 Docker Compose；默认地址为 <http://127.0.0.1:8000>。实验可导出 ZIP，升级前停止服务并备份整个 `data/` 目录。
 
 完整应用包含对话、分析、上传及音频处理，不需要外部模型密钥即可使用本地工具链。服务器部署、模型配置与日志查看见[部署说明](工程文件/代码/DEPLOY.md)。

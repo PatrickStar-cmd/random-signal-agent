@@ -1,6 +1,6 @@
 # 代码执行与日志阅读
 
-以下命令均在包含 `server.py` 的“代码”目录执行，先激活 Python 3.12 虚拟环境。
+以下命令均在包含 `server.py` 的“代码”目录执行，先激活 Python 3.12–3.14 虚拟环境。
 
 ## 安装与验证
 
@@ -58,9 +58,9 @@ PowerShell 脚本参数 `-ConfigPath` 指定配置文件（默认 `config/server
 
 提交所有修改后执行 `python scripts/build_release.py`。默认打包 HEAD，`--ref` 可指定版本或提交，`--output-dir` 可指定输出目录；默认产物在 `outputs/release/`，日志覆盖写入 `logs/release/build.log`。
 
-`config/release.json` 的 `version` 为数字版本号（0.1.0），`name` 为产物前缀（random-signal-agent），`runtime_path` 为包内代码目录（工程文件/代码），`python` 为推荐 Python 版本（3.12）。ZIP 保留完整仓库结构，附加 `RELEASE.json` 记录源码提交。
+`config/release.json` 的 `version` 为数字版本号（0.2.0），`name` 为产物前缀（random-signal-agent），`runtime_path` 为包内代码目录（工程文件/代码），`python` 为推荐 Python 版本（3.12）。ZIP 保留完整仓库结构，附加 `RELEASE.json` 记录源码提交。
 
-执行 `python scripts/verify_release.py --archive outputs/release/random-signal-agent-v0.1.0-deploy.zip`，从包中新建干净环境，安装依赖并检查实际启动；Windows 用 PowerShell 启动脚本，Linux 用 Bash。检查完成清理临时目录，报告写入 `outputs/release/verification-<系统>.json`，日志位于 `logs/release/latest.log` 与 `server.log`。Linux 跳过仅适用于 Windows 的启动配置回归用例。
+执行 `python scripts/verify_release.py --archive outputs/release/random-signal-agent-v0.2.0-deploy.zip`，从包中新建干净环境，安装依赖并检查实际启动；Windows 用 PowerShell 启动脚本，Linux 用 Bash。检查完成清理临时目录，报告写入 `outputs/release/verification-<系统>.json`，日志位于 `logs/release/latest.log` 与 `server.log`。Linux 跳过仅适用于 Windows 的启动配置回归用例。
 
 运行中的服务使用 `python scripts/smoke_deployment.py --base-url http://127.0.0.1:8000` 验收，会创建独立测试会话和少量合成上传/音频数据。检查参数位于 `config/deployment-check.json`：`startup_timeout` 是服务就绪等待秒数（60），`request_timeout` 是单次请求超时秒数（60），`sample_rate` 为测试采样率（200 Hz），`duration` 为仿真时长（2 秒），`frequency` 为目标主频（8 Hz），`seed` 为随机种子（42）。日志覆盖写入 `logs/deployment/latest.log`。
 
@@ -92,3 +92,25 @@ GitHub Pages 从 `main` 分支 `/docs` 发布；生成结果后提交该目录�
 启动脚本日志在 `logs/server/server.log`，每次启动覆盖；直接运行命令查看终端输出，HTTP 访问日志在代码中被关闭。systemd 使用 `journalctl -u random-signal-agent.service`；Docker 使用 `docker compose logs`。验证日志在 `logs/verification/latest.log`，结尾 `OK` 表示通过，`FAIL/ERROR` 后的回溯指出失败原因。
 
 健康检查访问 `/api/health`。`status=ok` 说明服务可响应；`llm.configured=true` 只说明配置齐全，不说明外部服务实际可用。
+
+## v0.2.0 工作台与验证
+
+启动后在页面顶部选择模板和目标、设置采样率/时长/基频/幅值/噪声/种子/AR 系数/脉冲概率，运行比较。命名并“保存为新快照”产生独立实验；“打开”恢复选中实验，“复制”保留原件并生成副本。每次成功操作还会自动保存当前会话。ZIP 可移到另一个浏览器或同版本服务导入，CSV 保留每个采样点。HTML 无需后端即可打开。
+
+```bash
+python -m pip install -r requirements-test.txt
+python scripts/test_regressions.py
+python scripts/verify_reproduction.py
+python scripts/test_workbench.py
+python scripts/benchmark_algorithms.py
+```
+
+日志分别位于 `logs/regression/latest.log`、`logs/verification/latest.log`、`logs/workbench/latest.log`、`logs/benchmark/latest.log`，每次覆盖。基准详细数据在 `outputs/benchmark/baseline.csv`，汇总在 `summary.json`。SciPy 仅用于数值验证，实际服务不依赖它。
+
+`config/workbench.json` 字段：`max_samples` 为每条信号的最大点数；`request_bytes` 为普通 JSON/上传请求最大实际字节数；`experiment_package_bytes` 为实验导入大小及解压总量上限；`workers` 为工作线程数；`task_capacity` 为运行与排队任务合计上限；`session_capacity` 为单次服务进程允许载入的会话数；`candidates_per_method` 为单方法搜索候选上限；`candidate_sample_budget` 为候选数与信号点数的乘积预算（至少保留一组）。修改后重启。采样数上限不是运行时长保证。
+
+`config/benchmark.json` 中 `waveforms` 指定信号类别，`sample_rates` 指定采样率，`noise_levels` 指定高斯噪声标准差，`seeds` 为随机种子列表，`duration` 为每例时长。基准使用固定默认滤波参数，避免把参数搜索收益误当作算法普遍优劣。
+
+新增 API：`POST /api/experiment/run`；`GET /api/experiments`；`POST /api/experiments/{save,open,duplicate,import}`；`GET /api/experiments/export?format=zip|csv|html|json`；`GET /api/tasks/{id}` 与 `/events`。请求包含 `session_id` 和唯一 `request_id`，重试必须原样复用；同 ID 不同参数返回 409。`respond_async:true` 返回 task_id，后续读取实际进度。聊天普通/SSE 路由共享同一幂等任务。API 字段详情可直接参考 `server.py` 与前端 `web/workbench.js`。
+
+使用 `python scripts/smoke_deployment.py` 验证真实运行服务；服务重启后再执行 `python scripts/smoke_deployment.py --check-persistence` 验证当前实验及命名快照保留。成功日志保存会话及校验摘要，供第二步读取。

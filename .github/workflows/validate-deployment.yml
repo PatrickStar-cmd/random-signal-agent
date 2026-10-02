@@ -15,12 +15,13 @@ env:
 
 jobs:
   package:
-    name: Clean release / ${{ matrix.os }}
+    name: Clean release / ${{ matrix.os }} / Python ${{ matrix.python }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest]
+        python: ['3.12', '3.13', '3.14']
     defaults:
       run:
         working-directory: 工程文件/代码
@@ -28,15 +29,15 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-python@v7.0.0
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python }}
       - name: Build deployment archive
         run: python scripts/build_release.py
       - name: Install and verify extracted archive
-        run: python scripts/verify_release.py --archive outputs/release/random-signal-agent-v0.1.0-deploy.zip
+        run: python scripts/verify_release.py --archive outputs/release/random-signal-agent-v0.2.0-deploy.zip
       - uses: actions/upload-artifact@v7.0.1
         if: always()
         with:
-          name: release-validation-${{ runner.os }}
+          name: release-validation-${{ runner.os }}-${{ matrix.python }}
           path: |
             工程文件/代码/logs/release/
             工程文件/代码/outputs/release/verification-*.json
@@ -61,6 +62,10 @@ jobs:
         run: |
           python scripts/smoke_deployment.py
           docker compose exec -T random-signal-agent python -m pip check
+      - name: Verify data survives a container restart
+        run: |
+          docker compose restart
+          python scripts/smoke_deployment.py --check-persistence
       - name: Save logs and stop container
         if: always()
         run: |

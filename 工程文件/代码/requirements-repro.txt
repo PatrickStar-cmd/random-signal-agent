@@ -1,2 +1,19 @@
-# Tested reference environment: CPython 3.12.10, Windows x64.
 numpy==2.5.3
+fastapi==0.142.2
+uvicorn==0.54.0
+python-multipart==0.0.32
+starlette==1.7.0
+pydantic==2.13.5
+pydantic_core==2.46.5
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.15.1
+click==8.5.0
+h11==0.16.0
+idna==3.20
+opentelemetry-api==1.45.0
+typing-inspection==0.4.4
+typing_extensions==4.16.0
+httpx==0.28.1
+httpcore==1.0.9
+certifi==2026.7.22

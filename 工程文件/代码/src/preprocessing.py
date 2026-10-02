@@ -168,7 +168,7 @@ def _make_result(
 
 
 def _odd_window(window: int) -> int:
-    window = max(1, int(window))
+    window = min(511, max(1, int(window)))
     return window if window % 2 == 1 else window + 1
 
 
@@ -178,10 +178,12 @@ def _median_filter(signal: np.ndarray, window: int) -> np.ndarray:
         return signal.copy()
     pad = window // 2
     padded = np.pad(signal, (pad, pad), mode="edge")
-    return np.asarray([
-        float(np.median(padded[idx : idx + window]))
-        for idx in range(signal.size)
-    ])
+    windows = np.lib.stride_tricks.sliding_window_view(padded, window)
+    result = np.empty(signal.size, dtype=float)
+    batch = max(1, 1_000_000 // window)
+    for start in range(0, signal.size, batch):
+        result[start:start + batch] = np.median(windows[start:start + batch], axis=1)
+    return result
 
 
 def _ema_filter(signal: np.ndarray, alpha: float) -> np.ndarray:

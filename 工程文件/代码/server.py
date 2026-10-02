@@ -1,338 +1,375 @@
-"""HTTP server for the conversational random signal agent.
-
-The server uses only the Python standard library so it can run on a small cloud
-VM without extra framework dependencies.
-"""
-
+"""FastAPI workbench. Run one process: session locks are process-local."""
 from __future__ import annotations
-
 import argparse
-import array
 import base64
-import cgi
+import hashlib
 import json
 import math
+import os
 import secrets
-import sys
-import traceback
-from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from contextlib import asynccontextmanager
 from pathlib import Path
-from urllib.parse import parse_qs, unquote, urlparse
-
-from src.dialogue_agent import RandomSignalDialogueAgent
-
+import numpy as np
+import uvicorn
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
+from starlette.concurrency import run_in_threadpool
+from src.dialogue_agent import RandomSignalDialogueAgent, ConversationState
+from src.signal_processing import SignalConfig, generate_random_signal
+from src.preprocessing import PREPROCESS_METHODS
+from src.tasks import TaskEngine, TaskConflict, TaskBusy, emit_progress
+from src.limits import LIMITS
+from src.workbench import ExperimentStore, VERSION, MAX_SAMPLES, csv_data, snapshot, report_html, export_archive, import_archive
 
 ROOT = Path(__file__).resolve().parent
-STATIC_DIR = ROOT / "web"
-UPLOAD_DIR = ROOT / "uploads"
-OUTPUT_DIR = ROOT / "outputs"
-AGENT = RandomSignalDialogueAgent()
+STATIC_DIR, UPLOAD_DIR, OUTPUT_DIR = ROOT / "web", ROOT / "uploads", ROOT / "outputs"
+DATA_DIR = Path(os.environ.get("RS_AGENT_DATA_DIR", ROOT / "data"))
+MAX_BODY = LIMITS["request_bytes"]
 
 
-def _json_bytes(payload: dict) -> bytes:
-    return json.dumps(payload, ensure_ascii=False).encode("utf-8")
+def truthy(value):
+    return str(value or "").lower() in {"1", "true", "yes", "on"}
 
 
-def _truthy(value: object) -> bool:
-    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
-
-
-def _positive_sample_rate(value: object) -> float:
+def sample_rate(value):
     try:
         rate = float(value)
-    except (ValueError, TypeError) as exc:
-        raise ValueError("sample_rate must be a finite positive number") from exc
-    if not math.isfinite(rate) or rate <= 0:
-        raise ValueError("sample_rate must be a finite positive number")
+    except (TypeError, ValueError) as exc:
+        raise ValueError("sample_rate must be finite and positive") from exc
+    if not math.isfinite(rate) or not 0 < rate <= 192000:
+        raise ValueError("sample_rate must be between 0 and 192000 Hz")
     return rate
 
 
-class AgentRequestHandler(BaseHTTPRequestHandler):
-    """Route HTTP requests to the dialogue agent."""
+def session_key(value):
+    value = value or "default"
+    if not isinstance(value, str) or not 1 <= len(value) <= 256:
+        raise ValueError("session_id must contain 1–256 characters")
+    return value
 
-    server_version = "RandomSignalAgentHTTP/0.1"
 
-    def do_GET(self) -> None:  # noqa: N802
-        parsed = urlparse(self.path)
-        path = unquote(parsed.path)
-        if "\x00" in path:
-            self._send_json({"error": "Not found"}, status=HTTPStatus.NOT_FOUND)
-            return
-        if path in ["/", "/chat", "/index.html"]:
-            self._send_file(STATIC_DIR / "chat.html", "text/html; charset=utf-8")
-            return
-        if path == "/api/health":
-            self._send_json({"status": "ok", "llm": AGENT.llm.status()})
-            return
-        if path == "/api/state":
-            query = parse_qs(parsed.query)
-            session_id = query.get("session_id", ["default"])[0]
-            state = AGENT.get_session(session_id)
-            self._send_json({"state": AGENT.serialize_state(state)})
-            return
-        if path.startswith("/outputs/"):
-            output_path = (OUTPUT_DIR / path.removeprefix("/outputs/")).resolve()
-            if OUTPUT_DIR.resolve() in output_path.parents and output_path.exists() and output_path.is_file():
-                self._send_file(output_path, self._content_type(output_path))
-                return
-            self._send_json({"error": "Not found"}, status=HTTPStatus.NOT_FOUND)
-            return
-        static_path = (STATIC_DIR / path.lstrip("/")).resolve()
-        if STATIC_DIR.resolve() in static_path.parents and static_path.is_file():
-            self._send_file(static_path, self._content_type(static_path))
-            return
-        self._send_json({"error": "Not found"}, status=HTTPStatus.NOT_FOUND)
+class BodyLimit:
+    """Bound actual bytes before parsing, including chunked bodies."""
+    def __init__(self, app):
+        self.app = app
 
-    def do_POST(self) -> None:  # noqa: N802
-        parsed = urlparse(self.path)
-        if parsed.path == "/api/chat":
-            payload = self._read_json()
-            if payload is None:
-                return
-            session_id = str(payload.get("session_id") or "default")
-            message = str(payload.get("message") or "")
-            if not message.strip():
-                self._send_json({"error": "message is required"}, status=HTTPStatus.BAD_REQUEST)
-                return
-            self._send_json(
-                AGENT.chat(
-                    session_id,
-                    message,
-                    tool_library=payload.get("tool_library"),
-                    agent_mode=_truthy(payload.get("agent_mode")),
-                )
-            )
-            return
-        if parsed.path == "/api/chat/stream":
-            payload = self._read_json()
-            if payload is None:
-                return
-            session_id = str(payload.get("session_id") or "default")
-            message = str(payload.get("message") or "")
-            if not message.strip():
-                self._send_json({"error": "message is required"}, status=HTTPStatus.BAD_REQUEST)
-                return
-            self._send_event_stream(
-                AGENT.chat_stream(
-                    session_id,
-                    message,
-                    tool_library=payload.get("tool_library"),
-                    agent_mode=_truthy(payload.get("agent_mode")),
-                )
-            )
-            return
-        if parsed.path == "/api/upload":
-            self._handle_upload()
-            return
-        if parsed.path == "/api/microphone":
-            payload = self._read_json()
-            if payload is None:
-                return
-            session_id = str(payload.get("session_id") or "default")
-            try:
-                sample_rate = _positive_sample_rate(payload.get("sample_rate"))
-            except ValueError as exc:
-                self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
-                return
-            samples = payload.get("samples")
-            if not isinstance(samples, list):
-                pcm16 = payload.get("pcm16")
-                if isinstance(pcm16, str) and pcm16:
-                    try:
-                        raw_pcm = base64.b64decode(pcm16, validate=True)
-                        if len(raw_pcm) % 2:
-                            raise ValueError("pcm16 byte length must be even")
-                        pcm = array.array("h")
-                        pcm.frombytes(raw_pcm)
-                        if sys.byteorder != "little":
-                            pcm.byteswap()
-                        samples = [value / 32768.0 for value in pcm]
-                    except Exception as exc:
-                        self._send_json({"error": f"invalid pcm16 microphone payload: {exc}"}, status=HTTPStatus.BAD_REQUEST)
-                        return
-                else:
-                    self._send_json({"error": "samples must be a numeric array or pcm16 base64"}, status=HTTPStatus.BAD_REQUEST)
-                    return
-            try:
-                self._send_json(AGENT.use_microphone_samples(session_id, samples, sample_rate=sample_rate))
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
-            return
-        if parsed.path == "/api/realtime/stop":
-            payload = self._read_json()
-            if payload is None:
-                return
-            session_id = str(payload.get("session_id") or "default")
-            sample_count = payload.get("sample_count")
-            try:
-                sample_count = int(sample_count) if sample_count is not None else None
-                self._send_json(
-                    AGENT.stop_realtime_acquisition(
-                        session_id,
-                        sample_count=sample_count,
-                        tool_library=payload.get("tool_library"),
-                        agent_mode=_truthy(payload.get("agent_mode")),
-                    )
-                )
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
-            return
-        self._send_json({"error": "Not found"}, status=HTTPStatus.NOT_FOUND)
-
-    def _handle_upload(self) -> None:
-        content_type = self.headers.get("Content-Type", "")
-        if "multipart/form-data" not in content_type:
-            self._send_json({"error": "multipart/form-data is required"}, status=HTTPStatus.BAD_REQUEST)
-            return
-
-        form = cgi.FieldStorage(
-            fp=self.rfile,
-            headers=self.headers,
-            environ={
-                "REQUEST_METHOD": "POST",
-                "CONTENT_TYPE": content_type,
-            },
-        )
-        session_id = str(form.getvalue("session_id") or "default")
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or scope["method"] not in ("POST", "PUT"):
+            return await self.app(scope, receive, send)
         try:
-            sample_rate = _positive_sample_rate(form.getvalue("sample_rate") or 200.0)
-        except ValueError as exc:
-            self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
-            return
-        agent_mode = _truthy(form.getvalue("agent_mode"))
-        tool_library: dict | None = None
-        raw_tool_library = form.getvalue("tool_library")
-        if raw_tool_library:
-            try:
-                parsed = json.loads(str(raw_tool_library))
-                if isinstance(parsed, dict):
-                    tool_library = parsed
-            except json.JSONDecodeError:
-                tool_library = None
-        file_item = form["file"] if "file" in form else None
-        if file_item is None or not getattr(file_item, "filename", ""):
-            self._send_json({"error": "file is required"}, status=HTTPStatus.BAD_REQUEST)
-            return
-
-        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-        safe_name = Path(str(file_item.filename).replace("\\", "/")).name
-        target = UPLOAD_DIR / f"{secrets.token_hex(16)}_{safe_name}"
-        with target.open("wb") as file:
-            file.write(file_item.file.read())
-
-        try:
-            result = AGENT.use_uploaded_file(
-                session_id,
-                str(target),
-                sample_rate=sample_rate,
-                tool_library=tool_library,
-                agent_mode=agent_mode,
-            )
-        except Exception as exc:
-            self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
-            return
-        self._send_json(result)
-
-    def _read_json(self) -> dict | None:
-        try:
-            length = int(self.headers.get("Content-Length", "0"))
+            length = int(dict(scope["headers"]).get(b"content-length", b"0"))
             if length < 0:
-                raise ValueError("Content-Length must be non-negative")
-            raw = self.rfile.read(length)
-            payload = json.loads(raw.decode("utf-8")) if raw else {}
-            if not isinstance(payload, dict):
-                raise ValueError("JSON body must be an object")
-            return payload
-        except (ValueError, UnicodeError) as exc:
-            self._send_json({"error": f"invalid JSON request: {exc}"}, status=HTTPStatus.BAD_REQUEST)
-            return None
-
-    def _send_json(self, payload: dict, status: HTTPStatus = HTTPStatus.OK) -> None:
-        data = _json_bytes(payload)
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("Content-Length", str(len(data)))
-        self.end_headers()
-        self.wfile.write(data)
-
-    def _send_event_stream(self, events: object) -> None:
-        self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
-        self.send_header("Cache-Control", "no-cache")
-        self.send_header("Connection", "close")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.end_headers()
-        try:
-            for event in events:
-                payload = json.dumps(event, ensure_ascii=False)
-                self.wfile.write(f"data: {payload}\n\n".encode("utf-8"))
-                self.wfile.flush()
-            self.wfile.write(b"data: [DONE]\n\n")
-            self.wfile.flush()
-            self.close_connection = True
-        except Exception as exc:
-            traceback.print_exc()
-            try:
-                payload = json.dumps({"event": "error", "error": str(exc)}, ensure_ascii=False)
-                self.wfile.write(f"data: {payload}\n\n".encode("utf-8"))
-                self.wfile.write(b"data: [DONE]\n\n")
-                self.wfile.flush()
-                self.close_connection = True
-            except Exception:
+                raise ValueError()
+        except ValueError:
+            return await JSONResponse({"error": "Invalid Content-Length"}, 400)(scope, receive, send)
+        limit = LIMITS["experiment_package_bytes"] if scope["path"] == "/api/experiments/import" else MAX_BODY
+        if length > limit:
+            return await JSONResponse({"error": f"Request exceeds {limit} byte limit"}, 413)(scope, receive, send)
+        chunks, size = [], 0
+        while True:
+            message = await receive()
+            if message["type"] == "http.disconnect":
                 return
-
-    def _send_file(self, path: Path, content_type: str) -> None:
-        if not path.exists():
-            self._send_json({"error": "Not found"}, status=HTTPStatus.NOT_FOUND)
-            return
-        data = path.read_bytes()
-        self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("Content-Length", str(len(data)))
-        self.end_headers()
-        self.wfile.write(data)
-
-    def _content_type(self, path: Path) -> str:
-        suffix = path.suffix.lower()
-        if suffix == ".html":
-            return "text/html; charset=utf-8"
-        if suffix == ".css":
-            return "text/css; charset=utf-8"
-        if suffix == ".js":
-            return "application/javascript; charset=utf-8"
-        if suffix in {".jpg", ".jpeg"}:
-            return "image/jpeg"
-        if suffix == ".png":
-            return "image/png"
-        if suffix == ".webp":
-            return "image/webp"
-        if suffix == ".wav":
-            return "audio/wav"
-        if suffix == ".mp3":
-            return "audio/mpeg"
-        return "application/octet-stream"
-
-    def log_message(self, format: str, *args: object) -> None:
-        return
+            chunks.append(message.get("body", b""))
+            size += len(chunks[-1])
+            if size > limit:
+                return await JSONResponse({"error": f"Request exceeds {limit} byte limit"}, 413)(scope, receive, send)
+            if not message.get("more_body"):
+                break
+        consumed = False
+        async def bounded_receive():
+            nonlocal consumed
+            if not consumed:
+                consumed = True
+                return {"type": "http.request", "body": b"".join(chunks), "more_body": False}
+            return await receive()
+        await self.app(scope, bounded_receive, send)
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Run the random signal dialogue agent server.")
-    parser.add_argument("--host", default="0.0.0.0")
+def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, output_dir=None):
+    agent = agent or RandomSignalDialogueAgent()
+    store = ExperimentStore(Path(data_dir or DATA_DIR))
+    engine = TaskEngine(agent, store)
+    static, uploads, outputs = Path(static_dir or STATIC_DIR), Path(upload_dir or UPLOAD_DIR), Path(output_dir or OUTPUT_DIR)
+
+    @asynccontextmanager
+    async def lifespan(app):
+        yield
+        await run_in_threadpool(engine.close)
+
+    app = FastAPI(title="Random Signal Agent", version=VERSION, lifespan=lifespan)
+    app.add_middleware(BodyLimit)
+    app.state.agent, app.state.store, app.state.engine = agent, store, engine
+
+    @app.exception_handler(ValueError)
+    async def bad_request(request, exc):
+        status = 409 if isinstance(exc, TaskConflict) else 429 if isinstance(exc, TaskBusy) else 400
+        return JSONResponse({"error": str(exc)}, status_code=status)
+
+    @app.exception_handler(KeyError)
+    async def missing(request, exc):
+        return JSONResponse({"error": str(exc)}, status_code=404)
+
+    @app.middleware("http")
+    async def response_headers(request, call_next):
+        result = await call_next(request)
+        result.headers["Cache-Control"] = "no-store"
+        result.headers["X-Content-Type-Options"] = "nosniff"
+        return result
+
+    async def body(request):
+        try:
+            value = json.loads(await request.body())
+        except (ValueError, UnicodeError) as exc:
+            raise ValueError("Invalid JSON request") from exc
+        if not isinstance(value, dict):
+            raise ValueError("JSON body must be an object")
+        return value
+
+    def result_response(result):
+        return JSONResponse(result, status_code=400 if "error" in result else 200)
+
+    def locked(session, operation):
+        with engine.session_lock(session):
+            engine.load_session(session)
+            return operation()
+
+    @app.get("/api/health")
+    def health():
+        return {"status": "ok", "version": VERSION, "llm": agent.llm.status(),
+                "limits": {"body_bytes": MAX_BODY, "samples": MAX_SAMPLES, **LIMITS}}
+
+    @app.get("/api/state")
+    def state(session_id: str = "default"):
+        session = session_key(session_id)
+        return locked(session, lambda: {"state": agent.serialize_state(agent.get_session(session))})
+
+    @app.get("/api/tasks/{key}")
+    def task_status(key: str, session_id: str):
+        return engine.status(key, session_id)
+
+    @app.get("/api/tasks/{key}/events")
+    def task_events(key: str, session_id: str):
+        engine.status(key, session_id)
+        def events():
+            for event in engine.stream(key, session_id):
+                yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
+            yield "data: [DONE]\n\n"
+        return StreamingResponse(events(), media_type="text/event-stream", headers={"X-Accel-Buffering": "no"})
+
+    async def chat_request(request, streaming=False):
+        payload = await body(request)
+        session = session_key(payload.get("session_id"))
+        message = payload.get("message")
+        if not isinstance(message, str) or not message.strip() or len(message) > 16000:
+            raise ValueError("message must contain 1–16000 characters")
+        key = engine.submit(session, payload.get("request_id"), {"operation": "chat", **payload},
+                            lambda: agent.chat(session, message, tool_library=payload.get("tool_library"), agent_mode=truthy(payload.get("agent_mode"))))
+        if streaming:
+            def events():
+                for event in engine.stream(key, session):
+                    yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
+                yield "data: [DONE]\n\n"
+            return StreamingResponse(events(), media_type="text/event-stream", headers={"X-Task-ID": key, "X-Accel-Buffering": "no"})
+        response = result_response(await run_in_threadpool(engine.wait, key, session))
+        response.headers["X-Task-ID"] = key
+        return response
+
+    @app.post("/api/chat")
+    async def chat(request: Request):
+        return await chat_request(request)
+
+    @app.post("/api/chat/stream")
+    async def stream(request: Request):
+        return await chat_request(request, True)
+
+    async def run_task(payload, operation_name, operation):
+        session = session_key(payload.get("session_id"))
+        key = engine.submit(session, payload.get("request_id"), {"operation": operation_name, **payload}, operation)
+        if payload.get("respond_async"):
+            return JSONResponse({"task_id": key, "status": "accepted"}, status_code=202)
+        return result_response(await run_in_threadpool(engine.wait, key, session))
+
+    @app.post("/api/upload")
+    async def upload(request: Request):
+        async with request.form(max_files=1, max_fields=8, max_part_size=MAX_BODY) as form:
+            rate = sample_rate(form.get("sample_rate", 200))
+            session = session_key(form.get("session_id"))
+            file = form.get("file")
+            if file is None or not getattr(file, "filename", None):
+                raise ValueError("file is required")
+            name = Path(file.filename.replace("\\", "/")).name
+            if Path(name).suffix.lower() not in (".csv", ".txt"):
+                raise ValueError("Upload CSV or TXT signal samples")
+            raw = await file.read(MAX_BODY + 1)
+            library = json.loads(str(form.get("tool_library", "{}")))
+            agent_mode = truthy(form.get("agent_mode"))
+            payload = {"session_id": session, "request_id": form.get("request_id"), "sample_rate": rate,
+                       "file_sha256": hashlib.sha256(raw).hexdigest(), "tool_library": library, "agent_mode": agent_mode}
+        def operation():
+            uploads.mkdir(parents=True, exist_ok=True)
+            target = uploads / (secrets.token_hex(16) + "_" + name)
+            target.write_bytes(raw)
+            try:
+                return agent.use_uploaded_file(session, str(target), sample_rate=rate, tool_library=library, agent_mode=agent_mode)
+            except Exception:
+                target.unlink(missing_ok=True)
+                raise
+        return await run_task(payload, "upload", operation)
+
+    @app.post("/api/microphone")
+    async def microphone(request: Request):
+        payload = await body(request)
+        session, rate = session_key(payload.get("session_id")), sample_rate(payload.get("sample_rate"))
+        samples = payload.get("samples")
+        if not isinstance(samples, list):
+            try:
+                raw = base64.b64decode(payload.get("pcm16", ""), validate=True)
+                samples = np.frombuffer(raw, dtype="<i2").astype(float) / 32768
+            except Exception as exc:
+                raise ValueError("Invalid pcm16 microphone payload") from exc
+        samples = np.asarray(samples, dtype=float)
+        if samples.ndim != 1 or not 1 <= len(samples) <= MAX_SAMPLES or not np.isfinite(samples).all():
+            raise ValueError(f"Provide 1–{MAX_SAMPLES} finite samples")
+        return await run_task(payload, "microphone", lambda: agent.use_microphone_samples(session, samples.tolist(), sample_rate=rate))
+
+    @app.post("/api/realtime/stop")
+    async def stop(request: Request):
+        payload = await body(request)
+        session = session_key(payload.get("session_id"))
+        count = payload.get("sample_count")
+        if count is not None and (not isinstance(count, int) or not 1 <= count <= MAX_SAMPLES):
+            raise ValueError("Invalid sample_count")
+        return await run_task(payload, "stop", lambda: agent.stop_realtime_acquisition(session, sample_count=count,
+                              tool_library=payload.get("tool_library"), agent_mode=truthy(payload.get("agent_mode"))))
+
+    @app.post("/api/experiment/run")
+    async def run_experiment(request: Request):
+        payload = await body(request)
+        session = session_key(payload.get("session_id"))
+        goal, template = payload.get("goal", "waveform"), payload.get("template", "sine")
+        if goal not in ("denoise", "waveform", "transient") or template not in ("sine", "impulse", "ar", "current"):
+            raise ValueError("Unknown template or comparison goal")
+        config = payload.get("config", {})
+        if not isinstance(config, dict) or set(config) - {"sample_rate", "duration", "base_frequency", "amplitude", "noise_std", "seed", "ar_coefficient", "impulse_probability"}:
+            raise ValueError("Unknown signal parameter")
+        if "sample_rate" in config:
+            config["sample_rate"] = sample_rate(config["sample_rate"])
+        for field, value in config.items():
+            if type(value) not in (int, float) or not math.isfinite(value):
+                raise ValueError(f"{field} must be a finite number")
+        def operation():
+            state = agent.get_session(session)
+            if template != "current":
+                emit_progress("acquire_signal", "running")
+                bundle = generate_random_signal(SignalConfig(**config, waveform="ar_process" if template == "ar" else "sine",
+                    noise_model="gaussian_impulse" if template == "impulse" else "gaussian"))
+                state = ConversationState(session_id=session, bundle=bundle)
+                agent.sessions[session] = state
+                emit_progress("acquire_signal", "success")
+            if state.bundle is None:
+                raise ValueError("Upload or generate a signal first")
+            state.comparison_goal = goal
+            agent._update_tool_library(state, payload.get("tool_library"))
+            calls = []
+            reply = agent._call_tool(calls, "compare_preprocess_methods", agent._compare_preprocess_methods,
+                                     state, list(PREPROCESS_METHODS), "", "manual")
+            state.tool_calls.extend(calls)
+            state.messages.append({"role": "assistant", "content": reply})
+            return {"reply": reply, "state": agent.serialize_state(state), "tool_calls": calls}
+        return await run_task(payload, "experiment", operation)
+
+    @app.get("/api/experiments")
+    def experiments(session_id: str):
+        return {"experiments": store.list(session_key(session_id))}
+
+    @app.post("/api/experiments/save")
+    async def save(request: Request):
+        payload = await body(request)
+        session = session_key(payload.get("session_id"))
+        name = str(payload.get("name", "Untitled experiment")).strip()
+        if not name or name == "Autosave" or len(name) > 120:
+            raise ValueError("Experiment name must contain 1–120 characters")
+        def operation():
+            state = agent.get_session(session)
+            if state.bundle is None:
+                raise ValueError("Generate or upload a signal first")
+            return {"id": store.save(state, name)}
+        return await run_task(payload, "save", operation)
+
+    @app.post("/api/experiments/open")
+    async def open_experiment(request: Request):
+        payload = await body(request)
+        session = session_key(payload.get("session_id"))
+        def operation():
+            state = store.load(str(payload.get("id")), session)
+            agent.sessions[session] = state
+            return {"state": agent.serialize_state(state)}
+        return await run_task(payload, "open", operation)
+
+    @app.post("/api/experiments/duplicate")
+    async def duplicate(request: Request):
+        payload = await body(request)
+        session = session_key(payload.get("session_id"))
+        def operation():
+            source = store.load(str(payload.get("id")), session)
+            return {"id": store.save(source, str(payload.get("name", "Experiment copy"))[:120])}
+        return await run_task(payload, "duplicate", operation)
+
+    @app.get("/api/experiments/export")
+    def export(session_id: str, format: str = "zip", name: str = "Experiment"):
+        def operation():
+            state = agent.get_session(session_id)
+            formats = {"zip": (lambda: export_archive(state, name), "application/zip"),
+                       "csv": (lambda: csv_data(state), "text/csv"),
+                       "html": (lambda: report_html(state, name), "text/html"),
+                       "json": (lambda: snapshot(state)[0], "application/json")}
+            if format not in formats:
+                raise ValueError("Unknown export format")
+            build, mime = formats[format]
+            return Response(build(), media_type=mime, headers={"Content-Disposition": f'attachment; filename="experiment.{format}"'})
+        return locked(session_key(session_id), operation)
+
+    @app.post("/api/experiments/import")
+    async def import_experiment(request: Request):
+        async with request.form(max_files=1, max_fields=3, max_part_size=LIMITS["experiment_package_bytes"]) as form:
+            session = session_key(form.get("session_id"))
+            file = form.get("file")
+            if file is None or not hasattr(file, "read"):
+                raise ValueError("Experiment ZIP is required")
+            raw = await file.read(LIMITS["experiment_package_bytes"] + 1)
+            payload = {"session_id": session, "request_id": form.get("request_id"), "sha256": hashlib.sha256(raw).hexdigest()}
+        def operation():
+            try:
+                state = import_archive(raw, session)
+            except Exception as exc:
+                raise ValueError(f"Invalid experiment package: {exc}") from exc
+            agent.sessions[session] = state
+            key = store.save(state, "Imported experiment")
+            return {"id": key, "state": agent.serialize_state(state)}
+        return await run_task(payload, "import", operation)
+
+    @app.get("/{path:path}")
+    def files(path: str):
+        if "\x00" in path or "\\" in path:
+            raise KeyError("Not found")
+        if path in ("", "chat", "index.html"):
+            return FileResponse(static / "chat.html")
+        root = outputs if path.startswith("outputs/") else static
+        target = (root / (path[8:] if path.startswith("outputs/") else path)).resolve()
+        if root.resolve() not in target.parents or not target.is_file():
+            raise KeyError("Not found")
+        return FileResponse(target)
+
+    return app
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
-
-    STATIC_DIR.mkdir(parents=True, exist_ok=True)
-    httpd = ThreadingHTTPServer((args.host, args.port), AgentRequestHandler)
-    print(f"Random signal dialogue agent running at http://{args.host}:{args.port}")
-    try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        print("\nServer stopped.")
+    uvicorn.run(create_app(), host=args.host, port=args.port, limit_concurrency=32)
 
 
 if __name__ == "__main__":

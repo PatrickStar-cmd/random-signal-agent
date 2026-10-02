@@ -1,1 +1,2 @@
 -r requirements-repro.txt
+scipy==1.18.1
