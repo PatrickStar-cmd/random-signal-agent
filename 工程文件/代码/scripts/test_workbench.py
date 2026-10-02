@@ -153,6 +153,17 @@ class WorkbenchTests(unittest.TestCase):
         self.assertEqual(t,sorted(t));self.assertEqual(t[0],0);self.assertEqual(t[-1],9999)
         self.assertEqual(pa[t.index(91)],100);self.assertEqual(pb[t.index(601)],-100)
 
+    def test_import_rejects_large_npy_header_before_allocation(self):
+        state=ConversationState('a',bundle=generate_random_signal(SignalConfig(duration=1)))
+        document,_=snapshot(state)
+        member=io.BytesIO()
+        np.lib.format.write_array_header_1_0(member,{'descr':'<f8','fortran_order':False,'shape':(10**9,)})
+        buffer=io.BytesIO()
+        with zipfile.ZipFile(buffer,'w') as archive:archive.writestr('a0.npy',member.getvalue())
+        raw=buffer.getvalue();manifest=json.loads(document);manifest['data_sha256']=hashlib.sha256(raw).hexdigest()
+        with patch('src.workbench.np.load',side_effect=AssertionError('must not allocate')):
+            with self.assertRaisesRegex(ValueError,'array header'):restore(json.dumps(manifest),raw)
+
     def test_batched_median_matches_scalar_reference(self):
         from src.preprocessing import _median_filter
         for n in (1, 11, 3000):

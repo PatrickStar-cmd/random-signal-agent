@@ -63,8 +63,19 @@ def restore(document, raw):
         raise ValueError("Experiment data checksum mismatch")
     # Check nested NPZ expansion before NumPy allocates arrays. Never load pickles.
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
-        if sum(i.file_size for i in archive.infolist()) > MAX_ARCHIVE:
+        if len(archive.infolist()) > 128 or sum(i.file_size for i in archive.infolist()) > MAX_ARCHIVE:
             raise ValueError("Experiment arrays exceed size limit")
+        for member in archive.infolist():
+            with archive.open(member) as stream:
+                version = np.lib.format.read_magic(stream)
+                if version not in ((1, 0), (2, 0)):
+                    raise ValueError("Unsupported experiment array format")
+                reader = np.lib.format.read_array_header_1_0 if version == (1, 0) else np.lib.format.read_array_header_2_0
+                shape, _, dtype = reader(stream)
+                if len(shape) != 1 or not 0 <= shape[0] <= MAX_SAMPLES or dtype.kind not in "bifu" or dtype.itemsize > 8:
+                    raise ValueError("Invalid experiment array header")
+                if stream.tell() + shape[0] * dtype.itemsize != member.file_size:
+                    raise ValueError("Experiment array size does not match its header")
     with np.load(io.BytesIO(raw), allow_pickle=False) as arrays:
         def decode(value):
             if isinstance(value, dict):

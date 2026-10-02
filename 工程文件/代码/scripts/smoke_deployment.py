@@ -27,7 +27,7 @@ def check(base_url):
             health = json.loads(request('/api/health'))
             assert health['status'] == 'ok'
             break
-        except (urllib.error.URLError, TimeoutError):
+        except OSError:
             if time.monotonic() >= deadline:
                 raise
             time.sleep(1)
@@ -69,7 +69,7 @@ def check_persistence(base_url, previous):
             with urllib.request.urlopen(base_url+'/api/health',timeout=3) as response:
                 assert json.load(response)['status']=='ok'
             break
-        except (urllib.error.URLError,TimeoutError):
+        except OSError:
             if time.monotonic()>deadline:raise
             time.sleep(1)
     session=previous['session_id']
