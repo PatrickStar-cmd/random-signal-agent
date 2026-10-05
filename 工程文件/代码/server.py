@@ -19,6 +19,8 @@ from src.signal_processing import SignalConfig, generate_random_signal
 from src.preprocessing import PREPROCESS_METHODS
 from src.tasks import TaskEngine, TaskConflict, TaskBusy, emit_progress
 from src.limits import LIMITS
+from src.data_import import inspect_data
+from src.experiment_compare import compare_experiments, comparison_html, comparison_svg
 from src.workbench import ExperimentStore, VERSION, MAX_SAMPLES, csv_data, snapshot, report_html, export_archive, import_archive
 
 ROOT = Path(__file__).resolve().parent
@@ -145,6 +147,15 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
         return {"status": "ok", "version": VERSION, "llm": agent.llm.status(),
                 "limits": {"body_bytes": MAX_BODY, "samples": MAX_SAMPLES, **LIMITS}}
 
+    @app.get("/api/tasks")
+    def tasks(session_id: str):
+        return {"tasks": engine.list(session_key(session_id))}
+
+    @app.post("/api/tasks/{key}/cancel")
+    async def cancel_task(key: str, request: Request):
+        payload = await body(request)
+        return await run_in_threadpool(engine.cancel, key, session_key(payload.get('session_id')))
+
     @app.get("/api/state")
     def state(session_id: str = "default"):
         session = session_key(session_id)
@@ -191,10 +202,76 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
 
     async def run_task(payload, operation_name, operation):
         session = session_key(payload.get("session_id"))
-        key = engine.submit(session, payload.get("request_id"), {**payload, "operation": operation_name}, operation)
+        key = engine.submit(session, payload.get("request_id"), {**payload, "operation": operation_name}, operation,
+                            cancellable=operation_name in ('experiment','upload','microphone','stop','import-data'))
         if payload.get("respond_async"):
             return JSONResponse({"task_id": key, "status": "accepted"}, status_code=202)
         return result_response(await run_in_threadpool(engine.wait, key, session))
+
+    async def import_fields(request):
+        async with request.form(max_files=1, max_fields=6, max_part_size=MAX_BODY) as form:
+            session = session_key(form.get('session_id'))
+            file = form.get('file')
+            if file is None or not getattr(file, 'filename', None):
+                raise ValueError('CSV/TXT file is required')
+            name = Path(file.filename.replace('\\', '/')).name[:240]
+            if Path(name).suffix.lower() not in ('.csv', '.txt'):
+                raise ValueError('Upload CSV or TXT signal samples')
+            raw = await file.read(MAX_BODY+1)
+            options = json.loads(str(form.get('options', '{}')))
+            return session, name, raw, options, form.get('token'), form.get('request_id')
+
+    @app.post('/api/data/preview')
+    async def preview_data(request: Request):
+        _, name, raw, options, _, _ = await import_fields(request)
+        preview, _ = await run_in_threadpool(inspect_data, raw, options)
+        return {**preview, 'file_name': name}
+
+    @app.post('/api/data/import')
+    async def import_data(request: Request):
+        session, name, raw, options, token, request_id = await import_fields(request)
+        payload = {'session_id':session,'request_id':request_id,'file_sha256':hashlib.sha256(raw).hexdigest(),
+                   'name':name,'options':options,'token':token}
+        def operation():
+            emit_progress('load_signal_file', 'running')
+            preview, bundle = inspect_data(raw, options)
+            if not preview['valid']:
+                raise ValueError(f"数据校验失败：{preview['issues'][0]}")
+            if token != preview['token']:
+                raise ValueError('文件或列设置已改变，请重新预览并确认。')
+            bundle.source = 'file/' + name
+            current = ConversationState(session_id=session, bundle=bundle)
+            current.acquisition_plan = {'channel':'uploaded_file','channel_label':'文件导入','file_name':name,
+                'file_sha256':preview['file_sha256'],'mapping':preview['mapping']}
+            reply = f"已导入 {name}：{preview['rows']} 个采样点，{preview['sample_rate']:.6g} Hz。可继续比较处理方法。"
+            current.messages.append({'role':'assistant','content':reply})
+            current.tool_calls.append({'tool':'load_signal_file','status':'success','arguments':current.acquisition_plan})
+            agent.sessions[session] = current
+            emit_progress('load_signal_file','success')
+            return {'reply':reply,'state':agent.serialize_state(current)}
+        return await run_task(payload, 'import-data', operation)
+
+    @app.post('/api/experiments/compare')
+    async def compare(request: Request):
+        payload = await body(request)
+        if payload.get('format', 'json') not in ('json', 'html'):
+            raise ValueError('Comparison format must be json or html')
+        data = await run_in_threadpool(compare_experiments, store, session_key(payload.get('session_id')), payload.get('ids'))
+        if payload.get('format') == 'html':
+            return Response(comparison_html(data), media_type='text/html',
+                            headers={'Content-Disposition':'attachment; filename="comparison.html"'})
+        return {**data, 'waveform_svg':comparison_svg(data,'waveform'), 'spectrum_svg':comparison_svg(data,'spectrum')}
+
+    @app.get('/api/storage')
+    def storage():
+        return store.storage_preview()
+
+    @app.post('/api/storage/cleanup')
+    async def cleanup(request: Request):
+        payload = await body(request)
+        if payload.get('confirm') is not True:
+            raise ValueError('请先预览并确认清理范围。')
+        return await run_in_threadpool(store.storage_cleanup, payload.get('token'))
 
     @app.post("/api/upload")
     async def upload(request: Request):

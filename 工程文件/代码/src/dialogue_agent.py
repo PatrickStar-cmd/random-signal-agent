@@ -40,7 +40,7 @@ from .signal_processing import (
     extract_time_features,
 )
 from .llm_client import LLMClientError, OpenAICompatibleClient
-from .tasks import emit_progress
+from .tasks import emit_progress, check_cancelled
 from .limits import LIMITS
 
 
@@ -3402,6 +3402,7 @@ class RandomSignalDialogueAgent:
         if len(candidates) > cap:
             candidates = [candidates[int(i)] for i in np.linspace(0, len(candidates) - 1, cap)]
         for config in candidates:
+            check_cancelled()
             processed = preprocess_signal(state.bundle.observed, config)
             summary = self._candidate_preprocess_summary(state, processed)
             score = self._preprocess_quality_score(state, summary, processed)

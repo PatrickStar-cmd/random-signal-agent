@@ -5,7 +5,9 @@ import hashlib
 import io
 import json
 import platform
+import re
 import sqlite3
+import threading
 import time
 import uuid
 import zipfile
@@ -20,7 +22,7 @@ from .dialogue_agent import ConversationState
 from .signal_processing import SignalBundle, SignalConfig, PreprocessResult
 from .limits import LIMITS
 
-VERSION = "0.2.1"
+VERSION = "0.2.5"
 # Application maintenance releases do not change the saved algorithm contract.
 ALGORITHM_VERSION = "0.2.0"
 SCHEMA = 1
@@ -114,6 +116,7 @@ def restore(document, raw):
 class ExperimentStore:
     def __init__(self, root: Path):
         self.root = root
+        self.file_lock = threading.RLock()
         root.mkdir(parents=True, exist_ok=True)
         with self.connect() as db:
             db.executescript("""
@@ -122,7 +125,9 @@ class ExperimentStore:
                 CREATE TABLE IF NOT EXISTS tasks(id TEXT PRIMARY KEY, session TEXT NOT NULL,
                     fingerprint TEXT NOT NULL, status TEXT NOT NULL, result TEXT, created REAL NOT NULL);
             """)
-            db.execute("UPDATE tasks SET status='error', result=? WHERE status IN ('queued','running')",
+            if "operation" not in {row[1] for row in db.execute("PRAGMA table_info(tasks)")}:
+                db.execute("ALTER TABLE tasks ADD COLUMN operation TEXT NOT NULL DEFAULT 'task'")
+            db.execute("UPDATE tasks SET status='error', result=? WHERE status IN ('queued','running','cancelling')",
                        (json.dumps({"error": "Server restarted during task; inspect recovered experiment before starting a new task"}),))
 
     @contextmanager
@@ -136,6 +141,10 @@ class ExperimentStore:
             db.close()
 
     def save(self, state, name="Autosave", experiment_id=None):
+        with self.file_lock:
+            return self._save(state, name, experiment_id)
+
+    def _save(self, state, name="Autosave", experiment_id=None):
         document, raw = snapshot(state)
         data_file = hashlib.sha256(raw).hexdigest() + ".npz"
         path = self.root / data_file
@@ -150,6 +159,10 @@ class ExperimentStore:
         return key
 
     def load(self, key, session):
+        with self.file_lock:
+            return self._load(key, session)
+
+    def _load(self, key, session):
         with self.connect() as db:
             row = db.execute("SELECT * FROM snapshots WHERE id=? AND session=?", (key, session)).fetchone()
         if row is None:
@@ -182,6 +195,35 @@ class ExperimentStore:
 
     def autosave(self, state):
         self.save(state, experiment_id=self.auto_id(state.session_id))
+
+    def storage_preview(self):
+        with self.file_lock, self.connect() as db:
+            referenced = {row[0] for row in db.execute("SELECT DISTINCT data_file FROM snapshots")}
+            files = [p for p in self.root.glob('*.npz') if re.fullmatch(r'[0-9a-f]{64}\.npz', p.name)
+                     and not p.is_symlink() and p.is_file() and p.resolve().parent == self.root.resolve()]
+            unused = sorted((p.name, p.stat().st_size, p.stat().st_mtime_ns) for p in files if p.name not in referenced)
+            token = hashlib.sha256(json.dumps(unused).encode()).hexdigest()
+            return {"total_bytes": sum(p.stat().st_size for p in files), "array_files": len(files),
+                    "database_bytes": (self.root / 'experiments.sqlite3').stat().st_size,
+                    "unused_files": len(unused), "reclaimable_bytes": sum(item[1] for item in unused),
+                    "token": token, "files": [{"name": name, "bytes": size} for name, size, _ in unused]}
+
+    def storage_cleanup(self, token):
+        with self.file_lock:
+            preview = self.storage_preview()
+            if not isinstance(token, str) or token != preview['token']:
+                raise ValueError("Storage changed; refresh the cleanup preview before confirming")
+            removed, freed = 0, 0
+            # Rechecked under the same lock as save/load: shared arrays and an
+            # array being saved cannot become candidates between preview/delete.
+            for item in preview['files']:
+                path = self.root / item['name']
+                if path.resolve().parent != self.root.resolve() or path.is_symlink():
+                    raise ValueError("Invalid storage path")
+                path.unlink()
+                removed += 1
+                freed += item['bytes']
+            return {"removed_files": removed, "freed_bytes": freed}
 
 
 def csv_data(state):

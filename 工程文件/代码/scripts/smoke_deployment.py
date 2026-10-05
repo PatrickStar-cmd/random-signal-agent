@@ -61,14 +61,34 @@ def check(base_url):
     renamed = json.loads(request('/api/experiments/rename',{'session_id':session,'id':saved['id'],'name':'Deployment · renamed'}))
     assert renamed['name']=='Deployment · renamed'
     copied = json.loads(request('/api/experiments/duplicate',{'session_id':session,'id':saved['id'],'name':'Temporary copy'}))
+    compare_payload={'session_id':session,'ids':[saved['id'],copied['id']]}
+    comparison=json.loads(request('/api/experiments/compare',compare_payload))
+    assert comparison['score_comparable'] and len(comparison['experiments'])==2
+    report=request('/api/experiments/compare',{**compare_payload,'format':'html'})
+    assert report.startswith(b'<!doctype html>') and report.count(b'<svg')==2
     deletion = {'session_id':session,'id':copied['id'],'request_id':'delete-check'}
     assert json.loads(request('/api/experiments/delete',deletion))['deleted']
     assert json.loads(request('/api/experiments/delete',deletion))['deleted']
     remaining = json.loads(request(f'/api/experiments?session_id={session}'))['experiments']
     assert [e['id'] for e in remaining]==[saved['id']] and remaining[0]['name']=='Deployment · renamed'
     assert data==request(f'/api/experiments/export?session_id={session}&format=csv')
+    mapped='time_ms,unused,value\n'+'\n'.join(f'{i*5},label,{math.sin(i)}' for i in range(50))
+    def mapped_form(token=None):
+        fields={'session_id':session+'-mapped','options':json.dumps({'signal_column':2,'time_column':0,'time_unit':'ms'})}
+        if token:fields['token']=token
+        parts=[f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n' for key,value in fields.items()]
+        parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="mapped.csv"\r\nContent-Type: text/csv\r\n\r\n{mapped}\r\n--{boundary}--\r\n')
+        return ''.join(parts).encode()
+    preview=json.loads(request('/api/data/preview',data=mapped_form(),content_type=f'multipart/form-data; boundary={boundary}'))
+    assert preview['valid'] and preview['rows']==50 and abs(preview['sample_rate']-200)<1e-8
+    imported=json.loads(request('/api/data/import',data=mapped_form(preview['token']),content_type=f'multipart/form-data; boundary={boundary}'))
+    assert imported['state']['signal']['sample_count']==50
+    tasks=json.loads(request(f'/api/tasks?session_id={session}'))['tasks']
+    assert tasks and all('result' not in task for task in tasks)
+    assert not json.loads(request(f'/api/tasks/{tasks[0]["task_id"]}/cancel',{'session_id':session}))['cancel_requested']
+    storage=json.loads(request('/api/storage'));assert 'reclaimable_bytes' in storage and 'token' in storage
     return {'status': 'passed', 'session_id':session, 'saved_experiment':saved['id'], 'csv_sha256':hashlib.sha256(data).hexdigest(),
-            'checks': ['health', 'web_assets', 'agent_pipeline', 'sse', 'csv_upload', 'synthetic_audio_download', 'experiment_save', 'full_data_export', 'snapshot_rename_duplicate_delete', 'delete_retry', 'shared_data_preserved']}
+            'checks': ['health', 'web_assets', 'agent_pipeline', 'sse', 'csv_upload', 'synthetic_audio_download', 'experiment_save', 'full_data_export', 'snapshot_rename_duplicate_delete', 'delete_retry', 'shared_data_preserved', 'mapped_import', 'snapshot_comparison_report', 'task_list_cancel_endpoint', 'storage_preview']}
 
 
 def check_persistence(base_url, previous):

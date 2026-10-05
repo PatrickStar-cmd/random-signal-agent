@@ -5,6 +5,7 @@
   "workers": 2,
   "task_capacity": 8,
   "session_capacity": 128,
+  "idle_session_seconds": 900,
   "candidates_per_method": 64,
   "candidate_sample_budget": 2000000
 }

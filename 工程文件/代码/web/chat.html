@@ -6,6 +6,7 @@
   <title>谛听 · 随机信号智能体</title>
   <link rel="stylesheet" href="app.css">
   <link rel="stylesheet" href="workbench.css">
+  <link rel="stylesheet" href="studio.css">
 </head>
 <body>
   <header>
@@ -16,8 +17,29 @@
     <div class="session" id="sessionLabel">时间初始化中</div>
   </header>
 
-  <section class="workbench" aria-label="实验工作台">
-    <div class="wb-heading"><strong>实验工作台 <small>v0.2.1</small></strong><span id="wbStatus" role="status">每次操作后自动保存</span><button id="wbRecover" type="button">恢复未完成请求</button></div>
+  <nav class="workflow-nav" aria-label="实验流程"><a href="#dataPanel">1 · 导入数据</a><a href="#workbenchPanel">2 · 处理与保存</a><a href="#comparisonPanel">3 · 对比与报告</a><span id="dataSummary">可导入 CSV/TXT，也可使用下方模板生成信号</span></nav>
+  <section class="studio studio-grid" aria-label="数据和任务管理">
+    <details id="dataPanel"><summary>1 · 数据导入向导</summary>
+      <p class="studio-hint">预览前 20 行，选择要分析的列。错误数据会标明行列位置，修正后再导入。</p>
+      <label class="file-choice">CSV / TXT 文件<input id="diFile" type="file" accept=".csv,.txt"></label>
+      <div class="studio-fields">
+        <label>分隔符<select id="diDelimiter"><option value="auto">自动识别</option><option value="comma">逗号</option><option value="semicolon">分号</option><option value="tab">制表符</option><option value="space">空格</option></select></label>
+        <label>首行表头<select id="diHeader"><option value="auto">自动识别</option><option value="yes">有表头</option><option value="no">无表头</option></select></label>
+        <label>时间列<select id="diTime"><option value="">按采样率生成时间</option></select></label>
+        <label>信号列<select id="diSignal"><option value="0">列 1</option></select></label>
+        <label>时间单位<select id="diUnit"><option value="s">秒 s</option><option value="ms">毫秒 ms</option><option value="us">微秒 μs</option><option value="ns">纳秒 ns</option></select></label>
+        <label>采样率 / Hz<input id="diRate" type="number" value="200" min="0.000001" max="192000" step="any"></label>
+      </div>
+      <div class="studio-actions"><button id="diPreview">预览并校验</button><button id="diImport" disabled>确认导入当前工作区</button></div>
+      <p id="diStatus" role="status">尚未选择文件</p><div id="diIssues"></div><div id="diTable" class="studio-scroll"></div>
+    </details>
+    <div class="studio-utilities">
+      <details id="taskPanel"><summary>任务与排队 <span id="taskCount"></span></summary><p class="studio-hint">运行中的任务会在安全检查点取消；外部请求需等到返回或超时。</p><div id="taskList"></div><p id="taskStatus" role="status"></p></details>
+      <details id="storagePanel"><summary>存储占用与清理</summary><p class="studio-hint">检查此服务所有实验的共享采样文件。只清理无快照引用的文件，自动保存和已保存实验会保留。</p><button id="storagePreview">查看清理预览</button><p id="storageInfo" role="status"></p><div id="storageFiles" class="studio-scroll"></div><button id="storageClean" disabled>确认清理无引用文件</button></details>
+    </div>
+  </section>
+  <section id="workbenchPanel" class="workbench" aria-label="实验工作台">
+    <div class="wb-heading"><strong>2 · 处理与保存 <small>v0.2.5</small></strong><span id="wbStatus" role="status">每次操作后自动保存</span><button id="wbRecover" type="button">恢复未完成请求</button></div>
     <details id="wbPanel" open><summary>模板与实验管理</summary>
       <form id="wbForm" class="wb-fields">
         <label>信号模板<select id="wbTemplate"><option value="sine">正弦 + 高斯噪声</option><option value="impulse">正弦 + 脉冲干扰</option><option value="ar">AR(1) 随机过程</option><option value="current">当前信号</option></select></label>
@@ -39,13 +61,18 @@
       <details id="wbScores"><summary>评分依据与耗时</summary><div id="wbScoreContent">运行比较后显示。分数仅用于相同数据与目标下的方法比较。</div></details>
     </details>
   </section>
+  <section class="studio"><details id="comparisonPanel"><summary>3 · 跨实验对比与报告</summary>
+    <p class="studio-hint">选择 2–4 个快照，比较各自保存的处理结果。相同输入、参考、目标和评分版本下才直接比较评分。</p>
+    <div id="compareChoices" class="compare-choices"></div><div class="studio-actions"><button id="compareRun">对比所选实验</button><button id="compareExport" disabled>下载对比 HTML 报告</button></div>
+    <p id="compareStatus" role="status"></p><div id="compareResult"></div>
+  </details></section>
   <main id="layoutRoot">
     <section class="panel chat">
       <div class="upload">
         <div class="upload-row">
           <input id="fileInput" type="file" accept=".csv,.txt">
           <input id="sampleRate" type="number" value="200" min="1" step="1" title="采样率">
-          <button id="uploadButton" type="button">上传</button>
+          <button id="uploadButton" type="button" title="默认第一列时间、第二列信号；需要选择列请使用上方导入向导">快速上传</button>
           <button id="microphoneButton" type="button" title="使用当前电脑麦克风作为外部传感器网关">麦克风采集</button>
         </div>
         <div class="agent-mode-bar">
@@ -141,5 +168,6 @@
 
   <script src="app.js"></script>
   <script src="workbench.js"></script>
+  <script src="studio.js"></script>
 </body>
 </html>

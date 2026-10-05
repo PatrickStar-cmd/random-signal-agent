@@ -70,6 +70,7 @@ def main():
             run([python, 'scripts/test_regressions.py'])
             run([python, 'scripts/verify_reproduction.py'])
             run([python, 'scripts/test_workbench.py'])
+            run([python, 'scripts/test_studio.py'])
             run([python, 'scripts/benchmark_algorithms.py'])
             report['benchmark'] = json.loads((code / 'outputs/benchmark/summary.json').read_text(encoding='utf-8'))
             env['PATH'] = str(bin_dir) + os.pathsep + env.get('PATH', '')

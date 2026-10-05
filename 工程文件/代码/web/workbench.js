@@ -26,6 +26,7 @@
     if (preferred) $("wbSearch").value = "";
     renderList();
     if (preferred) $("wbExperiments").value = preferred;
+    window.dispatchEvent(new CustomEvent('experiments-list', {detail:experiments}));
   }
   function selectedExperiment() {
     const selected = experiments.find(e => e.id === $("wbExperiments").value);
@@ -154,7 +155,7 @@
     const current = event.detail, comparison=current?.preprocess_comparison;
     const config = current?.signal?.config;
     if (config) {
-      for (const [id, key] of Object.entries({wbRate:'sample_rate',wbDuration:'duration',wbFrequency:'base_frequency',wbNoise:'noise_std',wbAmplitude:'amplitude',wbSeed:'seed',wbAR:'ar_coefficient',wbImpulse:'impulse_probability'})) $(id).value=config[key];
+      for (const [id, key] of Object.entries({wbRate:'sample_rate',wbDuration:'duration',wbFrequency:'base_frequency',wbNoise:'noise_std',wbAmplitude:'amplitude',wbSeed:'seed',wbAR:'ar_coefficient',wbImpulse:'impulse_probability'})) $(id).value=typeof config[key]==='number'?Number(config[key].toPrecision(10)):config[key];
       $("wbTemplate").value='current';
       updateMode();
     }
@@ -165,4 +166,5 @@
   refreshList().catch(error=>status(error.message,true)); recoverVisibility();
   api('/api/health').then(data => { limits={...limits,...data.limits}; }).catch(()=>{});
   window.setInterval(recoverVisibility, 2000);
+  window.workbench = {apply, refreshList};
 })();

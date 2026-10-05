@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.2.5 · 2026-10-05
+
+- CSV/TXT import wizard with preview, selectable time/signal columns, time-unit conversion, source provenance, and row/column diagnostics. Invalid rows are never silently discarded by the wizard.
+- Read-only comparison of 2–4 saved results with shared-axis waveform/spectrum plots, full-sample metrics, parameters and portable HTML reports. Scores are only compared for matching inputs, references, goals and scoring versions.
+- Task history, queue state and cooperative cancellation with current-state rollback. Fair per-session dispatch prevents blocked sessions from occupying all workers.
+- Automatic idle-session eviction and reload, storage usage, and confirmed cleanup of unreferenced sample arrays with preview revalidation and save/load locking.
+- Three-step navigation, collapsible management panels, compact numeric inputs and improved mobile spacing.
+- Existing experiment schema and algorithm version remain unchanged. Task database migration preserves results; downgrades require restoring a pre-upgrade backup.
+
+新增数据导入向导、跨实验对比、任务取消和存储管理。旧快照和 ZIP 可继续使用；升级前备份整个 data/。
+
 ## v0.2.1 · 2026-10-05
 
 - Search saved experiments by name; rename or delete a selected snapshot with deletion confirmation. Current data and other snapshots remain intact.

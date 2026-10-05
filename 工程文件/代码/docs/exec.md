@@ -102,6 +102,7 @@ python -m pip install -r requirements-test.txt
 python scripts/test_regressions.py
 python scripts/verify_reproduction.py
 python scripts/test_workbench.py
+python scripts/test_studio.py
 python scripts/benchmark_algorithms.py
 ```
 
@@ -124,3 +125,17 @@ python scripts/benchmark_algorithms.py
 运行或恢复后模板切换为“当前信号”，只修改目标可重新评分；若要编辑生成参数，先选择正弦、脉冲或 AR 模板。打开空聊天历史的实验会清除上一实验聊天。
 
 升级保留整个 data/（SQLite 和 NPZ），不要清空数据库；详细步骤见 DEPLOY.md。`python scripts/build_release.py` 后直接执行 `python scripts/verify_release.py` 即按 config/release.json 自动选取部署包；也可用 --archive 指定路径。验证仍覆盖写入 logs/release/latest.log。
+
+## v0.2.5 导入、对比、任务与清理
+
+1. 打开“数据导入向导”，选择 UTF-8 CSV/TXT。预览前 20 行，选择时间列和信号列，指定时间单位；无时间列则按采样率生成时间。分隔符支持逗号、分号、制表符、空格。自动识别可手动覆盖。最多 200,000 行、64 列（普通请求总大小上限仍为 16 MiB）。
+2. 点击“预览并校验”。最多展示 20 处错误及总数；错误显示原文件行号和从 1 开始的列号。修正缺失值、重复/倒序/不均匀时间后重新预览；不自动丢行或插值。通过后确认导入，原始文件摘要及列映射随实验保存。
+3. 在“处理与保存”运行比较，分别保存方案。在“跨实验对比与报告”勾选 2–4 个快照，查看各快照当前处理结果的波形、频谱、指标及参数，下载 HTML。原始未处理快照也可查看，但不显示评分排名。
+4. 展开“任务与排队”查看状态并取消。正在执行时等待安全检查点，外部请求等返回或超时；保存阶段与短的元数据写入操作无法取消。取消后的请求 ID 保留终态；重新运行要使用新的请求 ID。
+5. 展开存储管理，查看全服务 NPZ/数据库占用和无引用数组，确认后清理。预览变化时需重新预览；清理不删除引用中的文件、任务历史、上传及音频。
+
+新增配置 idle_session_seconds=900，表示无活动请求/任务的会话在空闲 15 分钟后可从内存释放；维护周期最多 60 秒。session_capacity 表示同时保留在内存的会话数，到达上限时优先释放空闲旧会话。数据仍在 data/，后续访问可恢复。
+
+新增 API：POST /api/data/preview 与 /api/data/import 接受 multipart file、session_id、options(JSON)，导入还需预览 token 和可选 request_id；options 的 signal_column/time_column 从 0 开始，time_column=null 表示手填采样率，time_unit 为 s/ms/us/ns，delimiter 为 auto/comma/semicolon/tab/space，header 为 auto/yes/no。POST /api/experiments/compare 接受 session_id、ids(2–4 个)、format(json/html)。GET /api/tasks?session_id=... 列出最近 50 项；POST /api/tasks/{id}/cancel 接受 session_id。GET /api/storage 预览全服务清理范围；POST /api/storage/cleanup 接受 token 和 confirm=true。
+
+执行 python scripts/test_studio.py；日志 logs/studio/latest.log 覆盖写入，OK 表示通过。部署包干净安装验证会自动运行此脚本。现有回归、集成、工作台与基准命令保持可用。
