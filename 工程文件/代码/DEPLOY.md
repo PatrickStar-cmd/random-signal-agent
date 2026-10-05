@@ -2,11 +2,11 @@
 
 本项目不包含任何固定公网 IP、云服务器账号、API Key 或私有路径。复现时请把下列占位信息替换为自己的环境。
 
-v0.2.0 使用 Python 3.12–3.14 和 FastAPI/Uvicorn，已移除 `cgi`。按单进程部署，不要启动多个 Uvicorn worker：会话锁和任务队列属于同一个进程。本服务面向受控课程实验环境，已有输入及并发上限；公网访问仍需反向代理身份认证。
+v0.2.1 使用 Python 3.12–3.14 和 FastAPI/Uvicorn，已移除 `cgi`。按单进程部署，不要启动多个 Uvicorn worker：会话锁和任务队列属于同一个进程。本服务面向受控课程实验环境，已有输入及并发上限；公网访问仍需反向代理身份认证。
 
 ## 本地运行
 
-下载 v0.2.0 Release 的 `random-signal-agent-v0.2.0-deploy.zip` 并解压后进入 `工程文件/代码`。发布包保留完整目录结构；`server.py` 位于该子目录，不在解压包根目录。
+下载 v0.2.1 Release 的 `random-signal-agent-v0.2.1-deploy.zip` 并解压后进入 `工程文件/代码`。发布包保留完整目录结构；`server.py` 位于该子目录，不在解压包根目录。
 
 Windows（使用 Python 3.12）：
 
@@ -129,7 +129,7 @@ python scripts/smoke_deployment.py --base-url http://127.0.0.1:8000
 发布包的 SHA-256 校验文件为 `SHA256SUMS.txt`。Windows 可以执行：
 
 ```powershell
-Get-FileHash .\random-signal-agent-v0.2.0-deploy.zip -Algorithm SHA256
+Get-FileHash .\random-signal-agent-v0.2.1-deploy.zip -Algorithm SHA256
 ```
 
 Linux 执行 `sha256sum -c SHA256SUMS.txt`。发布包中的 `RELEASE.json` 记录版本和源码提交。
@@ -142,7 +142,7 @@ curl http://127.0.0.1:8000/api/health
 
 返回中的 `llm.configured` 只表示配置项齐全且已启用，不验证密钥有效性、联网或模型兼容性；即使为 `false`，本地规则工具链仍可运行。
 
-## v0.2.0 数据和迁移
+## v0.2.1 数据和迁移
 
 `data/experiments.sqlite3` 保存实验清单、完整状态元数据和任务结果，旁边的内容寻址 `.npz` 文件保存全量采样。Compose 将 `./data` 挂载到 `/app/data`；更新镜像或重启容器会保留这些文件。备份应在停止服务后复制整个 `data/`，还需 `uploads/` 与 `outputs/` 才能保留原上传文件及音频附件。不要只复制 SQLite 文件。
 
@@ -153,3 +153,9 @@ curl http://127.0.0.1:8000/api/health
 `config/workbench.json` 管理采样、请求大小、任务并发与候选搜索上限，字段说明见 `docs/exec.md`。默认普通请求 16 MiB、实验导入 64 MiB、200,000 点、2 个工作线程、最多 8 个待处理/运行任务。返回 429 时可用原 request_id 重试。服务中断中的任务不会自动重新执行；恢复到最近一次成功状态后再创建新请求。
 
 实验 ZIP 含完整数据、参数、工具记录及报告。音频文件不打包；导入后可用其中的原始采样重新处理。跨算法版本的导入会被拒绝，防止静默改变解释；固定种子重算可能因不同 NumPy/平台产生细小数值差异，导入保存的采样则逐点一致。
+
+### 从 v0.2.0 升级
+
+停止服务并备份整个 `data/`，将其放入新版相同位置，或沿用 `RS_AGENT_DATA_DIR`。保留 `uploads/`、`outputs/` 和浏览器原站点会话。无需清空数据库；v0.2.0 自动保存、命名快照及 ZIP 可以直接读取。应用版本 0.2.1 与算法版本 0.2.0 分开记录，schema 仍为 1。
+
+实验列表可按名称搜索；填写名称后选择快照并重命名，删除需要页面确认。删除只移除命名快照记录，不清空当前工作区，也不立即回收可能被其他快照引用的 NPZ 文件，因此不保证释放磁盘空间。仍不支持账号认证或多进程服务。

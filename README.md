@@ -20,7 +20,7 @@
 
 项目面向 **UESTC 随机信号课程**。本地工具链无需模型 API Key 即可运行，也可接入兼容 Chat Completions 的服务，增强对话能力。
 
-[🌐 实验预览](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 下载 v0.2.0](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.2.0) · [📘 安装指南](RELEASE.md)
+[🌐 实验预览](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 下载 v0.2.1](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.2.1) · [📘 安装指南](RELEASE.md)
 
 ## 🧭 快速导航
 
@@ -38,7 +38,7 @@
 
 | 功能 | 可以完成的实验 |
 | --- | --- |
-| 💾 实验工作台 | 用模板创建实验，保存、恢复或复制快照；服务重启后继续工作。 |
+| 💾 实验工作台 | 用模板创建实验，保存、恢复、复制、搜索、重命名或删除快照；服务重启后继续工作。 |
 | 📦 数据与报告 | 导出完整采样 CSV、HTML 报告、参数清单和可重新导入的 ZIP。 |
 | 🧮 可解释比较 | 按抑噪、保留波形或保留瞬态评分，查看评分分项、参数与耗时。 |
 | 🎲 可复现仿真 | 设置采样率、时长、主频、噪声和随机种子，生成同一组样本。 |
@@ -52,7 +52,7 @@
 
 ## 🎬 界面展示
 
-![v0.2.0 实验工作台](docs/images/workbench-v020.png)
+![v0.2.1 实验工作台](docs/images/workbench-v021.png)
 
 <details>
 <summary><strong>查看 Agent 模式操作演示</strong></summary>
@@ -67,11 +67,11 @@
 
 ## 🚀 快速开始
 
-使用 **Python 3.12–3.14** 或 **Docker Compose v2**。v0.2.0 使用 FastAPI 后端；部署检查覆盖 Windows、Linux 的 Python 3.12–3.14 和 Linux Docker。
+使用 **Python 3.12–3.14** 或 **Docker Compose v2**。v0.2.1 使用 FastAPI 后端；部署检查覆盖 Windows、Linux 的 Python 3.12–3.14 和 Linux Docker。
 
 ### 1. 获取项目
 
-下载并解压 v0.2.0 的[部署 ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.2.0/random-signal-agent-v0.2.0-deploy.zip)，在解压目录中的 `工程文件/代码` 打开终端。
+下载并解压 v0.2.1 的[部署 ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.2.1/random-signal-agent-v0.2.1-deploy.zip)，在解压目录中的 `工程文件/代码` 打开终端。
 
 也可以克隆仓库：
 
@@ -122,7 +122,7 @@ Windows 将第一条命令替换为 `Copy-Item .env.example .env`。上传文件
 
 ## 🧪 第一个实验
 
-在页面顶部选择模板与比较目标，调整参数后点击“运行并比较六种方法”。完成后命名并保存快照，或导出实验 ZIP；导入该 ZIP 可以恢复全部采样、结果及工具记录。当前实验每次成功操作后自动保存。
+在页面顶部选择模板与比较目标，调整参数后点击“运行并比较六种方法”。完成后命名并保存快照，或导出实验 ZIP；导入该 ZIP 可以恢复全部采样、结果及工具记录。当前实验每次成功操作后自动保存。运行或恢复后默认比较当前数据；选择其他模板可生成新信号。实验列表支持按名称搜索，输入新名称后可重命名选中快照；删除前会确认，并保留当前工作区与其他快照。
 
 
 1. 在对话栏输入采集指令：
@@ -225,7 +225,7 @@ Docker Compose 读取代码目录下的 `.env`。Docker 参数、HTTPS 部署与
 | --- | --- |
 | 为什么在线预览不能运行新实验？ | GitHub Pages 提供已保存的展示内容。运行本地后端或使用 Docker 部署，即可交互实验。 |
 | 必须配置 API Key 吗？ | 本地信号工具无需密钥；模型辅助对话属于可选功能。 |
-| 支持哪些 Python 版本？ | v0.2.0 支持 3.12–3.14，已移除 `cgi`；旧 v0.1.0 包仍需 Python 3.12。 |
+| 支持哪些 Python 版本？ | v0.2.1 支持 3.12–3.14，已移除 `cgi`；旧 v0.1.0 包仍需 Python 3.12。 |
 | Windows 无法激活虚拟环境怎么办？ | 快速开始命令直接调用 `.venv\Scripts\python.exe`，无需激活。 |
 | 麦克风无法使用怎么办？ | 通过 localhost 或 HTTPS 访问应用，并在浏览器中允许麦克风权限。 |
 | 为什么上传信号没有 SNR 数值？ | 基于参考信号的 SNR 需要干净信号；上传样本与麦克风音频不包含该参考。 |
@@ -275,7 +275,7 @@ Diting turns Random Signals coursework into reproducible experiments. Generate a
 
 Built for the Random Signals course at **UESTC**. The local toolchain works without a model API key; an optional Chat Completions-compatible service adds model-assisted dialogue.
 
-[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.2.0](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.2.0) · [📘 Installation guide](RELEASE.md)
+[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.2.1](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.2.1) · [📘 Installation guide](RELEASE.md)
 
 ## 🧭 Explore
 
@@ -293,7 +293,7 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 
 | Capability | What you can do |
 | --- | --- |
-| 💾 Experiment workbench | Create from templates, save, reopen or duplicate snapshots, and resume after a restart. |
+| 💾 Experiment workbench | Create from templates, save, reopen, duplicate, search, rename or delete snapshots, and resume after a restart. |
 | 📦 Data and reports | Export full-resolution CSV, standalone HTML reports, manifests and portable experiment ZIPs. |
 | 🧮 Explainable comparison | Choose denoising, waveform or transient preservation; inspect score terms, parameters and timings. |
 | 🎲 Reproducible simulation | Set sample rate, duration, frequency, noise, and random seed. |
@@ -307,7 +307,7 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 
 ## 🎬 Interface
 
-![v0.2.0 experiment workbench](docs/images/workbench-v020.png)
+![v0.2.1 experiment workbench](docs/images/workbench-v021.png)
 
 <details>
 <summary><strong>Watch an Agent mode experiment</strong></summary>
@@ -322,11 +322,11 @@ Enable **Agent mode**, enter an acquisition command, and follow the preprocessin
 
 ## 🚀 Quick start
 
-Use **Python 3.12–3.14** or **Docker Compose v2**. v0.2.0 uses FastAPI; deployment checks cover Python 3.12–3.14 on Windows and Linux, plus Docker on Linux.
+Use **Python 3.12–3.14** or **Docker Compose v2**. v0.2.1 uses FastAPI; deployment checks cover Python 3.12–3.14 on Windows and Linux, plus Docker on Linux.
 
 ### 1. Get the project
 
-Download the v0.2.0 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.2.0/random-signal-agent-v0.2.0-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
+Download the v0.2.1 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.2.1/random-signal-agent-v0.2.1-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
 
 Or clone the repository:
 
@@ -377,7 +377,7 @@ The [online preview](https://patrickstar-cmd.github.io/random-signal-agent/) sho
 
 ## 🧪 Your first experiment
 
-Choose a template and comparison goal in the workbench, then run the six methods. Name and save a snapshot, or export an experiment ZIP to restore full samples, results and tool records later. Successful operations automatically save the current experiment.
+Choose a template and comparison goal in the workbench, then run the six methods. Name and save a snapshot, or export an experiment ZIP to restore full samples, results and tool records later. Successful operations automatically save the current experiment. After running or restoring, comparisons reuse the current data; select a different template to generate a new signal. Search snapshots by name, rename a selected snapshot using the name field, or delete it after confirmation. Deletion preserves the current workspace and other snapshots.
 
 
 1. Enter this acquisition command in the chat. The example uses Chinese, as supported by the local command parser:
@@ -482,7 +482,7 @@ The check covers health, Web assets, Agent mode, streaming, CSV upload, and synt
 | --- | --- |
 | Why does the online preview not run new experiments? | GitHub Pages serves the saved showcase. Start the backend locally or deploy it with Docker for interactive use. |
 | Do I need an API key? | The local signal tools do not require one. Model-assisted dialogue is optional. |
-| Which Python versions work? | v0.2.0 supports 3.12–3.14 and removes `cgi`. The older v0.1.0 package still requires Python 3.12. |
+| Which Python versions work? | v0.2.1 supports 3.12–3.14 and removes `cgi`. The older v0.1.0 package still requires Python 3.12. |
 | Why can I not activate the virtual environment on Windows? | The quick-start commands call `.venv\Scripts\python.exe` directly and do not require activation. |
 | Why is the microphone unavailable? | Open the app on localhost or HTTPS and allow microphone access in the browser. |
 | Why does my uploaded signal have no SNR value? | Reference-based SNR requires a clean signal. Uploaded samples and microphone audio do not provide that reference. |

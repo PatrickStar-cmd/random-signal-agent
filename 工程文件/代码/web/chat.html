@@ -17,10 +17,10 @@
   </header>
 
   <section class="workbench" aria-label="实验工作台">
-    <div class="wb-heading"><strong>实验工作台 <small>v0.2.0</small></strong><span id="wbStatus" role="status">每次操作后自动保存</span><button id="wbRecover" type="button">恢复未完成请求</button></div>
+    <div class="wb-heading"><strong>实验工作台 <small>v0.2.1</small></strong><span id="wbStatus" role="status">每次操作后自动保存</span><button id="wbRecover" type="button">恢复未完成请求</button></div>
     <details id="wbPanel" open><summary>模板与实验管理</summary>
       <form id="wbForm" class="wb-fields">
-        <label>信号模板<select id="wbTemplate"><option value="sine">正弦 + 高斯噪声</option><option value="impulse">正弦 + 脉冲干扰</option><option value="ar">AR(1) 随机过程</option><option value="current">当前 / 已上传信号</option></select></label>
+        <label>信号模板<select id="wbTemplate"><option value="sine">正弦 + 高斯噪声</option><option value="impulse">正弦 + 脉冲干扰</option><option value="ar">AR(1) 随机过程</option><option value="current">当前信号</option></select></label>
         <label>采样率 / Hz<input id="wbRate" type="number" value="200" min="1" max="192000" required></label>
         <label>时长 / s<input id="wbDuration" type="number" value="8" min="0.01" step="any" required></label>
         <label>基频 / Hz<input id="wbFrequency" type="number" value="8" min="0" step="any" required></label>
@@ -32,8 +32,9 @@
         <label>比较目标<select id="wbGoal"><option value="waveform">保留波形</option><option value="denoise">抑噪</option><option value="transient">保留瞬态</option></select></label>
         <button id="wbRun" type="submit">运行并比较六种方法</button>
       </form>
-      <p class="wb-hint">同一参数与种子生成相同信号；当前信号模式可重新比较上传的数据。最多 200,000 个采样点。</p>
-      <div class="wb-actions"><input id="wbName" aria-label="实验名称" placeholder="实验名称" maxlength="120" value="我的信号实验"><button id="wbSave">保存为新快照</button><select id="wbExperiments" aria-label="已保存实验"><option value="">选择已保存的实验</option></select><button id="wbOpen">打开</button><button id="wbDuplicate">复制所选实验</button></div>
+      <p class="wb-hint">同一参数与种子生成相同信号。运行或恢复后，默认仅比较当前数据；选择其他模板可生成新信号。最多 200,000 个采样点。</p>
+      <div class="wb-actions"><input id="wbName" aria-label="实验名称" placeholder="实验名称" maxlength="120" value="我的信号实验"><button id="wbSave">保存为新快照</button></div>
+      <div class="wb-actions"><input id="wbSearch" type="search" aria-label="搜索已保存实验" placeholder="按名称搜索实验"><select id="wbExperiments" aria-label="已保存实验"><option value="">选择已保存的实验</option></select><button id="wbOpen">打开</button><button id="wbDuplicate">复制</button><button id="wbRename">按上方名称重命名</button><button id="wbDelete">删除快照</button></div>
       <div class="wb-actions"><span>导出：</span><button data-export="zip">完整实验包 ZIP</button><button data-export="html">HTML 报告</button><button data-export="csv">完整数据 CSV</button><button data-export="json">参数与清单 JSON</button><label class="wb-import">导入实验包<input id="wbImport" type="file" accept=".zip"></label></div>
       <details id="wbScores"><summary>评分依据与耗时</summary><div id="wbScoreContent">运行比较后显示。分数仅用于相同数据与目标下的方法比较。</div></details>
     </details>

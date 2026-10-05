@@ -1,6 +1,7 @@
 /* Experiment controls share the existing agent canvas and chat renderer. */
 (() => {
   let busy = false;
+  let experiments = [];
   let limits = {max_samples:200000, experiment_package_bytes:67108864};
   const status = (message, error = false) => {
     $("wbStatus").textContent = message;
@@ -13,12 +14,30 @@
     if (!response.ok || data.error) throw new Error(data.error || `HTTP ${response.status}`);
     return data;
   }
-  async function refreshList() {
-    const data = await api(`/api/experiments?session_id=${encodeURIComponent(sessionId)}`);
+  function renderList() {
     const selected = $("wbExperiments").value;
-    $("wbExperiments").innerHTML = '<option value="">选择已保存的实验</option>' + data.experiments.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.name)} · ${new Date(e.updated * 1000).toLocaleString()}</option>`).join("");
+    const query = $("wbSearch").value.trim().toLocaleLowerCase();
+    const visible = experiments.filter(e => e.name.toLocaleLowerCase().includes(query));
+    $("wbExperiments").innerHTML = `<option value="">${visible.length ? '选择已保存的实验' : '没有匹配的实验'}</option>` + visible.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.name)} · ${new Date(e.updated * 1000).toLocaleString()}</option>`).join("");
     $("wbExperiments").value = selected;
   }
+  async function refreshList(preferred) {
+    experiments = (await api(`/api/experiments?session_id=${encodeURIComponent(sessionId)}`)).experiments;
+    if (preferred) $("wbSearch").value = "";
+    renderList();
+    if (preferred) $("wbExperiments").value = preferred;
+  }
+  function selectedExperiment() {
+    const selected = experiments.find(e => e.id === $("wbExperiments").value);
+    if (!selected) throw new Error("先选择一个已保存的实验");
+    return selected;
+  }
+  $("wbSearch").addEventListener("input", renderList);
+  function updateMode() {
+    const current = $("wbTemplate").value === 'current';
+    document.querySelectorAll('#wbForm input').forEach(input => input.disabled = current);
+  }
+  $("wbTemplate").addEventListener("change", updateMode);
   async function action(fn) {
     if (busy) return;
     busy = true;
@@ -35,7 +54,7 @@
   function apply(data) {
     if (data.state) {
       applyAgentState(data.state, {skipRealtimePlayback: true});
-      if (data.state.messages?.length) {
+      if (Array.isArray(data.state.messages)) {
         state.messages = data.state.messages.map(m => ({role: m.role, text: m.content}));
         renderMessages();
       }
@@ -70,7 +89,7 @@
   $("wbForm").addEventListener("submit", event => {
     event.preventDefault();
     action(async () => {
-      const config = {sample_rate:+$("wbRate").value,duration:+$("wbDuration").value,base_frequency:+$("wbFrequency").value,
+      const config = $("wbTemplate").value === 'current' ? {} : {sample_rate:+$("wbRate").value,duration:+$("wbDuration").value,base_frequency:+$("wbFrequency").value,
         noise_std:+$("wbNoise").value,amplitude:+$("wbAmplitude").value,seed:+$("wbSeed").value,ar_coefficient:+$("wbAR").value,impulse_probability:+$("wbImpulse").value};
       if (config.sample_rate * config.duration > limits.max_samples) throw new Error(`采样点数超过 ${limits.max_samples}，请减小采样率或时长。`);
       await runPending({path:"/api/experiment/run", payload:payload({template:$("wbTemplate").value,goal:$("wbGoal").value,config,tool_library:state.toolLibrary})});
@@ -78,21 +97,34 @@
   });
   $("wbSave").onclick = () => action(async () => {
     const data = await api('/api/experiments/save', payload({name:$("wbName").value}));
-    await refreshList(); $("wbExperiments").value = data.id; status("已保存独立快照；后续操作不会覆盖它");
+    await refreshList(data.id); status("已保存独立快照；后续操作不会覆盖它");
   });
   $("wbOpen").onclick = () => action(async () => {
-    if (!$("wbExperiments").value) throw new Error("先选择一个实验");
-    const name = $("wbExperiments").selectedOptions[0].textContent.split(" · ")[0];
-    apply(await api('/api/experiments/open', payload({id:$("wbExperiments").value})));
+    const {id, name} = selectedExperiment();
+    apply(await api('/api/experiments/open', payload({id})));
     $("wbName").value = name; status("实验已恢复");
   });
   $("wbDuplicate").onclick = () => action(async () => {
-    if (!$("wbExperiments").value) throw new Error("先选择要复制的实验");
-    const selected = $("wbExperiments").value;
-    const name = $("wbExperiments").selectedOptions[0].textContent.split(" · ")[0] + " 副本";
-    const data = await api('/api/experiments/duplicate', payload({id:selected,name}));
-    await refreshList(); $("wbExperiments").value=data.id; status("已复制快照");
+    const selected = selectedExperiment();
+    const name = Array.from(selected.name).slice(0, 117).join('') + " 副本";
+    const data = await api('/api/experiments/duplicate', payload({id:selected.id,name}));
+    await refreshList(data.id); status("已复制快照");
   });
+  $("wbRename").onclick = () => action(async () => {
+    const selected = selectedExperiment();
+    const data = await api('/api/experiments/rename', payload({id:selected.id,name:$("wbName").value}));
+    await refreshList(data.id); $("wbName").value=data.name; status("快照已重命名");
+  });
+  $("wbDelete").onclick = () => {
+    if (busy) return;
+    let selected;
+    try { selected = selectedExperiment(); } catch (error) { status(error.message, true); return; }
+    if (!window.confirm(`删除快照「${selected.name}」？此操作不可撤销。当前工作区和其他快照会保留。`)) return;
+    action(async () => {
+      await api('/api/experiments/delete', payload({id:selected.id}));
+      await refreshList(); status("快照已删除；当前工作区和其他快照已保留");
+    });
+  };
   document.querySelectorAll('[data-export]').forEach(button => button.onclick = () => action(async () => {
     const format = button.dataset.export;
     const response = await fetch(`/api/experiments/export?session_id=${encodeURIComponent(sessionId)}&format=${format}&name=${encodeURIComponent($("wbName").value)}`);
@@ -107,7 +139,7 @@
     const form = new FormData(); form.append('session_id',sessionId); form.append('request_id',createSessionId()); form.append('file',file);
     const response = await fetch('/api/experiments/import',{method:'POST',body:form});
     const data = await response.json(); if (!response.ok || data.error) throw new Error(data.error);
-    apply(data); await refreshList(); $("wbExperiments").value=data.id; status("实验包已校验并导入"); $("wbImport").value="";
+    apply(data); await refreshList(data.id); $("wbName").value="Imported experiment"; status("实验包已校验并导入"); $("wbImport").value="";
   });
   $("wbRecover").onclick = () => action(async () => {
     const saved = sessionStorage.getItem("rs_pending_workbench");
@@ -123,10 +155,11 @@
     const config = current?.signal?.config;
     if (config) {
       for (const [id, key] of Object.entries({wbRate:'sample_rate',wbDuration:'duration',wbFrequency:'base_frequency',wbNoise:'noise_std',wbAmplitude:'amplitude',wbSeed:'seed',wbAR:'ar_coefficient',wbImpulse:'impulse_probability'})) $(id).value=config[key];
-      $("wbTemplate").value=!current.signal.has_clean_reference ? 'current' : config.waveform==='ar_process' ? 'ar' : config.noise_model==='gaussian_impulse' ? 'impulse' : 'sine';
+      $("wbTemplate").value='current';
+      updateMode();
     }
+    $("wbGoal").value=current?.comparison_goal || 'waveform';
     if (!comparison) { $("wbScoreContent").textContent="运行比较后显示。"; return; }
-    $("wbGoal").value=current.comparison_goal || 'waveform';
     $("wbScoreContent").innerHTML=`<p>${comparison.reference_mode === 'clean_reference' ? '有干净参考信号：显示真实 SNR 与误差指标。' : '无干净参考信号：SNR 不可计算；以下分数为启发式诊断。'} ${escapeHtml(comparison.score_note || '')}</p><div class="wb-score-scroll"><table class="wb-score-table"><thead><tr><th>方法</th><th>得分</th><th>SNR / dB</th><th>搜索耗时 / ms</th><th>评分分项</th><th>参数</th></tr></thead><tbody>${comparison.methods.map(m=>`<tr><td>${escapeHtml(m.label)}${m.method===comparison.recommended?' ★':''}</td><td>${m.score.toFixed(3)}</td><td>${m.processed_snr_db==null?'不适用':m.processed_snr_db.toFixed(2)}</td><td>${m.duration_ms ?? '—'} / ${m.candidate_count} 组</td><td>${Object.entries(m.score_terms||{}).map(([k,v])=>`${terms[k]||escapeHtml(k)}: ${Number(v).toFixed(2)}`).join('<br>')}</td><td><details><summary>查看</summary><pre>${escapeHtml(JSON.stringify(m.parameters,null,2))}</pre></details></td></tr>`).join('')}</tbody></table></div>`;
   });
   refreshList().catch(error=>status(error.message,true)); recoverVisibility();

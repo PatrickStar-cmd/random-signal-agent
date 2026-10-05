@@ -22,7 +22,7 @@ import server
 from src.dialogue_agent import RandomSignalDialogueAgent, ConversationState
 from src.signal_processing import SignalConfig, generate_random_signal, decimate_for_export
 from src.tasks import TaskEngine, TaskConflict, TaskBusy
-from src.workbench import ExperimentStore, snapshot, restore, export_archive, import_archive
+from src.workbench import ExperimentStore, VERSION, ALGORITHM_VERSION, snapshot, restore, export_archive, import_archive
 
 
 class WorkbenchTests(unittest.TestCase):
@@ -125,6 +125,74 @@ class WorkbenchTests(unittest.TestCase):
         self.assertEqual(other.status_code,400)
         self.assertFalse(self.client.get('/api/state',params={'session_id':'b'}).json()['state']['has_signal'])
 
+    def test_snapshot_management_preserves_shared_data_and_autosave(self):
+        self.experiment()
+        store = self.app.state.store
+        samples = self.app.state.agent.get_session('a').bundle.observed.copy()
+        saved = self.post('/api/experiments/save', {'name':'A · 信号 <实验>'})
+        copied = self.post('/api/experiments/duplicate', {'id':saved['id'], 'name':'Copy'})
+        renamed = self.post('/api/experiments/rename', {'id':saved['id'], 'name':' New · name '})
+        self.assertEqual(renamed['name'], 'New · name')
+        for operation in ('rename', 'delete'):
+            other = self.client.post('/api/experiments/'+operation, json={'session_id':'b','id':saved['id'],'name':'Hidden'})
+            self.assertEqual(other.status_code,400,other.text)
+            auto = self.client.post('/api/experiments/'+operation, json={'session_id':'a','id':store.auto_id('a'),'name':'Auto'})
+            self.assertEqual(auto.status_code,400,auto.text)
+        payload = {'id':saved['id'],'request_id':'delete-once'}
+        self.assertTrue(self.post('/api/experiments/delete',payload)['deleted'])
+        self.assertTrue(self.post('/api/experiments/delete',payload)['deleted'])
+        self.assertEqual([e['id'] for e in store.list('a')], [copied['id']])
+        for key in (copied['id'],store.auto_id('a')):
+            np.testing.assert_array_equal(store.load(key,'a').bundle.observed,samples)
+        np.testing.assert_array_equal(self.app.state.agent.get_session('a').bundle.observed,samples)
+        with self.assertRaises(KeyError):store.load(saved['id'],'a')
+
+    def test_all_snapshot_names_reject_reserved_empty_and_non_text_values(self):
+        self.experiment()
+        saved = self.post('/api/experiments/save', {'name':'Original'})
+        for operation in ('save','duplicate','rename'):
+            for name in ('', '  ', ' Autosave ', 'x'*121, None, 123):
+                response = self.client.post('/api/experiments/'+operation,json={'session_id':'a','id':saved['id'],'name':name})
+                self.assertEqual(response.status_code,400,response.text)
+        self.assertEqual(self.app.state.store.list('a')[0]['name'],'Original')
+
+    def test_v020_snapshots_and_zip_import_remain_compatible(self):
+        state = ConversationState('a',bundle=generate_random_signal(SignalConfig(duration=1)))
+        document, raw = snapshot(state)
+        manifest = json.loads(document)
+        self.assertEqual(manifest['app_version'],VERSION)
+        self.assertEqual(manifest['algorithm_version'],ALGORITHM_VERSION)
+        manifest.pop('app_version')  # Actual v0.2.0 schema has no app_version.
+        manifest['algorithm_version']='0.2.0'
+        legacy = json.dumps(manifest).encode()
+        store = self.app.state.store
+        key = store.save(state,'Legacy')
+        with store.connect() as db:db.execute('UPDATE snapshots SET document=? WHERE id=?',(legacy,key))
+        np.testing.assert_array_equal(store.load(key,'a').bundle.observed,state.bundle.observed)
+        buffer=io.BytesIO()
+        with zipfile.ZipFile(buffer,'w') as archive:
+            archive.writestr('manifest.json',legacy);archive.writestr('samples.npz',raw)
+        imported=self.client.post('/api/experiments/import',data={'session_id':'b'},files={'file':('v020.zip',buffer.getvalue())})
+        self.assertEqual(imported.status_code,200,imported.text)
+        np.testing.assert_array_equal(self.app.state.agent.get_session('b').bundle.observed,state.bundle.observed)
+        manifest['algorithm_version']='999'
+        with self.assertRaisesRegex(ValueError,'algorithm'):restore(json.dumps(manifest),raw)
+
+    def test_transport_switch_replays_v020_task_and_operation_cannot_be_overridden(self):
+        agent = self.app.state.agent
+        data={'session_id':'a','request_id':'transport','message':'你好','respond_async':True,'operation':'user-value'}
+        with patch.object(agent,'chat',wraps=agent.chat) as chat:
+            self.post('/api/chat',data)
+            key=hashlib.sha256(b'a\0transport').hexdigest()
+            legacy=hashlib.sha256(json.dumps({**data,'operation':'chat'},sort_keys=True,ensure_ascii=False).encode()).hexdigest()
+            with self.app.state.store.connect() as db:db.execute('UPDATE tasks SET fingerprint=? WHERE id=?',(legacy,key))
+            replay=self.client.post('/api/chat/stream',json={**data,'respond_async':False})
+            self.assertEqual(replay.status_code,200,replay.text)
+            self.assertIn('"event": "done"',replay.text)
+            self.assertEqual(chat.call_count,1)
+            collision=self.client.post('/api/realtime/stop',json=data)
+            self.assertEqual(collision.status_code,409,collision.text)
+
     def test_size_numeric_and_archive_boundaries(self):
         with patch.object(server,'MAX_BODY',128):
             response=self.client.post('/api/chat',content=b'x'*129)
@@ -175,6 +243,30 @@ class WorkbenchTests(unittest.TestCase):
 
 
 class TaskTests(unittest.TestCase):
+    def test_progress_continues_after_bounded_replay_buffer_wraps(self):
+        with tempfile.TemporaryDirectory() as temp:
+            engine=TaskEngine(RandomSignalDialogueAgent(),ExperimentStore(Path(temp)))
+            phase={'status':'running','result':None}
+            try:
+                with patch.object(engine,'status',side_effect=lambda *_:dict(phase)), patch.object(engine.condition,'wait'):
+                    for i in range(300):engine._emit('key',{'event':'progress','tool':'method','status':'running','step':i})
+                    stream=engine.stream('key','a')
+                    self.assertEqual(next(stream)['status'],'queued')
+                    first=[next(stream) for _ in range(256)]
+                    self.assertEqual(first[-1]['sequence'],300)
+                    for i in range(300,600):engine._emit('key',{'event':'progress','tool':'method','status':'running','step':i})
+                    self.assertEqual(next(stream)['event'],'heartbeat')
+                    second=[next(stream) for _ in range(256)]
+                    self.assertEqual(second[-1]['step'],599)
+                    self.assertGreater(second[0]['sequence'],first[-1]['sequence'])
+                    engine._emit('key',{'event':'progress','tool':'method','status':'success'})
+                    phase.update(status='done',result={'reply':'ok'})
+                    tail=list(stream)
+                    self.assertEqual(tail[-2]['sequence'],601)
+                    self.assertEqual(tail[-1]['event'],'done')
+                    self.assertEqual(len(engine.events['key']),256)
+            finally:engine.close()
+
     def test_failed_operation_restores_previous_state(self):
         with tempfile.TemporaryDirectory() as temp:
             agent=RandomSignalDialogueAgent();engine=TaskEngine(agent,ExperimentStore(Path(temp)))

@@ -95,7 +95,7 @@ GitHub Pages 从 `main` 分支 `/docs` 发布；生成结果后提交该目录�
 
 ## v0.2.0 工作台与验证
 
-启动后在页面顶部选择模板和目标、设置采样率/时长/基频/幅值/噪声/种子/AR 系数/脉冲概率，运行比较。命名并“保存为新快照”产生独立实验；“打开”恢复选中实验，“复制”保留原件并生成副本。每次成功操作还会自动保存当前会话。ZIP 可移到另一个浏览器或同版本服务导入，CSV 保留每个采样点。HTML 无需后端即可打开。
+启动后在页面顶部选择模板和目标、设置采样率/时长/基频/幅值/噪声/种子/AR 系数/脉冲概率，运行比较。命名并“保存为新快照”产生独立实验；“打开”恢复选中实验，“复制”保留原件并生成副本。每次成功操作还会自动保存当前会话。ZIP 可移到另一个浏览器或兼容算法版本的服务导入，CSV 保留每个采样点。HTML 无需后端即可打开。
 
 ```bash
 python -m pip install -r requirements-test.txt
@@ -114,3 +114,13 @@ python scripts/benchmark_algorithms.py
 新增 API：`POST /api/experiment/run`；`GET /api/experiments`；`POST /api/experiments/{save,open,duplicate,import}`；`GET /api/experiments/export?format=zip|csv|html|json`；`GET /api/tasks/{id}` 与 `/events`。请求包含 `session_id` 和唯一 `request_id`，重试必须原样复用；同 ID 不同参数返回 409。`respond_async:true` 返回 task_id，后续读取实际进度。聊天普通/SSE 路由共享同一幂等任务。API 字段详情可直接参考 `server.py` 与前端 `web/workbench.js`。
 
 使用 `python scripts/smoke_deployment.py` 验证真实运行服务；服务重启后再执行 `python scripts/smoke_deployment.py --check-persistence` 验证当前实验及命名快照保留。成功日志保存会话及校验摘要，供第二步读取。
+
+## v0.2.1 快照管理与升级
+
+在实验列表前的搜索框按名称筛选。选择实验，在名称框输入新名称，点击“按上方名称重命名”。“删除快照”会先确认；取消无修改，确认后当前工作区及其他快照保留。复制名称支持中间点等字符；名称需 1–120 字符且不能为 Autosave。
+
+`POST /api/experiments/rename` 接收 `{session_id, request_id, id, name}`；`POST /api/experiments/delete` 接收 `{session_id, request_id, id}`。它们遵循原幂等与会话限制。重试只需保持业务参数不变，可以改变 `respond_async`；旧版保存的任务摘要也可重放。
+
+运行或恢复后模板切换为“当前信号”，只修改目标可重新评分；若要编辑生成参数，先选择正弦、脉冲或 AR 模板。打开空聊天历史的实验会清除上一实验聊天。
+
+升级保留整个 data/（SQLite 和 NPZ），不要清空数据库；详细步骤见 DEPLOY.md。`python scripts/build_release.py` 后直接执行 `python scripts/verify_release.py` 即按 config/release.json 自动选取部署包；也可用 --archive 指定路径。验证仍覆盖写入 logs/release/latest.log。

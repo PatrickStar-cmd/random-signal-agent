@@ -17,9 +17,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--archive', type=Path, required=True)
+    parser.add_argument('--archive', type=Path, help='Defaults to the archive named by config/release.json')
     args = parser.parse_args()
-    archive = args.archive.resolve()
+    config = json.loads((ROOT / 'config/release.json').read_text(encoding='utf-8'))
+    archive = (args.archive or ROOT / 'outputs/release' / f"{config['name']}-v{config['version']}-deploy.zip").resolve()
     output = ROOT / 'outputs/release'
     output.mkdir(parents=True, exist_ok=True)
     log_dir = ROOT / 'logs/release'

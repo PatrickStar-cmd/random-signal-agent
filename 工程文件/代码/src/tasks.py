@@ -58,13 +58,20 @@ class TaskEngine:
         if not isinstance(request_id, str) or not 1 <= len(request_id) <= 128:
             raise ValueError("request_id must contain 1–128 characters")
         key = hashlib.sha256((session + "\0" + request_id).encode()).hexdigest()
-        fingerprint = hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False, allow_nan=False).encode()).hexdigest()
+        def digest(value):
+            return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False, allow_nan=False).encode()).hexdigest()
+        parameters = {k: v for k, v in payload.items() if k != "respond_async"}
+        fingerprint = digest(parameters)
+        # Existing v0.2.0 tasks included transport preferences in their digest.
+        compatible = {fingerprint, digest({**parameters, "respond_async": True}),
+                      digest({**parameters, "respond_async": False})}
         session_lock = self.session_lock(session)
         with self.lock, self.store.connect() as db:
             existing = db.execute("SELECT * FROM tasks WHERE id=?", (key,)).fetchone()
             if existing:
-                if existing["fingerprint"] != fingerprint:
+                if existing["fingerprint"] not in compatible:
                     raise TaskConflict("request_id was already used with different parameters")
+                db.execute("UPDATE tasks SET fingerprint=? WHERE id=?", (fingerprint, key))
                 return key
             if not self.slots.acquire(blocking=False):
                 raise TaskBusy("Task queue is full; retry with the same request_id")
@@ -80,7 +87,9 @@ class TaskEngine:
 
     def _emit(self, key, event):
         with self.condition:
-            self.events.setdefault(key, []).append({**event, "task_id": key})
+            events = self.events.setdefault(key, [])
+            sequence = events[-1]["sequence"] + 1 if events else 1
+            events.append({**event, "task_id": key, "sequence": sequence})
             # Progress replay is bounded; final result is persisted separately.
             self.events[key] = self.events[key][-256:]
             self.condition.notify_all()
@@ -135,11 +144,14 @@ class TaskEngine:
         cursor = 0
         yield {"event": "progress", "task_id": key, "tool": "task", "status": "queued"}
         while True:
-            with self.condition:
-                events = self.events.get(key, [])[cursor:]
-                cursor += len(events)
-            yield from events
+            # Read completion before draining progress so the final tool event is
+            # included even when the worker finishes between these two reads.
             status = self.status(key, session)
+            with self.condition:
+                events = [event for event in self.events.get(key, []) if event["sequence"] > cursor]
+                if events:
+                    cursor = events[-1]["sequence"]
+            yield from events
             if status["status"] == "done":
                 yield {"event": "done", "task_id": key, **status["result"]}
                 return

@@ -20,7 +20,9 @@ from .dialogue_agent import ConversationState
 from .signal_processing import SignalBundle, SignalConfig, PreprocessResult
 from .limits import LIMITS
 
-VERSION = "0.2.0"
+VERSION = "0.2.1"
+# Application maintenance releases do not change the saved algorithm contract.
+ALGORITHM_VERSION = "0.2.0"
 SCHEMA = 1
 MAX_SAMPLES = LIMITS["max_samples"]
 MAX_ARCHIVE = LIMITS["experiment_package_bytes"]
@@ -49,7 +51,7 @@ def snapshot(state):
     buffer = io.BytesIO()
     np.savez_compressed(buffer, **arrays)
     raw = buffer.getvalue()
-    manifest = {"schema_version": SCHEMA, "algorithm_version": VERSION,
+    manifest = {"schema_version": SCHEMA, "algorithm_version": ALGORITHM_VERSION, "app_version": VERSION,
                 "python": platform.python_version(), "numpy": np.__version__,
                 "data_sha256": hashlib.sha256(raw).hexdigest(), "state": document}
     return json.dumps(manifest, ensure_ascii=False, allow_nan=False).encode(), raw
@@ -57,7 +59,7 @@ def snapshot(state):
 
 def restore(document, raw):
     manifest = json.loads(document)
-    if manifest.get("schema_version") != SCHEMA or manifest.get("algorithm_version") != VERSION:
+    if manifest.get("schema_version") != SCHEMA or manifest.get("algorithm_version") != ALGORITHM_VERSION:
         raise ValueError("Unsupported experiment schema or algorithm version")
     if hashlib.sha256(raw).hexdigest() != manifest.get("data_sha256"):
         raise ValueError("Experiment data checksum mismatch")
@@ -160,6 +162,20 @@ class ExperimentStore:
         with self.connect() as db:
             return [dict(r) for r in db.execute("SELECT id,name,updated FROM snapshots WHERE session=? AND name<>'Autosave' ORDER BY updated DESC", (session,))]
 
+    def rename(self, key, session, name):
+        with self.connect() as db:
+            result = db.execute("UPDATE snapshots SET name=?,updated=? WHERE id=? AND session=? AND name<>'Autosave'",
+                                (name, time.time(), key, session))
+            if not result.rowcount:
+                raise KeyError("Saved experiment not found in this browser session")
+
+    def delete(self, key, session):
+        # Arrays may also be referenced by autosave or another snapshot. Keep them.
+        with self.connect() as db:
+            result = db.execute("DELETE FROM snapshots WHERE id=? AND session=? AND name<>'Autosave'", (key, session))
+            if not result.rowcount:
+                raise KeyError("Saved experiment not found in this browser session")
+
     @staticmethod
     def auto_id(session):
         return "auto-" + hashlib.sha256(session.encode()).hexdigest()
@@ -198,7 +214,7 @@ def report_html(state, name):
         r.get("duration_ms", ""), json.dumps(r["parameters"], ensure_ascii=False))) + "</tr>" for r in comparison.get("methods", []))
     details = {"configuration": b.config.to_dict(), "source": b.source, "sample_count": len(b.observed),
                "goal": state.comparison_goal, "comparison": comparison, "summary": state.summary,
-               "tools": state.tool_calls, "algorithm_version": VERSION}
+               "tools": state.tool_calls, "algorithm_version": ALGORITHM_VERSION, "app_version": VERSION}
     # Standalone SVG uses the same extrema-preserving display sampling as the app.
     from .signal_processing import decimate_for_export
     series = [b.time, b.observed] + ([state.processed.signal] if state.processed else [])

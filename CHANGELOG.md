@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.2.1 · 2026-10-05
+
+- Search saved experiments by name; rename or delete a selected snapshot with deletion confirmation. Current data and other snapshots remain intact.
+- Preserve complete names containing ` · `, validate duplicate/rename names consistently, and clear stale chat when restoring an empty history.
+- Reuse the current signal after running/restoring; generation parameters are disabled in comparison-only mode to prevent accidental regeneration.
+- Keep progress streaming after the 256-event replay buffer wraps and drain final tool events before completion.
+- Allow retries to switch synchronous/asynchronous transport without duplicate execution; preserve v0.2.0 task replay and protect the internal operation identifier.
+- Separate application and algorithm versions: existing v0.2.0 snapshots, autosaves and ZIPs remain readable without resetting the database.
+- Release verification selects its archive from configuration instead of a hard-coded version.
+
+新增快照搜索、重命名和删除，修复名称截断、旧聊天残留、比较时误生成信号及长任务进度中断。应用版本更新为 0.2.1，保存格式仍为 schema 1 / algorithm 0.2.0；升级前备份整个 data/。
+
 ## v0.2.0 · 2026-10-02
 
 - Persistent experiment workbench with named snapshots, duplication, automatic recovery, and portable ZIP import/export.

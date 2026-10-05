@@ -58,8 +58,17 @@ def check(base_url):
     data = request(f'/api/experiments/export?session_id={session}&format=csv')
     package = request(f'/api/experiments/export?session_id={session}&format=zip')
     assert package.startswith(b'PK') and len(data.splitlines()) == config['sample_rate'] * config['duration'] + 1
+    renamed = json.loads(request('/api/experiments/rename',{'session_id':session,'id':saved['id'],'name':'Deployment · renamed'}))
+    assert renamed['name']=='Deployment · renamed'
+    copied = json.loads(request('/api/experiments/duplicate',{'session_id':session,'id':saved['id'],'name':'Temporary copy'}))
+    deletion = {'session_id':session,'id':copied['id'],'request_id':'delete-check'}
+    assert json.loads(request('/api/experiments/delete',deletion))['deleted']
+    assert json.loads(request('/api/experiments/delete',deletion))['deleted']
+    remaining = json.loads(request(f'/api/experiments?session_id={session}'))['experiments']
+    assert [e['id'] for e in remaining]==[saved['id']] and remaining[0]['name']=='Deployment · renamed'
+    assert data==request(f'/api/experiments/export?session_id={session}&format=csv')
     return {'status': 'passed', 'session_id':session, 'saved_experiment':saved['id'], 'csv_sha256':hashlib.sha256(data).hexdigest(),
-            'checks': ['health', 'web_assets', 'agent_pipeline', 'sse', 'csv_upload', 'synthetic_audio_download', 'experiment_save', 'full_data_export']}
+            'checks': ['health', 'web_assets', 'agent_pipeline', 'sse', 'csv_upload', 'synthetic_audio_download', 'experiment_save', 'full_data_export', 'snapshot_rename_duplicate_delete', 'delete_retry', 'shared_data_preserved']}
 
 
 def check_persistence(base_url, previous):

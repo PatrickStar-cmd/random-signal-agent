@@ -48,6 +48,12 @@ def session_key(value):
     return value
 
 
+def experiment_name(value):
+    if not isinstance(value, str) or not value.strip() or value.strip() == "Autosave" or len(value.strip()) > 120:
+        raise ValueError("Experiment name must contain 1–120 characters and cannot be Autosave")
+    return value.strip()
+
+
 class BodyLimit:
     """Bound actual bytes before parsing, including chunked bodies."""
     def __init__(self, app):
@@ -163,7 +169,7 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
         message = payload.get("message")
         if not isinstance(message, str) or not message.strip() or len(message) > 16000:
             raise ValueError("message must contain 1–16000 characters")
-        key = engine.submit(session, payload.get("request_id"), {"operation": "chat", **payload},
+        key = engine.submit(session, payload.get("request_id"), {**payload, "operation": "chat"},
                             lambda: agent.chat(session, message, tool_library=payload.get("tool_library"), agent_mode=truthy(payload.get("agent_mode"))))
         if streaming:
             def events():
@@ -185,7 +191,7 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
 
     async def run_task(payload, operation_name, operation):
         session = session_key(payload.get("session_id"))
-        key = engine.submit(session, payload.get("request_id"), {"operation": operation_name, **payload}, operation)
+        key = engine.submit(session, payload.get("request_id"), {**payload, "operation": operation_name}, operation)
         if payload.get("respond_async"):
             return JSONResponse({"task_id": key, "status": "accepted"}, status_code=202)
         return result_response(await run_in_threadpool(engine.wait, key, session))
@@ -287,9 +293,7 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
     async def save(request: Request):
         payload = await body(request)
         session = session_key(payload.get("session_id"))
-        name = str(payload.get("name", "Untitled experiment")).strip()
-        if not name or name == "Autosave" or len(name) > 120:
-            raise ValueError("Experiment name must contain 1–120 characters")
+        name = experiment_name(payload.get("name", "Untitled experiment"))
         def operation():
             state = agent.get_session(session)
             if state.bundle is None:
@@ -311,10 +315,32 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
     async def duplicate(request: Request):
         payload = await body(request)
         session = session_key(payload.get("session_id"))
+        name = experiment_name(payload.get("name", "Experiment copy"))
         def operation():
             source = store.load(str(payload.get("id")), session)
-            return {"id": store.save(source, str(payload.get("name", "Experiment copy"))[:120])}
+            return {"id": store.save(source, name)}
         return await run_task(payload, "duplicate", operation)
+
+    @app.post("/api/experiments/rename")
+    async def rename(request: Request):
+        payload = await body(request)
+        session = session_key(payload.get("session_id"))
+        name = experiment_name(payload.get("name"))
+        def operation():
+            key = str(payload.get("id"))
+            store.rename(key, session, name)
+            return {"id": key, "name": name}
+        return await run_task(payload, "rename", operation)
+
+    @app.post("/api/experiments/delete")
+    async def delete(request: Request):
+        payload = await body(request)
+        session = session_key(payload.get("session_id"))
+        def operation():
+            key = str(payload.get("id"))
+            store.delete(key, session)
+            return {"id": key, "deleted": True}
+        return await run_task(payload, "delete", operation)
 
     @app.get("/api/experiments/export")
     def export(session_id: str, format: str = "zip", name: str = "Experiment"):

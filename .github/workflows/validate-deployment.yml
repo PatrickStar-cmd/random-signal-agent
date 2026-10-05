@@ -33,7 +33,7 @@ jobs:
       - name: Build deployment archive
         run: python scripts/build_release.py
       - name: Install and verify extracted archive
-        run: python scripts/verify_release.py --archive outputs/release/random-signal-agent-v0.2.0-deploy.zip
+        run: python scripts/verify_release.py
       - uses: actions/upload-artifact@v7.0.1
         if: always()
         with:
