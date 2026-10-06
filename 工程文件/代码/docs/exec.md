@@ -163,3 +163,7 @@ API：`POST /api/diagnostics/{analyze,inject,demo,reveal,verify,adopt}`，共同
 ## 可爱海洋界面（待发布）
 
 启动命令不变。默认进入“信号工作区”，其余操作位于六个顶栏入口；模型配置、任务队列与清理位于“模型与设置”。示例按钮只填写指令。界面说明与验证日志位置见 [ui-design.md](ui-design.md)。
+
+## 海洋插画与背景增强（待发布）
+
+启动方式不变，素材随 web/ 本地静态资源提供，不需要生图服务或新运行依赖。替换素材文件为 web/ocean-whale.webp；静态预览的相同副本由 scripts/build_showcase.py 维护。生成提示词、编码参数和 logs/ocean-artwork/ 日志见 [visual-assets.md](visual-assets.md)。

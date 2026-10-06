@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- AI-generated dimensional whale/starfish artwork, transparent WebP delivery (~143 KiB), richer ocean/lilac/pink gradients and restrained decorative emoji. Mobile artwork sits below the copy; preview and README screenshots stay in sync.
+
 - Cute ocean UI: blue/lilac surfaces, original whale illustration, six persistent workspace views, responsive layout and accessible navigation.
 - Chart colors match the light theme, wrapped legends reserve space, diagnostic trial plots survive view changes, and completed tasks correctly show completion. Updated preview and bilingual README screenshots.
 

@@ -14,25 +14,25 @@
 <body>
   <a class="skip-link" href="#layoutRoot">跳到工作区</a>
   <header class="app-header">
-    <a class="brand" href="#layoutRoot" data-view-link="workspace"><span class="brand-icon" aria-hidden="true">≈</span><div><h1>谛听<span class="title-suffix">随机信号智能体</span></h1><div class="sub">SIGNAL EXPLORER · By YangCheng</div></div></a>
+    <a class="brand" href="#layoutRoot" data-view-link="workspace"><span class="brand-icon" aria-hidden="true">🐳</span><div><h1>谛听<span class="title-suffix">随机信号智能体</span></h1><div class="sub">SIGNAL EXPLORER · By YangCheng</div></div></a>
     <div class="header-meta"><span class="local-badge">信号工具 · 本地计算</span><div class="session" id="sessionLabel">时间初始化中</div></div>
   </header>
   <nav class="workflow-nav" aria-label="工作区导航">
-    <a href="#layoutRoot" data-view-link="workspace">⌁ <span>信号工作区</span></a>
-    <a href="#workbenchPanel" data-view-link="templates">◈ <span>模板与实验</span></a>
-    <a href="#dataPanel" data-view-link="data">⇧ <span>导入数据</span></a>
-    <a href="#comparisonPanel" data-view-link="comparison">▥ <span>对比与报告</span></a>
-    <a href="#diagnosticPanel" data-view-link="diagnostics">⌕ <span>诊断实验室</span></a>
-    <a href="#modelPanel" data-view-link="settings">⚙ <span>模型与设置</span></a>
+    <a href="#layoutRoot" data-view-link="workspace"><span class="nav-emoji" aria-hidden="true">🌊</span><span>信号工作区</span></a>
+    <a href="#workbenchPanel" data-view-link="templates"><span class="nav-emoji" aria-hidden="true">🧪</span><span>模板与实验</span></a>
+    <a href="#dataPanel" data-view-link="data"><span class="nav-emoji" aria-hidden="true">📥</span><span>导入数据</span></a>
+    <a href="#comparisonPanel" data-view-link="comparison"><span class="nav-emoji" aria-hidden="true">📊</span><span>对比与报告</span></a>
+    <a href="#diagnosticPanel" data-view-link="diagnostics"><span class="nav-emoji" aria-hidden="true">🔎</span><span>诊断实验室</span></a>
+    <a href="#modelPanel" data-view-link="settings"><span class="nav-emoji" aria-hidden="true">⚙️</span><span>模型与设置</span></a>
   </nav>
 <section data-view="workspace" aria-label="信号工作区">
   <section class="ocean-hero" aria-label="开始探索信号">
-    <div><span class="eyebrow">YOUR LITTLE SIGNAL LAB</span><h2>让每一段信号，讲出自己的故事。</h2><p>从一条波形开始，探索噪声、规律与藏在细节里的异常。</p><div class="hero-actions"><a class="ocean-primary" href="#workbenchPanel" data-view-link="templates">开始一个实验 <span aria-hidden="true">→</span></a><a href="#dataPanel" data-view-link="data">带上我的数据</a><span class="hero-note">无需 API Key 即可体验</span></div></div>
-    <img src="ocean.svg" class="ocean-mascot" alt="" width="420" height="180">
+    <div><span class="eyebrow">YOUR LITTLE SIGNAL LAB</span><h2>让每一段信号，讲出自己的故事。<span class="hero-spark" aria-hidden="true">✨</span></h2><p>从一条波形开始，探索噪声、规律与藏在细节里的异常。</p><div class="hero-actions"><a class="ocean-primary" href="#workbenchPanel" data-view-link="templates">开始一个实验 <span aria-hidden="true">→</span></a><a href="#dataPanel" data-view-link="data">带上我的数据</a><span class="hero-note"><span aria-hidden="true">🐚</span> 无需 API Key 即可体验</span></div></div>
+    <img src="ocean-whale.webp" class="ocean-mascot" alt="" width="1536" height="1024" decoding="async">
   </section>
   <div class="workspace-caption"><div><span class="eyebrow">WORKSPACE</span><h2>信号工作区</h2></div><span id="dataSummary">还没有信号 · 试试模板或导入数据</span></div>
   <main id="layoutRoot">
-    <section class="panel chat"><div class="panel-heading"><span class="heading-icon" aria-hidden="true">✦</span><div><h2>和谛听聊聊</h2><p>提问、采集，或说出你的分析需求</p></div></div>
+    <section class="panel chat"><div class="panel-heading"><span class="heading-icon" aria-hidden="true">💬</span><div><h2>和谛听聊聊</h2><p>提问、采集，或说出你的分析需求</p></div></div>
       <div class="upload">
         <div class="upload-row">
           <input id="fileInput" type="file" accept=".csv,.txt" aria-label="快速上传信号文件">
@@ -68,7 +68,7 @@
 
     <div class="splitter" data-splitter="left" title="拖动调整左侧对话区宽度"></div>
 
-    <section class="panel workspace"><div class="panel-heading"><span class="heading-icon lilac" aria-hidden="true">⌁</span><div><h2>波形与频谱</h2><p>同一信号的两个视角</p></div></div>
+    <section class="panel workspace"><div class="panel-heading"><span class="heading-icon lilac" aria-hidden="true">📈</span><div><h2>波形与频谱</h2><p>同一信号的两个视角</p></div></div>
       <div class="metrics-module collapsed" id="metricsModule">
         <div class="metrics-summary-bar" id="metricsToggle" role="button" tabindex="0" aria-expanded="false">
           <div class="metrics-summary-title">
@@ -115,7 +115,7 @@
 
     <div class="splitter" data-splitter="right" title="拖动调整右侧分析区宽度"></div>
 
-    <aside class="panel side"><div class="panel-heading"><span class="heading-icon coral" aria-hidden="true">◈</span><div><h2>分析工具箱</h2><p>选择方法，查看证据与建议</p></div></div>
+    <aside class="panel side"><div class="panel-heading"><span class="heading-icon coral" aria-hidden="true">🧰</span><div><h2>分析工具箱</h2><p>选择方法，查看证据与建议</p></div></div>
       <div class="side-block">
         <h2>风险与控制</h2>
         <div class="risk">

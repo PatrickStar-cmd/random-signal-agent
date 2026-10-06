@@ -12,7 +12,15 @@
   --chart-surface: #fbfcff;
   --field-surface: #fff;
 }
-body { background: radial-gradient(ellipse at 100% 0, #eae6fb, transparent 40%), var(--bg); font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif; font-size: 14px; }
+body {
+  background:
+    radial-gradient(ellipse at 2% 18%, #cdeff080, transparent 42%),
+    radial-gradient(ellipse at 96% 4%, #d9cff6b3, transparent 45%),
+    radial-gradient(ellipse at 90% 85%, #f6dce580, transparent 40%),
+    linear-gradient(155deg, #f0fbfc 0%, #f2f3ff 48%, #fff5f8 100%);
+  background-attachment: fixed;
+  font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif; font-size: 14px;
+}
 [hidden] { display: none !important; }
 a { color: #5266b8; }
 button, a, summary, input, select { -webkit-tap-highlight-color: transparent; }
@@ -28,7 +36,7 @@ input, select { font: inherit; accent-color: #5266b8; }
 .skip-link:focus { top: 12px; }
 .app-header { max-width: 1680px; margin: auto; padding: 20px 28px 14px; min-height: 78px; background: none; color: var(--ink); overflow: visible; }
 .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--ink); }
-.brand-icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 16px; background: linear-gradient(145deg, #d8eaf9, #e1daf5); color: #5266b8; font-size: 36px; line-height: 1; }
+.brand-icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 16px; background: linear-gradient(145deg, #d5edf6, #e4d8f5); color: #5266b8; font-size: 27px; line-height: 1; box-shadow: inset 0 1px 0 #ffffffbf, 0 4px 12px #6876ad0a; }
 h1 { font-size: 24px; letter-spacing: 2px; text-shadow: none; }
 .title-suffix { color: var(--muted); font-size: 12px; text-shadow: none; letter-spacing: 0; }
 .sub { color: #73839e; font-size: 10px; letter-spacing: 1.3px; text-shadow: none; margin-top: 5px; }
@@ -38,23 +46,27 @@ h1 { font-size: 24px; letter-spacing: 2px; text-shadow: none; }
 .workflow-nav { position: sticky; top: 8px; z-index: 20; max-width: 1624px; margin: 4px auto 20px; padding: 6px; gap: 5px; border-radius: 16px; background: #fff; border: 1px solid #e3e9f4; box-shadow: 0 3px 12px #41578504; }
 .workflow-nav a { display: flex; align-items: center; justify-content: center; gap: 9px; border: 0; border-radius: 11px; color: #697998; padding: 11px 16px; flex: 1; font-size: 18px; white-space: nowrap; }
 .workflow-nav a span { font-size: 13px; color: inherit; }
+.workflow-nav .nav-emoji { font-size: 17px; flex: none; line-height: 1; }
 .workflow-nav a:hover { background: #f2f5fc; }
 .workflow-nav a[aria-current="page"] { background: #eef0fc; color: #5266b8; font-weight: 650; }
 [data-view] { max-width: 1680px; margin: auto; padding: 0 28px 28px; }
 .eyebrow { color: #7d87aa; font-size: 10px; font-weight: 600; letter-spacing: 1.8px; }
-.ocean-hero { position: relative; display: flex; justify-content: space-between; align-items: center; min-height: 170px; border: 1px solid #dce6f6; border-radius: 24px; padding: 26px 32px; background: linear-gradient(110deg, #eaf4fb, #f0edfb 65%, #f8f1f8); overflow: hidden; }
+.ocean-hero { position: relative; isolation: isolate; display: flex; justify-content: space-between; align-items: center; min-height: 210px; border: 1px solid #d3def3; border-radius: 24px; padding: 26px 32px; background: radial-gradient(ellipse at 80% 20%, #ffffff8c, transparent 45%), linear-gradient(115deg, #dff4f8 0%, #e7edff 38%, #eee2fa 72%, #fbe4ee 100%); box-shadow: inset 0 1px 0 #ffffffbf, 0 12px 35px #7885b00a; overflow: hidden; }
+.ocean-hero::before { content: ""; position: absolute; width: 290px; height: 290px; border: 1px solid #ffffff80; border-radius: 50%; right: 22px; top: -88px; z-index: -1; box-shadow: 0 0 0 30px #ffffff26, 0 0 0 65px #ffffff14; pointer-events: none; }
+.ocean-hero > div { position: relative; z-index: 1; }
+.hero-spark { display: inline-block; margin-left: 8px; font-size: .7em; vertical-align: middle; }
 .ocean-hero h2 { margin: 9px 0 10px; font-size: clamp(20px, 2vw, 28px); font-weight: 650; letter-spacing: .3px; }
 .ocean-hero p { color: var(--muted); margin: 0; font-size: 13px; line-height: 1.7; }
 .hero-actions { display: flex; align-items: center; gap: 18px; margin-top: 19px; font-size: 13px; }
 .hero-actions a { text-decoration: none; font-weight: 600; }
 .ocean-primary { display: inline-flex; gap: 20px; align-items: center; padding: 11px 17px; }
 .hero-note { font-size: 11px; color: #6c7d97; }
-.ocean-mascot { width: 300px; height: auto; margin: -5px 10px -10px 24px; flex-shrink: 0; }
+.ocean-mascot { width: 370px; height: 210px; object-fit: contain; margin: -18px -5px -18px 24px; flex-shrink: 0; filter: drop-shadow(0 12px 18px #7085bd12); }
 .workspace-caption { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin: 22px 0 14px; }
 .workspace-caption h2 { font-size: 18px; margin: 4px 0 0; font-weight: 650; }
 #dataSummary { flex: 0 1 auto; color: var(--muted); font-size: 12px; padding-bottom: 2px; text-align: right; }
 main { --left-width: 350px; --right-width: 280px; max-width: none; margin: 0; padding: 0; background: none; height: max(660px, calc(100vh - 340px)); }
-.panel { background: #fff; border: 1px solid #dfe6f2; border-radius: 20px; box-shadow: 0 7px 25px #41578506; backdrop-filter: none; }
+.panel { background: linear-gradient(160deg, #fff, #fdfdff); border: 1px solid #dfe6f2; border-radius: 20px; box-shadow: 0 7px 25px #41578509; backdrop-filter: none; }
 .splitter::before { background: #d6deee; top: 30px; bottom: 30px; }
 .panel-heading { display: flex; align-items: center; gap: 11px; padding: 16px; flex-shrink: 0; }
 .panel-heading h2 { font-size: 15px; margin: 0; font-weight: 650; }
@@ -133,7 +145,7 @@ canvas { border-color: #e7edf6; border-radius: 10px; }
   main { grid-template-columns: minmax(280px, .8fr) minmax(0, 1.2fr); height: auto; gap: 16px; }
   .chat { height: 760px; min-height: 0; }.workspace { height: 760px; min-height: 0; }
   .side { grid-column: 1/-1; max-height: 620px; min-height: 0; }
-  .ocean-mascot { width: 230px; }
+  .ocean-mascot { width: 270px; height: 190px; margin-left: 12px; }
   .workflow-nav a { padding: 10px; flex: 1 0 auto; }
 }
 @media(max-width: 720px) {
@@ -143,9 +155,9 @@ canvas { border-color: #e7edf6; border-radius: 10px; }
   .workflow-nav { margin: 0 16px 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
   .workflow-nav a { font-size: 16px; padding: 10px 3px; gap: 6px; }.workflow-nav a span { font-size: 11px; }
   [data-view] { padding: 0 16px 20px; }
-  .ocean-hero { padding: 22px; display: block; }.ocean-hero h2 { max-width: 250px; line-height: 1.5; font-size: 22px; }
-  .ocean-hero p { max-width: 240px; font-size: 12px; }
-  .ocean-mascot { position: absolute; width: 140px; right: -28px; top: 9px; opacity: .65; margin: 0; pointer-events: none; }
+  .ocean-hero { padding: 22px; display: flex; flex-direction: column; align-items: stretch; }.ocean-hero h2 { line-height: 1.5; font-size: 22px; }
+  .ocean-hero p { font-size: 12px; }
+  .ocean-mascot { position: static; width: min(260px, 100%); height: 150px; margin: 8px auto -12px; opacity: 1; pointer-events: none; }
   .ocean-hero > div { position: relative; z-index: 1; }
   .hero-actions { gap: 14px; flex-wrap: wrap; }.hero-note { flex-basis: 100%; }
   .workspace-caption { align-items: start; flex-direction: column; gap: 9px; margin: 20px 0 12px; }#dataSummary { text-align: left; }
