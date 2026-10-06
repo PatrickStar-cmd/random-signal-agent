@@ -154,3 +154,8 @@ python scripts/benchmark_algorithms.py
 API：`POST /api/diagnostics/{analyze,inject,demo,reveal,verify,adopt}`，共同参数 session_id、request_id、respond_async；analyze 的 options 为 source(observed/processed)、window(32–2048 的 2 次幂)、overlap(0–0.75)、start/end 相对秒数；inject 的 faults 为 {kind,start,end,strength,frequency} 列表及 seed、blind；demo 接收 blind；verify 接收证据卡片 event_id 和诊断 token；adopt/reveal 不需额外参数。`GET /api/diagnostics/view?session_id=...&format=json|html` 重建图像或下载独立报告。重试须复用原请求 ID/参数；修改信号后重新诊断再验证。
 
 盲测未揭晓时完整 ZIP/CSV/HTML/JSON 导出和快照对比会返回 400；诊断 HTML 不含内部基线与真值。揭晓后恢复参考指标与导出。内部持久化保留真值用于评分，这是一种课程盲测功能，不是对服务器文件访问者的保密机制。旧快照缺少新字段时使用空诊断状态；升级前停止服务并备份整个 data/，降级需恢复升级前备份。
+
+
+## 模型 API 配置（待发布）
+
+展开页面顶部“模型 API 配置”，选服务、输入 Key、读取模型列表后点击“测试并应用”。具体操作、配置文件各字段、API 与保存行为见 [模型配置指南](model-api-setup.md)。运行 `python scripts/test_model_settings.py`；结果覆盖写入 `logs/model-settings/latest.log`。配置保存于独立的 data/model-settings.sqlite3，实验导出不含 Key。停止服务并备份整个 data/ 会同时备份记住的 Key，按部署数据权限保存。

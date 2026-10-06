@@ -38,6 +38,7 @@
 
 | 功能 | 可以完成的实验 |
 | --- | --- |
+| 🔑 模型 API 配置（主分支新增） | 在页面选择服务与模型、填写 Key、测试并应用；可按会话记住配置。尚未包含在 v0.2.6 部署包中。 |
 | 🩺 信号诊断实验室 | STFT 时频图联动异常区间，六类可复现故障注入、盲测揭晓评分，以及保留原始观测的验证实验。 |
 | 💾 实验工作台 | 用模板创建实验，保存、恢复、复制、搜索、重命名或删除快照；服务重启后继续工作。 |
 | 📥 数据导入向导 | 预览 CSV/TXT，自选时间列与信号列，转换时间单位并定位错误行。 |
@@ -127,6 +128,8 @@ Windows 将第一条命令替换为 `Copy-Item .env.example .env`。上传文件
 <a id="zh-first-experiment"></a>
 
 ## 🧪 第一个实验
+
+主分支新增“模型 API 配置”：选择服务商、输入 Key、读取模型列表，再点击“测试并应用”，无需修改环境变量或重启。支持 OpenAI、DeepSeek 和自定义兼容接口；[配置指南](工程文件/代码/docs/model-api-setup.md)说明保存方式及高级参数。此功能尚未包含在 v0.2.6 部署包中，使用最新仓库代码即可体验。
 
 在“信号诊断实验室”载入故障演示，查看时频图与证据卡片。点击“定位波形”或拖动时频图选择区间，运行验证实验查看前后变化；只有存在干净参考时显示真实误差。采用结果后可保存快照。盲测在揭晓前隐藏真值和参考误差，禁止完整实验导出与快照对比；独立诊断报告可导出。
 
@@ -303,6 +306,7 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 
 | Capability | What you can do |
 | --- | --- |
+| 🔑 Model API setup (new on main) | Choose a provider/model, enter a key and test/apply in the UI; optional per-session persistence. Not included in the v0.2.6 deployment ZIP yet. |
 | 🩺 Diagnostic laboratory | Linked STFT and event timeline, six seeded fault types, blind challenge evaluation, and reversible evidence-based processing trials. |
 | 💾 Experiment workbench | Create from templates, save, reopen, duplicate, search, rename or delete snapshots, and resume after a restart. |
 | 📥 Data import wizard | Preview CSV/TXT, select time and signal columns, convert time units and locate invalid rows. |
@@ -392,6 +396,8 @@ The [online preview](https://patrickstar-cmd.github.io/random-signal-agent/) sho
 <a id="en-first-experiment"></a>
 
 ## 🧪 Your first experiment
+
+The main branch now includes model API setup: choose a provider, enter a key, load available models and test/apply without restarting. OpenAI, DeepSeek and custom compatible endpoints are supported; see the [setup guide](工程文件/代码/docs/model-api-setup.md). This feature is not included in the v0.2.6 deployment ZIP yet; use the latest repository checkout.
 
 Load the fault demo in the diagnostic laboratory to inspect time-frequency evidence. Locate an event or drag a time range, run a processing trial, and inspect before/after metrics. True error is available only with a clean reference. Adopt a trial and save it as a snapshot. Blind mode hides truth and reference error until reveal; full experiment export and snapshot comparisons are blocked until then, while the diagnostic report remains available.
 

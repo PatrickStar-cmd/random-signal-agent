@@ -37,6 +37,7 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 
 | Capability | What you can do |
 | --- | --- |
+| 🔑 Model API setup (new on main) | Choose a provider/model, enter a key and test/apply in the UI; optional per-session persistence. Not included in the v0.2.6 deployment ZIP yet. |
 | 🩺 Diagnostic laboratory | Linked STFT and event timeline, six seeded fault types, blind challenge evaluation, and reversible evidence-based processing trials. |
 | 💾 Experiment workbench | Create from templates, save, reopen, duplicate, search, rename or delete snapshots, and resume after a restart. |
 | 📥 Data import wizard | Preview CSV/TXT, select time and signal columns, convert time units and locate invalid rows. |
@@ -126,6 +127,8 @@ The [online preview](https://patrickstar-cmd.github.io/random-signal-agent/) sho
 <a id="en-first-experiment"></a>
 
 ## 🧪 Your first experiment
+
+The main branch now includes model API setup: choose a provider, enter a key, load available models and test/apply without restarting. OpenAI, DeepSeek and custom compatible endpoints are supported; see the [setup guide](工程文件/代码/docs/model-api-setup.md). This feature is not included in the v0.2.6 deployment ZIP yet; use the latest repository checkout.
 
 Load the fault demo in the diagnostic laboratory to inspect time-frequency evidence. Locate an event or drag a time range, run a processing trial, and inspect before/after metrics. True error is available only with a clean reference. Adopt a trial and save it as a snapshot. Blind mode hides truth and reference error until reveal; full experiment export and snapshot comparisons are blocked until then, while the diagnostic report remains available.
 

@@ -112,3 +112,14 @@ STFT 把信号切成带重叠的短片段，每段乘 Hann 窗后作实数 FFT�
 输入、参数、处理样本哈希生成 token；验证和采用均重新检查，防止旧卡片处理新数据。采用仅更新 processed，观测与真值不变。新字段进入原有非 pickle JSON/NPZ 快照，数组长度校验与旧字段默认值保持 schema 1 兼容；诊断配置独立版本 1.0，六方法算法契约仍为 0.2.0。STFT 分块与注入/显示聚合有协作取消检查点；取消由任务引擎回滚当前状态。
 
 诊断验收日志 `logs/diagnostics/latest.log`、发布测试 `logs/release/latest.log`、部署 `logs/deployment/latest.log`、浏览器 `logs/browser/latest.log` 均覆盖写入。调试截图位于 debug/v026，仅用于此次验证。
+
+
+## 会话模型与配置隔离（待发布）
+
+模型列表通过 GET /models 获取；测试通过 POST /chat/completions 请求简短文本，非空回复才通过，不能据此断言工具调用能力。预设 OpenAI 使用 max_completion_tokens 且省略温度，通用接口沿用 max_tokens，可在高级配置覆盖。
+
+配置单独存放，默认内存字典，勾选记住后写入 SQLite。按 session_id 分区，不向 ConversationState、任务载荷、快照和实验 ZIP 写入 Key；返回配置时去掉 api_key。客户端对话入口通过 ContextVar 绑定此次会话客户端，结束或生成器关闭时恢复原上下文，避免并行用户互换客户端。配置更新与同会话任务锁串行，一轮请求使用同一客户端。环境变量是没有会话覆盖配置时的默认值。
+
+同 Base URL 才允许留空沿用旧 Key。远程地址需要 HTTPS，localhost 可用 HTTP；拒绝 URL 中的用户密码、查询和 fragment、完整子接口路径。调用拒绝重定向，错误仅显示状态分类，不反射服务正文；测试不返回模型原始回复。记住的 Key 为明文 SQLite 数据，服务的文件访问权限与部署认证仍需保护。SQLite 连接提交后关闭，secure_delete 删除原记录内容；不声称能删除此前备份或系统存储副本。
+
+配置表单不使用 localStorage/sessionStorage 保存 Key；成功应用后清空密码框。浏览器只保留原会话 ID。模型配置日志只记录模拟测试结论：logs/model-settings/latest.log 和 browser.log 覆盖写入；调试截图位于 debug/model-settings，不含真实 Key。

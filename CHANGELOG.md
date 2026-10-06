@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Per-session model API setup with provider presets, dynamic model lists, text connection tests, immediate application and optional restart persistence.
+- Keys are separate from experiment snapshots/task history; browser storage contains no keys. Local mode, configuration removal, compatible token parameters and safe error reporting.
+
+新增模型 API 配置向导，待后续版本发布。
+
 ## v0.2.6 · 2026-10-06
 
 - Diagnostic laboratory with relative-time STFT/PSD, linked waveform and interval selection, explicit resolution, edge padding and bounded display grids.

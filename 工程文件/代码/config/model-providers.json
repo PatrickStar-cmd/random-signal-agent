@@ -1,0 +1,11 @@
+{
+  "providers": [
+    {"id": "openai", "label": "OpenAI", "base_url": "https://api.openai.com/v1", "token_parameter": "max_completion_tokens", "send_temperature": false, "key_url": "https://platform.openai.com/api-keys"},
+    {"id": "deepseek", "label": "DeepSeek", "base_url": "https://api.deepseek.com", "token_parameter": "max_tokens", "send_temperature": true, "key_url": "https://platform.deepseek.com/api_keys"},
+    {"id": "custom", "label": "自定义兼容接口", "base_url": "", "token_parameter": "max_tokens", "send_temperature": true, "key_url": ""}
+  ],
+  "default_timeout": 45,
+  "test_tokens": 128,
+  "response_bytes": 2097152,
+  "max_models": 500
+}

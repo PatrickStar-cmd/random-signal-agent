@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import wave
 from dataclasses import dataclass, field
+from contextvars import ContextVar
 from pathlib import Path
 from time import perf_counter
 from typing import Any
@@ -40,6 +41,7 @@ from .signal_processing import (
     extract_time_features,
 )
 from .llm_client import LLMClientError, OpenAICompatibleClient
+from .model_settings import session_model
 from .tasks import emit_progress, check_cancelled
 from .limits import LIMITS
 
@@ -79,7 +81,16 @@ class RandomSignalDialogueAgent:
 
     def __init__(self) -> None:
         self.sessions: dict[str, ConversationState] = {}
+        self._model_context = ContextVar(f'model-client-{id(self)}', default=None)
         self.llm = OpenAICompatibleClient.from_env()
+
+    @property
+    def llm(self):
+        return self._model_context.get() or self._default_llm
+
+    @llm.setter
+    def llm(self,value):
+        self._default_llm = value
 
     def get_session(self, session_id: str) -> ConversationState:
         """Get or create a conversation session."""
@@ -87,6 +98,7 @@ class RandomSignalDialogueAgent:
             self.sessions[session_id] = ConversationState(session_id=session_id)
         return self.sessions[session_id]
 
+    @session_model
     def chat(
         self,
         session_id: str,
@@ -176,6 +188,7 @@ class RandomSignalDialogueAgent:
             "tool_calls": turn_tool_calls,
         }
 
+    @session_model
     def chat_stream(
         self,
         session_id: str,

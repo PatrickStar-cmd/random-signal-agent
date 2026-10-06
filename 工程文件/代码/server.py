@@ -21,6 +21,8 @@ from src.tasks import TaskEngine, TaskConflict, TaskBusy, emit_progress
 from src.limits import LIMITS
 from src.data_import import inspect_data
 from src import diagnostics
+from src.model_settings import ModelSettings, CONFIG as MODEL_CONFIG
+from src.llm_client import LLMClientError
 from src.experiment_compare import compare_experiments, comparison_html, comparison_svg
 from src.workbench import ExperimentStore, VERSION, MAX_SAMPLES, csv_data, snapshot, report_html, export_archive, import_archive
 
@@ -99,6 +101,8 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
     agent = agent or RandomSignalDialogueAgent()
     store = ExperimentStore(Path(data_dir or DATA_DIR))
     engine = TaskEngine(agent, store)
+    model_settings = ModelSettings(store.root, agent.llm)
+    agent.model_settings = model_settings
     static, uploads, outputs = Path(static_dir or STATIC_DIR), Path(upload_dir or UPLOAD_DIR), Path(output_dir or OUTPUT_DIR)
 
     @asynccontextmanager
@@ -151,6 +155,32 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
     @app.get("/api/tasks")
     def tasks(session_id: str):
         return {"tasks": engine.list(session_key(session_id))}
+
+    @app.get('/api/model/settings')
+    def model_status(session_id: str):
+        return {'settings':model_settings.public(session_key(session_id)), 'providers':MODEL_CONFIG['providers']}
+
+    @app.post('/api/model/{action}')
+    async def configure_model(action: str, request: Request):
+        # JSON and same-origin requests protect browser users from cross-site configuration changes.
+        origin=request.headers.get('origin')
+        if origin and origin.rstrip('/') != str(request.base_url).rstrip('/'):
+            return JSONResponse({'error':'模型配置仅支持同源请求。'},status_code=403)
+        if request.headers.get('content-type','').split(';')[0]!='application/json':raise ValueError('模型配置需要 JSON 请求。')
+        payload=await body(request);session=session_key(payload.get('session_id'))
+        if action not in ('models','test','save','disable','clear'):raise ValueError('未知的模型配置操作。')
+        if set(payload)-{'session_id','configuration'}:raise ValueError('未知的模型配置请求字段。')
+        configuration=payload.get('configuration',{})
+        def operation():
+            try:
+                if action=='models':return model_settings.models(session,configuration)
+                if action=='test':return model_settings.test(session,configuration)
+                if action=='save':return {'settings':model_settings.save(session,configuration)}
+                if action=='disable':return {'settings':model_settings.disable(session)}
+                return {'settings':model_settings.clear(session)}
+            except LLMClientError as exc:raise ValueError(str(exc)) from None
+        # Configuration bodies/keys are never put in durable task payloads or experiment snapshots.
+        return await run_in_threadpool(lambda: locked(session,operation))
 
     @app.post("/api/tasks/{key}/cancel")
     async def cancel_task(key: str, request: Request):

@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="workbench.css">
   <link rel="stylesheet" href="studio.css">
   <link rel="stylesheet" href="diagnostics.css">
+  <link rel="stylesheet" href="model-settings.css">
 </head>
 <body>
   <header>
@@ -20,6 +21,27 @@
 
   <nav class="workflow-nav" aria-label="实验流程"><a href="#dataPanel">1 · 导入数据</a><a href="#workbenchPanel">2 · 处理与保存</a><a href="#comparisonPanel">3 · 对比与报告</a><a href="#diagnosticPanel">4 · 诊断实验室</a><span id="dataSummary">可导入 CSV/TXT，也可使用下方模板生成信号</span></nav>
   <section class="studio studio-grid" aria-label="数据和任务管理">
+    <details id="modelPanel" class="model-panel"><summary>模型 API 配置 <span id="modelBadge">本地工具链</span></summary>
+      <p class="studio-hint">为当前浏览器会话选择对话模型。信号仿真、滤波与诊断无需 Key；外部模型用于知识问答和对话。</p>
+      <form id="modelForm">
+        <div class="studio-fields">
+          <label>服务商<select id="modelProvider"><option value="custom">自定义兼容接口</option></select></label>
+          <label>API Base URL<input id="modelBase" type="url" placeholder="https://服务地址/v1" maxlength="1000" required></label>
+          <label>API Key<input id="modelKey" type="password" autocomplete="off" spellcheck="false" placeholder="输入 Key；已有同地址 Key 可留空" maxlength="8192"></label>
+          <label>模型<select id="modelChoice"><option value="">先读取模型列表，或手动填写</option></select></label>
+          <label>模型 ID（可手动填写）<input id="modelId" maxlength="200" placeholder="服务提供的准确模型 ID" required></label>
+        </div>
+        <div class="studio-actions"><button id="modelList" type="button">读取模型列表</button><button id="modelApply" type="submit">测试并应用</button><button id="modelDisable" type="button">切回本地工具链</button><button id="modelClear" type="button">移除当前会话配置</button><a id="modelKeyLink" target="_blank" rel="noopener noreferrer" hidden>获取 API Key</a></div>
+        <label class="model-remember"><input id="modelRemember" type="checkbox">记住配置，服务重启后继续使用</label>
+        <p class="studio-hint">Key 不存入浏览器或实验包。未勾选时仅保存在服务内存中；勾选后 Key 以明文保存在此服务的数据目录，请在自己信任的服务上使用。测试会发送简短问候，可能产生少量 API 费用。</p>
+        <details><summary>高级兼容设置</summary><div class="studio-fields">
+          <label>超时 / 秒<input id="modelTimeout" type="number" min="5" max="120" value="45"></label>
+          <label>输出限制参数<select id="modelTokenParameter"><option value="max_tokens">max_tokens</option><option value="max_completion_tokens">max_completion_tokens</option></select></label>
+          <label>发送温度参数<select id="modelTemperature"><option value="yes">是</option><option value="no">否（部分推理模型适用）</option></select></label>
+        </div><button id="modelSave" type="button">只应用配置，不测试</button></details>
+      </form>
+      <p id="modelStatus" role="status">配置只作用于当前会话；切换或恢复实验不会携带 Key。</p>
+    </details>
     <details id="dataPanel"><summary>1 · 数据导入向导</summary>
       <p class="studio-hint">预览前 20 行，选择要分析的列。错误数据会标明行列位置，修正后再导入。</p>
       <label class="file-choice">CSV / TXT 文件<input id="diFile" type="file" accept=".csv,.txt"></label>
@@ -193,5 +215,6 @@
   <script src="workbench.js"></script>
   <script src="studio.js"></script>
   <script src="diagnostics.js"></script>
+  <script src="model-settings.js"></script>
 </body>
 </html>
