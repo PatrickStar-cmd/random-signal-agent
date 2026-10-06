@@ -139,3 +139,18 @@ python scripts/benchmark_algorithms.py
 新增 API：POST /api/data/preview 与 /api/data/import 接受 multipart file、session_id、options(JSON)，导入还需预览 token 和可选 request_id；options 的 signal_column/time_column 从 0 开始，time_column=null 表示手填采样率，time_unit 为 s/ms/us/ns，delimiter 为 auto/comma/semicolon/tab/space，header 为 auto/yes/no。POST /api/experiments/compare 接受 session_id、ids(2–4 个)、format(json/html)。GET /api/tasks?session_id=... 列出最近 50 项；POST /api/tasks/{id}/cancel 接受 session_id。GET /api/storage 预览全服务清理范围；POST /api/storage/cleanup 接受 token 和 confirm=true。
 
 执行 python scripts/test_studio.py；日志 logs/studio/latest.log 覆盖写入，OK 表示通过。部署包干净安装验证会自动运行此脚本。现有回归、集成、工作台与基准命令保持可用。
+
+
+## v0.2.6 诊断操作与配置
+
+生成或导入信号后，打开“信号诊断实验室”，选择来源、窗长、重叠和相对首点的开始/结束秒数，点击诊断。至少 16 点，要求均匀采样。时频图拖动选区，证据卡片可定位波形并运行验证。采用仅更新处理结果；可在工作台保存为快照。主频变化不自动滤除。
+
+“载入故障演示”生成 200 Hz / 8 秒示例并替换当前信号，需要保留时先保存快照。在故障注入区配置最多 8 个事件；强度为脉冲/正弦幅值、漂移终值或削顶阈值，归零不使用强度；频率用于窄带与主频变化。重新注入以挑战基线开始，不叠加前次注入。盲测只隐藏应用输出的真值/参考，不会抹除你自己设定参数的记忆。揭晓重新检查全段原始观测，显示评分。
+
+`config/diagnostics.json`：version=1.0 为诊断契约；window=128 默认窗长；overlap=0.75 默认重叠比例；max_faults=8 注入配置上限；max_events=64 检测卡片上限；plot_frames=240 / plot_bins=128 为时频显示最大时间/频率格数；impulse_sigma=8 二阶差分 MAD 阈值倍率；minimum_event_samples=4 归零最少样本；spectral_ratio=8 为相对基线功率倍率；spectral_fraction=0.18 为该频点占帧功率下限。诊断脚本无额外生产依赖，SciPy 只用于独立验证。
+
+运行 `python scripts/test_diagnostics.py`；日志覆盖写入 `logs/diagnostics/latest.log`。发布干净安装验证自动运行。
+
+API：`POST /api/diagnostics/{analyze,inject,demo,reveal,verify,adopt}`，共同参数 session_id、request_id、respond_async；analyze 的 options 为 source(observed/processed)、window(32–2048 的 2 次幂)、overlap(0–0.75)、start/end 相对秒数；inject 的 faults 为 {kind,start,end,strength,frequency} 列表及 seed、blind；demo 接收 blind；verify 接收证据卡片 event_id 和诊断 token；adopt/reveal 不需额外参数。`GET /api/diagnostics/view?session_id=...&format=json|html` 重建图像或下载独立报告。重试须复用原请求 ID/参数；修改信号后重新诊断再验证。
+
+盲测未揭晓时完整 ZIP/CSV/HTML/JSON 导出和快照对比会返回 400；诊断 HTML 不含内部基线与真值。揭晓后恢复参考指标与导出。内部持久化保留真值用于评分，这是一种课程盲测功能，不是对服务器文件访问者的保密机制。旧快照缺少新字段时使用空诊断状态；升级前停止服务并备份整个 data/，降级需恢复升级前备份。

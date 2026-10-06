@@ -2,11 +2,11 @@
 
 本项目不包含任何固定公网 IP、云服务器账号、API Key 或私有路径。复现时请把下列占位信息替换为自己的环境。
 
-v0.2.5 使用 Python 3.12–3.14 和 FastAPI/Uvicorn，已移除 `cgi`。按单进程部署，不要启动多个 Uvicorn worker：会话锁和任务队列属于同一个进程。本服务面向受控课程实验环境，已有输入及并发上限；公网访问仍需反向代理身份认证。
+v0.2.6 使用 Python 3.12–3.14 和 FastAPI/Uvicorn，已移除 `cgi`。按单进程部署，不要启动多个 Uvicorn worker：会话锁和任务队列属于同一个进程。本服务面向受控课程实验环境，已有输入及并发上限；公网访问仍需反向代理身份认证。
 
 ## 本地运行
 
-下载 v0.2.5 Release 的 `random-signal-agent-v0.2.5-deploy.zip` 并解压后进入 `工程文件/代码`。发布包保留完整目录结构；`server.py` 位于该子目录，不在解压包根目录。
+下载 v0.2.6 Release 的 `random-signal-agent-v0.2.6-deploy.zip` 并解压后进入 `工程文件/代码`。发布包保留完整目录结构；`server.py` 位于该子目录，不在解压包根目录。
 
 Windows（使用 Python 3.12）：
 
@@ -129,7 +129,7 @@ python scripts/smoke_deployment.py --base-url http://127.0.0.1:8000
 发布包的 SHA-256 校验文件为 `SHA256SUMS.txt`。Windows 可以执行：
 
 ```powershell
-Get-FileHash .\random-signal-agent-v0.2.5-deploy.zip -Algorithm SHA256
+Get-FileHash .\random-signal-agent-v0.2.6-deploy.zip -Algorithm SHA256
 ```
 
 Linux 执行 `sha256sum -c SHA256SUMS.txt`。发布包中的 `RELEASE.json` 记录版本和源码提交。
@@ -142,7 +142,7 @@ curl http://127.0.0.1:8000/api/health
 
 返回中的 `llm.configured` 只表示配置项齐全且已启用，不验证密钥有效性、联网或模型兼容性；即使为 `false`，本地规则工具链仍可运行。
 
-## v0.2.5 数据和迁移
+## v0.2.6 数据和迁移
 
 `data/experiments.sqlite3` 保存实验清单、完整状态元数据和任务结果，旁边的内容寻址 `.npz` 文件保存全量采样。Compose 将 `./data` 挂载到 `/app/data`；更新镜像或重启容器会保留这些文件。备份应在停止服务后复制整个 `data/`，还需 `uploads/` 与 `outputs/` 才能保留原上传文件及音频附件。不要只复制 SQLite 文件。
 
@@ -156,11 +156,11 @@ curl http://127.0.0.1:8000/api/health
 
 ### 从 v0.2.0 / v0.2.1 升级
 
-停止服务并备份整个 `data/`，将其放入新版相同位置，或沿用 `RS_AGENT_DATA_DIR`。保留 `uploads/`、`outputs/` 和浏览器原站点会话。无需清空数据库；v0.2.0/v0.2.1 自动保存、命名快照及 ZIP 可以直接读取。应用版本 0.2.5 与算法版本 0.2.0 分开记录，schema 仍为 1。
+停止服务并备份整个 `data/`，将其放入新版相同位置，或沿用 `RS_AGENT_DATA_DIR`。保留 `uploads/`、`outputs/` 和浏览器原站点会话。无需清空数据库；v0.2.0/v0.2.1 自动保存、命名快照及 ZIP 可以直接读取。应用版本 0.2.6 与算法版本 0.2.0 分开记录，schema 仍为 1。
 
 实验列表可按名称搜索；填写名称后选择快照并重命名，删除需要页面确认。删除只移除命名快照记录，不清空当前工作区，也不立即回收可能被其他快照引用的 NPZ 文件，因此不保证释放磁盘空间。仍不支持账号认证或多进程服务。
 
-### v0.2.5 任务与存储管理
+### v0.2.6 任务与存储管理
 
 首次启动自动为 tasks 表添加 operation 列，用于任务名称；保留已有结果。回退到 v0.2.1 或 v0.2.0 时需恢复升级前的整个 data/ 备份，不能直接复用迁移后的数据库。快照 schema 1 / algorithm 0.2.0 保持不变，旧 ZIP 可直接导入。
 

@@ -22,7 +22,7 @@ from .dialogue_agent import ConversationState
 from .signal_processing import SignalBundle, SignalConfig, PreprocessResult
 from .limits import LIMITS
 
-VERSION = "0.2.5"
+VERSION = "0.2.6"
 # Application maintenance releases do not change the saved algorithm contract.
 ALGORITHM_VERSION = "0.2.0"
 SCHEMA = 1
@@ -100,6 +100,8 @@ def restore(document, raw):
         state = decode(manifest["state"])
     if not isinstance(state, ConversationState):
         raise ValueError("Invalid experiment state")
+    if not isinstance(state.diagnostic_lab, dict):
+        raise ValueError("Invalid diagnostic state")
     if state.bundle is not None:
         b = state.bundle
         n = len(b.observed)
@@ -110,6 +112,10 @@ def restore(document, raw):
         for result in [state.processed, *state.preprocess_results.values()]:
             if result is not None and (not isinstance(result, PreprocessResult) or len(result.signal) != n or len(result.anomaly_mask) != n):
                 raise ValueError("Invalid preprocessing result")
+        for array in [state.diagnostic_lab.get('baseline'), state.diagnostic_lab.get('reference_clean'),
+                      state.diagnostic_lab.get('verification',{}).get('signal')]:
+            if array is not None and (not isinstance(array,np.ndarray) or len(array)!=n):
+                raise ValueError("Invalid diagnostic array length")
     return state
 
 

@@ -31,6 +31,10 @@ def compare_experiments(store, session, ids):
     with store.file_lock:
         for key in ids:
             state = store.load(key, session)
+            from .diagnostics import lab_for
+            lab = lab_for(state)
+            if lab.get('blind') and not lab.get('revealed'):
+                raise ValueError('请先打开并揭晓盲测快照，再进行跨实验对比。')
             bundle = state.bundle
             if bundle is None:
                 raise ValueError("Selected experiment has no signal")

@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="app.css">
   <link rel="stylesheet" href="workbench.css">
   <link rel="stylesheet" href="studio.css">
+  <link rel="stylesheet" href="diagnostics.css">
 </head>
 <body>
   <header>
@@ -17,7 +18,7 @@
     <div class="session" id="sessionLabel">时间初始化中</div>
   </header>
 
-  <nav class="workflow-nav" aria-label="实验流程"><a href="#dataPanel">1 · 导入数据</a><a href="#workbenchPanel">2 · 处理与保存</a><a href="#comparisonPanel">3 · 对比与报告</a><span id="dataSummary">可导入 CSV/TXT，也可使用下方模板生成信号</span></nav>
+  <nav class="workflow-nav" aria-label="实验流程"><a href="#dataPanel">1 · 导入数据</a><a href="#workbenchPanel">2 · 处理与保存</a><a href="#comparisonPanel">3 · 对比与报告</a><a href="#diagnosticPanel">4 · 诊断实验室</a><span id="dataSummary">可导入 CSV/TXT，也可使用下方模板生成信号</span></nav>
   <section class="studio studio-grid" aria-label="数据和任务管理">
     <details id="dataPanel"><summary>1 · 数据导入向导</summary>
       <p class="studio-hint">预览前 20 行，选择要分析的列。错误数据会标明行列位置，修正后再导入。</p>
@@ -39,7 +40,7 @@
     </div>
   </section>
   <section id="workbenchPanel" class="workbench" aria-label="实验工作台">
-    <div class="wb-heading"><strong>2 · 处理与保存 <small>v0.2.5</small></strong><span id="wbStatus" role="status">每次操作后自动保存</span><button id="wbRecover" type="button">恢复未完成请求</button></div>
+    <div class="wb-heading"><strong>2 · 处理与保存 <small>v0.2.6</small></strong><span id="wbStatus" role="status">每次操作后自动保存</span><button id="wbRecover" type="button">恢复未完成请求</button></div>
     <details id="wbPanel" open><summary>模板与实验管理</summary>
       <form id="wbForm" class="wb-fields">
         <label>信号模板<select id="wbTemplate"><option value="sine">正弦 + 高斯噪声</option><option value="impulse">正弦 + 脉冲干扰</option><option value="ar">AR(1) 随机过程</option><option value="current">当前信号</option></select></label>
@@ -65,6 +66,28 @@
     <p class="studio-hint">选择 2–4 个快照，比较各自保存的处理结果。相同输入、参考、目标和评分版本下才直接比较评分。</p>
     <div id="compareChoices" class="compare-choices"></div><div class="studio-actions"><button id="compareRun">对比所选实验</button><button id="compareExport" disabled>下载对比 HTML 报告</button></div>
     <p id="compareStatus" role="status"></p><div id="compareResult"></div>
+  </details></section>
+  <section class="studio diagnostic-lab" id="diagnosticPanel"><details open><summary>4 · 信号诊断实验室</summary>
+    <p class="studio-hint">定位异常 → 查看证据 → 验证处理。时间均相对首个采样点；检测结果是特征提示，需结合来源判断。</p>
+    <div class="studio-fields">
+      <label>诊断来源<select id="dgSource"><option value="observed">原始观测</option><option value="processed">处理结果</option></select></label>
+      <label>窗长 / 点<select id="dgWindow"><option>32</option><option>64</option><option selected>128</option><option>256</option><option>512</option><option>1024</option><option>2048</option></select></label>
+      <label>重叠比例<select id="dgOverlap"><option value="0">0%</option><option value="0.5">50%</option><option value="0.75" selected>75%</option></select></label>
+      <label>开始 / s<input id="dgStart" type="number" min="0" step="any" value="0"></label>
+      <label>结束 / s<input id="dgEnd" type="number" min="0" step="any" placeholder="全段"></label>
+    </div>
+    <div class="studio-actions"><button id="dgAnalyze">诊断所选区间</button><button id="dgFull">选择全段</button><button id="dgDemo">载入故障演示</button><button id="dgReport">下载诊断 HTML</button></div>
+    <p id="dgStatus" role="status">生成或导入信号后即可诊断，也可载入 8 秒故障演示。</p>
+    <div id="dgResolution"></div>
+    <figure class="dg-figure"><figcaption>时频图 · 在图中拖动选择时间区间</figcaption><canvas id="dgHeat" width="1000" height="300" aria-label="时频图，时间选择也可使用上方数值输入"></canvas><p id="dgLegend">紫色低 → 蓝色 → 绿色 → 黄色高；PSD 相对本区间最大值 −80 至 0 dB</p></figure>
+    <figure class="dg-figure"><figcaption>联动波形 · 橙色为所选事件区间</figcaption><canvas id="dgWave" width="1000" height="180"></canvas></figure>
+    <div id="dgEvents" class="dg-events"></div>
+    <section id="dgVerification" hidden><h3>验证实验</h3><p id="dgVerdict"></p><pre id="dgMetrics"></pre><canvas id="dgTrial" width="1000" height="180"></canvas><p class="studio-hint">青色：处理前；绿色：试验后。原始观测保留；采用后可在工作台保存快照。</p><button id="dgAdopt">采用验证结果为当前处理信号</button></section>
+    <details class="dg-challenge"><summary>故障注入与盲测</summary>
+      <p class="studio-hint">每次注入均从此挑战的原始基线开始，同一种子可复现。强度表示幅值、漂移终值或削顶阈值；归零不使用强度。盲测隐藏真值、种子与参考误差，揭晓后评分；手动设定的故障参数仍由你知晓。</p>
+      <div class="studio-fields"><label>随机种子<input id="dgSeed" type="number" min="0" max="4294967294" value="42"></label><label class="dg-check"><input id="dgBlind" type="checkbox">盲测（演示也适用）</label></div>
+      <div id="dgFaults"></div><div class="studio-actions"><button id="dgAddFault">增加故障</button><button id="dgInject">注入并诊断</button><button id="dgReveal">揭晓并评估全段</button></div><pre id="dgTruth"></pre>
+    </details>
   </details></section>
   <main id="layoutRoot">
     <section class="panel chat">
@@ -169,5 +192,6 @@
   <script src="app.js"></script>
   <script src="workbench.js"></script>
   <script src="studio.js"></script>
+  <script src="diagnostics.js"></script>
 </body>
 </html>

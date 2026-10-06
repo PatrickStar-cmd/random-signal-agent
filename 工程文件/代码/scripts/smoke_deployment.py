@@ -87,8 +87,22 @@ def check(base_url):
     assert tasks and all('result' not in task for task in tasks)
     assert not json.loads(request(f'/api/tasks/{tasks[0]["task_id"]}/cancel',{'session_id':session}))['cancel_requested']
     storage=json.loads(request('/api/storage'));assert 'reclaimable_bytes' in storage and 'token' in storage
+    diagnostic_session=session+'-diagnostic'
+    def diagnostic(action,**extra):
+        return json.loads(request('/api/diagnostics/'+action,{'session_id':diagnostic_session,**extra}))
+    demo=diagnostic('demo',blind=True);assert 'truth' not in demo['state']['diagnostic_lab']
+    event=next(e for e in demo['diagnostics']['events'] if e['kind']=='narrowband')
+    trial=diagnostic('verify',event_id=event['id'],token=demo['diagnostics']['token'])
+    assert trial['diagnostics']['metrics']['after_rmse'] is None
+    assert trial['diagnostics']['metrics']['after_band_energy']<trial['diagnostics']['metrics']['before_band_energy']
+    adopted=diagnostic('adopt');assert adopted['state']['preprocess']['method']=='diagnostic_trial'
+    revealed=diagnostic('reveal');assert revealed['state']['diagnostic_lab']['revealed']
+    assert 'evaluation' in revealed['state']['diagnostic_lab']
+    assert request(f'/api/diagnostics/view?session_id={diagnostic_session}&format=html').startswith(b'<!doctype html>')
+    assert request(f'/api/experiments/export?session_id={diagnostic_session}&format=zip').startswith(b'PK')
     return {'status': 'passed', 'session_id':session, 'saved_experiment':saved['id'], 'csv_sha256':hashlib.sha256(data).hexdigest(),
-            'checks': ['health', 'web_assets', 'agent_pipeline', 'sse', 'csv_upload', 'synthetic_audio_download', 'experiment_save', 'full_data_export', 'snapshot_rename_duplicate_delete', 'delete_retry', 'shared_data_preserved', 'mapped_import', 'snapshot_comparison_report', 'task_list_cancel_endpoint', 'storage_preview']}
+            'diagnostic_session':diagnostic_session,
+            'checks': ['health', 'web_assets', 'agent_pipeline', 'sse', 'csv_upload', 'synthetic_audio_download', 'experiment_save', 'full_data_export', 'snapshot_rename_duplicate_delete', 'delete_retry', 'shared_data_preserved', 'mapped_import', 'snapshot_comparison_report', 'task_list_cancel_endpoint', 'storage_preview', 'diagnostic_blind_trial_reveal_export']}
 
 
 def check_persistence(base_url, previous):
@@ -107,6 +121,9 @@ def check_persistence(base_url, previous):
     with urllib.request.urlopen(base_url+f'/api/experiments?session_id={session}',timeout=15) as response:
         assert any(e['id']==previous['saved_experiment'] for e in json.load(response)['experiments'])
     previous['checks'].append('restart_persistence')
+    with urllib.request.urlopen(base_url+f'/api/diagnostics/view?session_id={previous["diagnostic_session"]}',timeout=30) as response:
+        diagnostic=json.load(response);assert diagnostic['lab']['revealed'] and diagnostic['lab']['verification']
+    previous['checks'].append('diagnostic_restart_persistence')
     return previous
 
 

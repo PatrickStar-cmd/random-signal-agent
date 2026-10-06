@@ -1,0 +1,13 @@
+{
+  "version": "1.0",
+  "window": 128,
+  "overlap": 0.75,
+  "max_faults": 8,
+  "max_events": 64,
+  "plot_frames": 240,
+  "plot_bins": 128,
+  "impulse_sigma": 8.0,
+  "minimum_event_samples": 4,
+  "spectral_ratio": 8.0,
+  "spectral_fraction": 0.18
+}

@@ -85,6 +85,7 @@
     if (!final) throw new Error("连接中断；点击恢复未完成请求继续等待同一任务。");
     sessionStorage.removeItem("rs_pending_workbench");
     apply(final); status("已完成并自动保存"); await refreshList();
+    return final;
     $("agentProgressStatus").textContent = "已完成";
   }
   $("wbForm").addEventListener("submit", event => {
@@ -166,5 +167,5 @@
   refreshList().catch(error=>status(error.message,true)); recoverVisibility();
   api('/api/health').then(data => { limits={...limits,...data.limits}; }).catch(()=>{});
   window.setInterval(recoverVisibility, 2000);
-  window.workbench = {apply, refreshList};
+  window.workbench = {apply, refreshList, runPending};
 })();

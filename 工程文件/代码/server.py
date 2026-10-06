@@ -20,6 +20,7 @@ from src.preprocessing import PREPROCESS_METHODS
 from src.tasks import TaskEngine, TaskConflict, TaskBusy, emit_progress
 from src.limits import LIMITS
 from src.data_import import inspect_data
+from src import diagnostics
 from src.experiment_compare import compare_experiments, comparison_html, comparison_svg
 from src.workbench import ExperimentStore, VERSION, MAX_SAMPLES, csv_data, snapshot, report_html, export_archive, import_archive
 
@@ -203,7 +204,7 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
     async def run_task(payload, operation_name, operation):
         session = session_key(payload.get("session_id"))
         key = engine.submit(session, payload.get("request_id"), {**payload, "operation": operation_name}, operation,
-                            cancellable=operation_name in ('experiment','upload','microphone','stop','import-data'))
+                            cancellable=operation_name in ('experiment','upload','microphone','stop','import-data','diagnose','inject','reveal','verify','adopt','demo'))
         if payload.get("respond_async"):
             return JSONResponse({"task_id": key, "status": "accepted"}, status_code=202)
         return result_response(await run_in_threadpool(engine.wait, key, session))
@@ -265,6 +266,49 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
     @app.get('/api/storage')
     def storage():
         return store.storage_preview()
+
+    @app.post('/api/diagnostics/{action}')
+    async def diagnostic_action(action: str, request: Request):
+        payload = await body(request)
+        session = session_key(payload.get('session_id'))
+        if action not in ('analyze','inject','reveal','verify','adopt','demo'):
+            raise ValueError('Unknown diagnostic action')
+        def operation():
+            state = agent.get_session(session)
+            emit_progress('diagnostic_' + action, 'running')
+            if action == 'demo':
+                state.bundle = generate_random_signal(SignalConfig(sample_rate=200,duration=8,base_frequency=8,
+                    amplitude=1,noise_std=.025,impulse_probability=0,seed=42,waveform='sine',noise_model='gaussian'))
+                state.diagnostic_lab = {}
+                state.acquisition_plan = None
+                diagnostics.inject(state,[{'kind':'narrowband','start':2.4,'end':3.5,'strength':1.8,'frequency':38},
+                    {'kind':'dropout','start':5.5,'end':5.85,'strength':1},
+                    {'kind':'impulse','start':6.7,'end':7.1,'strength':4}],42,payload.get('blind',False))
+                result = diagnostics.diagnose_state(state)
+            elif action == 'analyze':
+                result = diagnostics.diagnose_state(state, payload.get('options'))
+            elif action == 'inject':
+                diagnostics.inject(state, payload.get('faults'), payload.get('seed',42), payload.get('blind',False))
+                result = diagnostics.diagnose_state(state)
+            elif action == 'reveal': result = diagnostics.reveal(state)
+            elif action == 'verify': result = diagnostics.verify(state, payload.get('event_id'), payload.get('token'))
+            else: result = diagnostics.adopt(state)
+            return {'diagnostics':result,'state':agent.serialize_state(state)}
+        return await run_task(payload, 'diagnose' if action=='analyze' else action, operation)
+
+    @app.get('/api/diagnostics/view')
+    def diagnostic_view(session_id: str, format: str = 'json'):
+        def operation():
+            state = agent.get_session(session_id)
+            lab = diagnostics.lab_for(state)
+            params = {k:v for k,v in lab.get('analysis',{}).get('parameters',{}).items() if k!='effective_window'}
+            data = diagnostics.analyze(state, params)
+            if format == 'html':
+                return Response(diagnostics.report_html(data, diagnostics.public_lab(state)),media_type='text/html',
+                                headers={'Content-Disposition':'attachment; filename="diagnostics.html"'})
+            if format != 'json': raise ValueError('Unknown diagnostic report format')
+            return {'diagnostics':data,'lab':diagnostics.public_lab(state)}
+        return locked(session_key(session_id),operation)
 
     @app.post('/api/storage/cleanup')
     async def cleanup(request: Request):
@@ -423,6 +467,9 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
     def export(session_id: str, format: str = "zip", name: str = "Experiment"):
         def operation():
             state = agent.get_session(session_id)
+            lab = diagnostics.lab_for(state)
+            if lab.get('blind') and not lab.get('revealed'):
+                raise ValueError('请先揭晓盲测再导出完整实验；诊断报告可在盲测中导出。')
             formats = {"zip": (lambda: export_archive(state, name), "application/zip"),
                        "csv": (lambda: csv_data(state), "text/csv"),
                        "html": (lambda: report_html(state, name), "text/html"),

@@ -4,7 +4,7 @@
   const esc=escapeHtml, colors=['#a78bfa','#22d3ee','#fb923c','#4ade80'];
   const goals={waveform:'保留波形',denoise:'抑噪',transient:'保留瞬态'};
   const statuses={queued:'排队中',running:'运行中',cancelling:'正在取消',cancelled:'已取消',done:'已完成',error:'失败'};
-  const operations={task:'旧版任务',chat:'对话',experiment:'方法比较',save:'保存快照',open:'恢复快照',duplicate:'复制快照',rename:'重命名',delete:'删除快照',import:'导入实验包','import-data':'导入数据',upload:'上传',microphone:'音频处理',stop:'停止采集'};
+  const operations={diagnose:'时频诊断',demo:'故障演示',inject:'故障注入',reveal:'盲测揭晓',verify:'验证实验',adopt:'采用验证结果',task:'旧版任务',chat:'对话',experiment:'方法比较',save:'保存快照',open:'恢复快照',duplicate:'复制快照',rename:'重命名',delete:'删除快照',import:'导入实验包','import-data':'导入数据',upload:'上传',microphone:'音频处理',stop:'停止采集'};
   const tell=(id,text,error=false)=>{$(id).textContent=text;$(id).classList.toggle('studio-error',error)};
   async function api(path,payload){
     const response=await fetch(path,payload?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}:{});

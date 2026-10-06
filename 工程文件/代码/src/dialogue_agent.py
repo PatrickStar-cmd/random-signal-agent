@@ -71,6 +71,7 @@ class ConversationState:
     last_knowledge_question: str | None = None
     last_intent: str | None = None
     comparison_goal: str = "waveform"
+    diagnostic_lab: dict[str, Any] = field(default_factory=dict)
 
 
 class RandomSignalDialogueAgent:
@@ -98,6 +99,15 @@ class RandomSignalDialogueAgent:
         self._update_tool_library(state, tool_library)
         text = message.strip()
         state.messages.append({"role": "user", "content": text})
+        if any(phrase in text.lower() for phrase in ('诊断信号','诊断当前','检测故障','分析异常','diagnose signal')):
+            from .diagnostics import diagnose_state
+            diagnostic = diagnose_state(state)
+            calls = [{"tool":"diagnose_signal","status":"success","event_count":len(diagnostic['events'])}]
+            state.tool_calls.extend(calls)
+            facts = '\n'.join(f"- {e['label']}：{e['start']:.3g}–{e['end']:.3g} 秒。{e['alternatives']}" for e in diagnostic['events'][:8])
+            reply = f"已完成观测信号诊断，发现 {len(diagnostic['events'])} 个候选事件。\n{facts or '当前阈值下没有发现候选事件。'}\n可在诊断实验室查看时频证据并运行验证实验；检测结果不构成故障定论。"
+            state.messages.append({"role":"assistant","content":reply})
+            return {"reply":reply,"state":self.serialize_state(state),"tool_calls":calls}
         turn_tool_calls: list[dict[str, Any]] = []
         intent = self._route_intent(state, text)
 
@@ -1874,6 +1884,7 @@ class RandomSignalDialogueAgent:
 
     def _reset_state(self, state: ConversationState) -> str:
         session_id = state.session_id
+        state.diagnostic_lab = {}
         state.bundle = None
         state.processed = None
         state.summary = None
@@ -1929,6 +1940,7 @@ class RandomSignalDialogueAgent:
         source = state.bundle.source
         if "/stopped" not in source:
             source = f"{source}/stopped"
+        state.diagnostic_lab = {}
         state.bundle = SignalBundle(
             time=state.bundle.time[:keep],
             clean=state.bundle.clean[:keep],
@@ -1971,6 +1983,7 @@ class RandomSignalDialogueAgent:
         file_path: str,
         sample_rate: float,
     ) -> str:
+        state.diagnostic_lab = {}
         state.bundle = load_signal_file(file_path, sample_rate=sample_rate)
         state.processed = None
         state.summary = None
@@ -2117,6 +2130,7 @@ class RandomSignalDialogueAgent:
             waveform="microphone_audio",
             noise_model="ambient",
         )
+        state.diagnostic_lab = {}
         state.bundle = SignalBundle(
             time=time,
             clean=observed.copy(),
@@ -2474,6 +2488,7 @@ class RandomSignalDialogueAgent:
 
     def serialize_state(self, state: ConversationState) -> dict[str, Any]:
         """Serialize compact state for browser rendering."""
+        from .diagnostics import public_lab
         payload: dict[str, Any] = {
             "session_id": state.session_id,
             "comparison_goal": state.comparison_goal,
@@ -2533,6 +2548,7 @@ class RandomSignalDialogueAgent:
             payload["risk"] = self._risk_payload(state)
         if state.bundle is not None:
             payload["series"] = self._series_payload(state)
+        payload['diagnostic_lab'] = public_lab(state)
         return payload
 
     def _update_tool_library(
@@ -2984,6 +3000,7 @@ class RandomSignalDialogueAgent:
             noise_model=config.noise_model,
         )
         plan.config = config
+        state.diagnostic_lab = {}
         state.bundle = acquire_with_plan(plan)
         state.processed = None
         state.summary = None

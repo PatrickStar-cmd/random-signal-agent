@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.2.6 · 2026-10-06
+
+- Diagnostic laboratory with relative-time STFT/PSD, linked waveform and interval selection, explicit resolution, edge padding and bounded display grids.
+- Six seeded fault types, editable intervals, blind truth protection and reveal-only typed interval precision/recall/F1. Detectors use observations only.
+- Evidence cards with alternative interpretations; local notch, median, detrend and interpolation trials show interval energy/error and preserve raw observations. Stale trials cannot be adopted.
+- Durable diagnostic tasks, chat diagnosis, snapshot/package round trips and standalone diagnostic HTML reports. Old schema 1 / algorithm 0.2.0 snapshots remain readable.
+- 16 diagnostic acceptance tests, SciPy PSD reference checks, maximum-size input, browser flow and deployment/restart coverage.
+
+新增“信号诊断实验室”：时频定位、故障盲测和可验证处理建议。检测为启发式特征提示；频带能量降低不等于真实信号恢复。升级前备份整个 data/。
+
 ## v0.2.5 · 2026-10-05
 
 - CSV/TXT import wizard with preview, selectable time/signal columns, time-unit conversion, source provenance, and row/column diagnostics. Invalid rows are never silently discarded by the wizard.
