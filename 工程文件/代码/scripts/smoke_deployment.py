@@ -32,8 +32,18 @@ def check(base_url):
                 raise
             time.sleep(1)
     assert b'<html' in request('/').lower()
+    release = json.loads((ROOT / 'config/release.json').read_text(encoding='utf-8'))
+    assert health['version'] == release['version'], 'Running application version differs from this package'
+    for asset in ('ocean-whale.webp', 'ocean.css', 'ocean.js', 'model-settings.css', 'model-settings.js'):
+        delivered = request('/' + asset)
+        assert delivered == (ROOT / 'web' / asset).read_bytes(), f'Missing or stale packaged asset: {asset}'
+    artwork = request('/ocean-whale.webp')
+    assert artwork[:4] == b'RIFF' and artwork[8:12] == b'WEBP'
     assert len(request('/background.jpg')) > 100
     session = 'deployment-' + uuid.uuid4().hex
+    model_setup = json.loads(request(f'/api/model/settings?session_id={session}'))
+    assert {provider['id'] for provider in model_setup['providers']} == {'openai', 'deepseek', 'custom'}
+    assert 'api_key' not in model_setup['settings'] and model_setup['settings']['source'] == 'environment'
     message = (f"采集一段 {config['duration']} 秒、采样率 {config['sample_rate']}Hz、主频 {config['frequency']}Hz "
                f"的正弦信号加高斯噪声，随机种子 {config['seed']}")
     result = json.loads(request('/api/chat', {'session_id': session, 'message': message, 'agent_mode': True}))
@@ -102,7 +112,7 @@ def check(base_url):
     assert request(f'/api/experiments/export?session_id={diagnostic_session}&format=zip').startswith(b'PK')
     return {'status': 'passed', 'session_id':session, 'saved_experiment':saved['id'], 'csv_sha256':hashlib.sha256(data).hexdigest(),
             'diagnostic_session':diagnostic_session,
-            'checks': ['health', 'web_assets', 'agent_pipeline', 'sse', 'csv_upload', 'synthetic_audio_download', 'experiment_save', 'full_data_export', 'snapshot_rename_duplicate_delete', 'delete_retry', 'shared_data_preserved', 'mapped_import', 'snapshot_comparison_report', 'task_list_cancel_endpoint', 'storage_preview', 'diagnostic_blind_trial_reveal_export']}
+            'checks': ['health', 'application_version', 'web_assets', 'ocean_ui_assets', 'model_settings_api', 'agent_pipeline', 'sse', 'csv_upload', 'synthetic_audio_download', 'experiment_save', 'full_data_export', 'snapshot_rename_duplicate_delete', 'delete_retry', 'shared_data_preserved', 'mapped_import', 'snapshot_comparison_report', 'task_list_cancel_endpoint', 'storage_preview', 'diagnostic_blind_trial_reveal_export']}
 
 
 def check_persistence(base_url, previous):

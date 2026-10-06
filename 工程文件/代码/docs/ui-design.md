@@ -1,10 +1,10 @@
-# 可爱海洋界面（主分支新增）
+# 可爱海洋界面（v0.3.0）
 
 海蓝、薄荷、薰衣草紫与淡粉色多层渐变搭配近白色圆角卡片。欢迎区使用 AI 生成的立体鲸鱼、海星与波纹，1536 × 1024 的透明 WebP 约 143 KiB；导航与分区标题适量添加装饰表情。图表采用浅色底、深色文字和可区分的曲线颜色。素材、完整生图提示词与交付编码说明见 [visual-assets.md](visual-assets.md)。
 
 ## 操作入口
 
-启动方式与以前相同：运行 `scripts/start.ps1` 或 `scripts/start.sh`，打开服务地址。
+启动方式与以前相同：运行 `scripts/start_server.ps1` 或 `scripts/start_server.sh`，打开服务地址。
 
 | 分区 | 用途 |
 | --- | --- |
@@ -33,4 +33,4 @@
 
 调试截图及独立测试服务数据放在 `debug/ocean-ui/`，说明见其 `note.md`；浏览器检查覆盖写入 `logs/ocean-ui/browser.log`，测试服务日志覆盖写入 `logs/ocean-ui/server.log`。只使用本地模拟模型，不消耗真实 API 额度。
 
-GitHub Pages 提供同风格的截图与固定实验结果预览；交互工作区依然需要 Python 后端。此更新尚未包含在已发布的 v0.2.6 ZIP 中。
+GitHub Pages 提供同风格的截图与固定实验结果预览；交互工作区依然需要 Python 后端。此更新及插画资源已包含在 v0.3.0 部署 ZIP 中。

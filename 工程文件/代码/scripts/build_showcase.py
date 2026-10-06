@@ -33,7 +33,7 @@ def decorate_preview(page):
         page = page.replace('<main>', '''<main><section id="ocean-preview"><h2>一个轻松探索信号的小实验室</h2>
         <p>海蓝与薰衣草紫渐变、AI 立体鲸鱼插画与六个功能分区：工作区、模板与实验、数据导入、对比与报告、诊断实验室、模型与设置。切换分区时保留当前输入。</p>
         <a href="images/ocean-ui.png"><img class="preview-image" src="images/ocean-ui.png" alt="可爱海洋工作区，包含对话、波形频谱和分析工具箱" loading="lazy"></a>
-        <p>新界面已在主分支提供；交互实验需要启动 Python 服务。已发布的 v0.2.6 ZIP 保留该版本的原有界面。</p></section>''', 1)
+        <p>海洋界面与模型 API 配置已包含在 <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.0">v0.3.0 部署包</a>中；交互实验需要启动 Python 服务。</p></section>''', 1)
     return page
 
 

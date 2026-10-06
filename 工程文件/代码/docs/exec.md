@@ -156,14 +156,22 @@ API：`POST /api/diagnostics/{analyze,inject,demo,reveal,verify,adopt}`，共同
 盲测未揭晓时完整 ZIP/CSV/HTML/JSON 导出和快照对比会返回 400；诊断 HTML 不含内部基线与真值。揭晓后恢复参考指标与导出。内部持久化保留真值用于评分，这是一种课程盲测功能，不是对服务器文件访问者的保密机制。旧快照缺少新字段时使用空诊断状态；升级前停止服务并备份整个 data/，降级需恢复升级前备份。
 
 
-## 模型 API 配置（待发布）
+## 模型 API 配置（v0.3.0）
 
 点击顶部“模型与设置”，展开“模型 API 配置”，选服务、输入 Key、读取模型列表后点击“测试并应用”。具体操作、配置文件各字段、API 与保存行为见 [模型配置指南](model-api-setup.md)。运行 `python scripts/test_model_settings.py`；结果覆盖写入 `logs/model-settings/latest.log`。配置保存于独立的 data/model-settings.sqlite3，实验导出不含 Key。停止服务并备份整个 data/ 会同时备份记住的 Key，按部署数据权限保存。
 
-## 可爱海洋界面（待发布）
+## 可爱海洋界面（v0.3.0）
 
 启动命令不变。默认进入“信号工作区”，其余操作位于六个顶栏入口；模型配置、任务队列与清理位于“模型与设置”。示例按钮只填写指令。界面说明与验证日志位置见 [ui-design.md](ui-design.md)。
 
-## 海洋插画与背景增强（待发布）
+## 海洋插画与背景增强（v0.3.0）
 
 启动方式不变，素材随 web/ 本地静态资源提供，不需要生图服务或新运行依赖。替换素材文件为 web/ocean-whale.webp；静态预览的相同副本由 scripts/build_showcase.py 维护。生成提示词、编码参数和 logs/ocean-artwork/ 日志见 [visual-assets.md](visual-assets.md)。
+
+## v0.3.0 部署包验证
+
+先提交源码，再运行 `python scripts/build_release.py` 和 `python scripts/verify_release.py`。后者解压 ZIP、创建独立虚拟环境、安装固定依赖，运行回归、数值基准、模型配置和诊断验收，并通过真实启动脚本检查 HTTP 服务。模型测试使用本地模拟服务，不调用真实付费 API。
+
+部署冒烟新增校验应用版本与 `config/release.json` 一致、海洋图片及模型配置脚本实际交付内容匹配解压文件、模型配置接口返回预设服务且不返回 Key。单独运行 `python scripts/smoke_deployment.py --base-url http://127.0.0.1:8000` 时须使用与该源码版本相同的服务。
+
+产物位于 `outputs/release/`：部署 ZIP、`SHA256SUMS.txt`、`verification-windows.json` 或 `verification-linux.json`；构建和验收日志分别覆盖写入 `logs/release/build.log`、`latest.log`、`server.log`。临时解压及环境在 `debug/release/` 中，验证完成自动移除临时环境。CI 覆盖 Windows/Linux 的 Python 3.12–3.14 和 Linux Docker 重启持久化。

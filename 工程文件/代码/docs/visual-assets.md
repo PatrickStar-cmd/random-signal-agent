@@ -24,4 +24,4 @@ Use case: stylized-concept. Asset type: production hero mascot illustration for 
 
 浏览器检查素材自然宽度为 1536，透明 Alpha 最小值为 0，边角为透明；确认没有白色矩形背景。11 组现有界面流程及 7 种宽度（320–1920 px）的六个分区通过，未出现页面横向溢出或 JavaScript 异常。静态预览同步检查图像加载、尺寸和窄屏布局。
 
-临时脚本、独立服务数据及截图位于 `debug/ocean-artwork/`，说明见 `note.md`；日志覆盖写入 `logs/ocean-artwork/browser.log` 与 `server.log`。此更新在主分支，未修改已发布的 v0.2.6 ZIP。
+临时脚本、独立服务数据及截图位于 `debug/ocean-artwork/`，说明见 `note.md`；日志覆盖写入 `logs/ocean-artwork/browser.log` 与 `server.log`。此更新及透明 WebP 已包含在 v0.3.0 部署 ZIP 中；图片无需访问外部服务。

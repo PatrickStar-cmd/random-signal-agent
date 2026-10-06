@@ -20,7 +20,7 @@
 
 项目面向 **UESTC 随机信号课程**。本地工具链无需模型 API Key 即可运行，也可接入兼容 Chat Completions 的服务，增强对话能力。
 
-[🌐 实验预览](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 下载 v0.2.6](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.2.6) · [📘 安装指南](RELEASE.md)
+[🌐 实验预览](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 下载 v0.3.0](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.0) · [📘 安装指南](RELEASE.md)
 
 ## 🧭 快速导航
 
@@ -38,8 +38,8 @@
 
 | 功能 | 可以完成的实验 |
 | --- | --- |
-| 🐳 可爱海洋界面（主分支新增） | 海蓝/薰衣草紫渐变、AI 立体鲸鱼插画与六个功能分区，桌面/平板/手机自适应；尚未包含在 v0.2.6 部署包。 |
-| 🔑 模型 API 配置（主分支新增） | 在页面选择服务与模型、填写 Key、测试并应用；可按会话记住配置。尚未包含在 v0.2.6 部署包中。 |
+| 🐳 可爱海洋界面（v0.3.0） | 海蓝/薰衣草紫渐变、AI 立体鲸鱼插画与六个功能分区，桌面/平板/手机自适应。 |
+| 🔑 模型 API 配置（v0.3.0） | 在页面选择服务与模型、填写 Key、测试并应用；可按会话记住配置。已包含在 v0.3.0 部署包中。 |
 | 🩺 信号诊断实验室 | STFT 时频图联动异常区间，六类可复现故障注入、盲测揭晓评分，以及保留原始观测的验证实验。 |
 | 💾 实验工作台 | 用模板创建实验，保存、恢复、复制、搜索、重命名或删除快照；服务重启后继续工作。 |
 | 📥 数据导入向导 | 预览 CSV/TXT，自选时间列与信号列，转换时间单位并定位错误行。 |
@@ -58,11 +58,11 @@
 
 ## 🎬 界面展示
 
-![主分支新增：可爱海洋工作区](docs/images/ocean-ui.png)
+![v0.3.0 可爱海洋工作区](docs/images/ocean-ui.png)
 
 工作区、模板与实验、数据导入、对比与报告、诊断实验室及模型设置分区清晰，切换时保留输入。详见 [界面说明](工程文件/代码/docs/ui-design.md)。
 
-![v0.2.6 信号诊断实验室](docs/images/diagnostics-v026.png)
+![信号诊断实验室](docs/images/diagnostics-v026.png)
 
 ![v0.2.5 实验工作台](docs/images/workbench-v025.png)
 
@@ -79,11 +79,11 @@
 
 ## 🚀 快速开始
 
-使用 **Python 3.12–3.14** 或 **Docker Compose v2**。v0.2.6 使用 FastAPI 后端；部署检查覆盖 Windows、Linux 的 Python 3.12–3.14 和 Linux Docker。
+使用 **Python 3.12–3.14** 或 **Docker Compose v2**。v0.3.0 使用 FastAPI 后端；部署检查覆盖 Windows、Linux 的 Python 3.12–3.14 和 Linux Docker。
 
 ### 1. 获取项目
 
-下载并解压 v0.2.6 的[部署 ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.2.6/random-signal-agent-v0.2.6-deploy.zip)，在解压目录中的 `工程文件/代码` 打开终端。
+下载并解压 v0.3.0 的[部署 ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.3.0/random-signal-agent-v0.3.0-deploy.zip)，在解压目录中的 `工程文件/代码` 打开终端。
 
 也可以克隆仓库：
 
@@ -134,7 +134,7 @@ Windows 将第一条命令替换为 `Copy-Item .env.example .env`。上传文件
 
 ## 🧪 第一个实验
 
-主分支新增“模型 API 配置”：选择服务商、输入 Key、读取模型列表，再点击“测试并应用”，无需修改环境变量或重启。支持 OpenAI、DeepSeek 和自定义兼容接口；[配置指南](工程文件/代码/docs/model-api-setup.md)说明保存方式及高级参数。此功能尚未包含在 v0.2.6 部署包中，使用最新仓库代码即可体验。
+v0.3.0 提供“模型 API 配置”：选择服务商、输入 Key、读取模型列表，再点击“测试并应用”，无需修改环境变量或重启。支持 OpenAI、DeepSeek 和自定义兼容接口；[配置指南](工程文件/代码/docs/model-api-setup.md)说明保存方式及高级参数。此功能已包含在 v0.3.0 部署包中。
 
 在“信号诊断实验室”载入故障演示，查看时频图与证据卡片。点击“定位波形”或拖动时频图选择区间，运行验证实验查看前后变化；只有存在干净参考时显示真实误差。采用结果后可保存快照。盲测在揭晓前隐藏真值和参考误差，禁止完整实验导出与快照对比；独立诊断报告可导出。
 
@@ -243,7 +243,7 @@ Docker Compose 读取代码目录下的 `.env`。Docker 参数、HTTPS 部署与
 | --- | --- |
 | 为什么在线预览不能运行新实验？ | GitHub Pages 提供已保存的展示内容。运行本地后端或使用 Docker 部署，即可交互实验。 |
 | 必须配置 API Key 吗？ | 本地信号工具无需密钥；模型辅助对话属于可选功能。 |
-| 支持哪些 Python 版本？ | v0.2.6 支持 3.12–3.14，已移除 `cgi`；旧 v0.1.0 包仍需 Python 3.12。 |
+| 支持哪些 Python 版本？ | v0.3.0 支持 3.12–3.14，已移除 `cgi`；旧 v0.1.0 包仍需 Python 3.12。 |
 | Windows 无法激活虚拟环境怎么办？ | 快速开始命令直接调用 `.venv\Scripts\python.exe`，无需激活。 |
 | 麦克风无法使用怎么办？ | 通过 localhost 或 HTTPS 访问应用，并在浏览器中允许麦克风权限。 |
 | 为什么上传信号没有 SNR 数值？ | 基于参考信号的 SNR 需要干净信号；上传样本与麦克风音频不包含该参考。 |
@@ -293,7 +293,7 @@ Diting turns Random Signals coursework into reproducible experiments. Generate a
 
 Built for the Random Signals course at **UESTC**. The local toolchain works without a model API key; an optional Chat Completions-compatible service adds model-assisted dialogue.
 
-[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.2.6](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.2.6) · [📘 Installation guide](RELEASE.md)
+[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.3.0](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.0) · [📘 Installation guide](RELEASE.md)
 
 ## 🧭 Explore
 
@@ -311,8 +311,8 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 
 | Capability | What you can do |
 | --- | --- |
-| 🐳 Ocean UI (new on main) | Layered ocean/lilac gradients, AI-generated 3D whale art and six persistent views for desktop, tablet and mobile. Not in the v0.2.6 ZIP yet. |
-| 🔑 Model API setup (new on main) | Choose a provider/model, enter a key and test/apply in the UI; optional per-session persistence. Not included in the v0.2.6 deployment ZIP yet. |
+| 🐳 Ocean UI (v0.3.0) | Layered ocean/lilac gradients, AI-generated 3D whale art and six persistent views for desktop, tablet and mobile. |
+| 🔑 Model API setup (v0.3.0) | Choose a provider/model, enter a key and test/apply in the UI; optional per-session persistence. |
 | 🩺 Diagnostic laboratory | Linked STFT and event timeline, six seeded fault types, blind challenge evaluation, and reversible evidence-based processing trials. |
 | 💾 Experiment workbench | Create from templates, save, reopen, duplicate, search, rename or delete snapshots, and resume after a restart. |
 | 📥 Data import wizard | Preview CSV/TXT, select time and signal columns, convert time units and locate invalid rows. |
@@ -335,7 +335,7 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 
 Six focused views organize chat, templates, data import, comparisons, diagnostics and settings while preserving inputs. See the [UI guide](工程文件/代码/docs/ui-design.md).
 
-![v0.2.6 diagnostic laboratory](docs/images/diagnostics-v026.png)
+![Diagnostic laboratory](docs/images/diagnostics-v026.png)
 
 ![v0.2.5 experiment workbench](docs/images/workbench-v025.png)
 
@@ -352,11 +352,11 @@ Enable **Agent mode**, enter an acquisition command, and follow the preprocessin
 
 ## 🚀 Quick start
 
-Use **Python 3.12–3.14** or **Docker Compose v2**. v0.2.6 uses FastAPI; deployment checks cover Python 3.12–3.14 on Windows and Linux, plus Docker on Linux.
+Use **Python 3.12–3.14** or **Docker Compose v2**. v0.3.0 uses FastAPI; deployment checks cover Python 3.12–3.14 on Windows and Linux, plus Docker on Linux.
 
 ### 1. Get the project
 
-Download the v0.2.6 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.2.6/random-signal-agent-v0.2.6-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
+Download the v0.3.0 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.3.0/random-signal-agent-v0.3.0-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
 
 Or clone the repository:
 
@@ -407,7 +407,7 @@ The [online preview](https://patrickstar-cmd.github.io/random-signal-agent/) sho
 
 ## 🧪 Your first experiment
 
-The main branch now includes model API setup: choose a provider, enter a key, load available models and test/apply without restarting. OpenAI, DeepSeek and custom compatible endpoints are supported; see the [setup guide](工程文件/代码/docs/model-api-setup.md). This feature is not included in the v0.2.6 deployment ZIP yet; use the latest repository checkout.
+v0.3.0 includes model API setup: choose a provider, enter a key, load available models and test/apply without restarting. OpenAI, DeepSeek and custom compatible endpoints are supported; see the [setup guide](工程文件/代码/docs/model-api-setup.md). This feature is included in the v0.3.0 deployment ZIP.
 
 Load the fault demo in the diagnostic laboratory to inspect time-frequency evidence. Locate an event or drag a time range, run a processing trial, and inspect before/after metrics. True error is available only with a clean reference. Adopt a trial and save it as a snapshot. Blind mode hides truth and reference error until reveal; full experiment export and snapshot comparisons are blocked until then, while the diagnostic report remains available.
 
@@ -518,7 +518,7 @@ The check covers health, Web assets, Agent mode, streaming, CSV upload, and synt
 | --- | --- |
 | Why does the online preview not run new experiments? | GitHub Pages serves the saved showcase. Start the backend locally or deploy it with Docker for interactive use. |
 | Do I need an API key? | The local signal tools do not require one. Model-assisted dialogue is optional. |
-| Which Python versions work? | v0.2.6 supports 3.12–3.14 and removes `cgi`. The older v0.1.0 package still requires Python 3.12. |
+| Which Python versions work? | v0.3.0 supports 3.12–3.14 and removes `cgi`. The older v0.1.0 package still requires Python 3.12. |
 | Why can I not activate the virtual environment on Windows? | The quick-start commands call `.venv\Scripts\python.exe` directly and do not require activation. |
 | Why is the microphone unavailable? | Open the app on localhost or HTTPS and allow microphone access in the browser. |
 | Why does my uploaded signal have no SNR value? | Reference-based SNR requires a clean signal. Uploaded samples and microphone audio do not provide that reference. |

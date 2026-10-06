@@ -114,7 +114,7 @@ STFT 把信号切成带重叠的短片段，每段乘 Hann 窗后作实数 FFT�
 诊断验收日志 `logs/diagnostics/latest.log`、发布测试 `logs/release/latest.log`、部署 `logs/deployment/latest.log`、浏览器 `logs/browser/latest.log` 均覆盖写入。调试截图位于 debug/v026，仅用于此次验证。
 
 
-## 会话模型与配置隔离（待发布）
+## 会话模型与配置隔离（v0.3.0）
 
 模型列表通过 GET /models 获取；测试通过 POST /chat/completions 请求简短文本，非空回复才通过，不能据此断言工具调用能力。预设 OpenAI 使用 max_completion_tokens 且省略温度，通用接口沿用 max_tokens，可在高级配置覆盖。
 
@@ -126,7 +126,7 @@ STFT 把信号切成带重叠的短片段，每段乘 Hann 窗后作实数 FFT�
 
 ## 海洋主题与分区导航
 
-浅色语义颜色同步用于 HTML/CSS 与 Canvas，装饰 SVG 与科学曲线分离。六个分区只切换 DOM 可见性，表单和实验状态持续保留；使用 HTML 锚点和浏览器历史。每次显现后重算画布尺寸；当前验证曲线按方法、区间与指标匹配缓存，重新载入快照仍需重做验证。无新运行依赖。详情及 logs/ocean-ui/ 日志说明见 [ui-design.md](ui-design.md)。
+浅色语义颜色同步用于 HTML/CSS 与 Canvas，WebP 插画与科学曲线分离。六个分区只切换 DOM 可见性，表单和实验状态持续保留；使用 HTML 锚点和浏览器历史。每次显现后重算画布尺寸；当前验证曲线按方法、区间与指标匹配缓存，重新载入快照仍需重做验证。无新运行依赖。详情及 logs/ocean-ui/ 日志说明见 [ui-design.md](ui-design.md)。
 
 ## AI 海洋素材与背景分层
 

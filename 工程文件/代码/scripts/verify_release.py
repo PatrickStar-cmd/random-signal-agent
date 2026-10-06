@@ -53,6 +53,9 @@ def main():
         code = manifest_file.parent / manifest['runtime_path']
         assert (code / 'server.py').is_file()
         assert (code / 'web/background.jpg').is_file()
+        assert manifest['version'] == json.loads((code / 'config/release.json').read_text(encoding='utf-8'))['version']
+        assert (code / 'web/ocean-whale.webp').is_file()
+        assert (code / 'config/model-providers.json').is_file()
         assert (manifest_file.parent / 'LICENSE').is_file()
         env = os.environ.copy()
         env.update({'RS_AGENT_LLM_ENABLED': '0', 'PYTHONUTF8': '1', 'PYTHONUNBUFFERED': '1'})
@@ -97,7 +100,9 @@ def main():
                 report['status'] = 'passed'
                 report['checks'] = ['archive_contents', 'sha256', 'fresh_venv_install', 'pip_check',
                                     'regression_suite', 'integration_suite', 'workbench_roundtrip', 'numerical_benchmark', 'real_startup_script',
-                                    'health', 'web_assets', 'agent_pipeline', 'sse', 'csv_upload', 'synthetic_audio_download', 'diagnostic_acceptance']
+                                    'health', 'application_version', 'web_assets', 'ocean_ui_assets', 'model_settings_api',
+                                    'model_settings_acceptance', 'studio_acceptance', 'agent_pipeline', 'sse', 'csv_upload',
+                                    'synthetic_audio_download', 'diagnostic_acceptance']
             finally:
                 if process is not None and process.poll() is None:
                     if os.name == 'nt':

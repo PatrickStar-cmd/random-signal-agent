@@ -1,16 +1,15 @@
 # Changelog
 
-## Unreleased
+## v0.3.0 · 2026-10-06
 
-- AI-generated dimensional whale/starfish artwork, transparent WebP delivery (~143 KiB), richer ocean/lilac/pink gradients and restrained decorative emoji. Mobile artwork sits below the copy; preview and README screenshots stay in sync.
+- Model API setup in the browser: OpenAI, DeepSeek and custom Chat Completions-compatible providers, dynamic model lists, text connection tests and immediate per-session application without restarting. Optional restart persistence, local-mode switching and configuration removal.
+- API keys stay out of browser storage, experiment snapshots, exports and task history. Endpoint changes never reuse a saved key automatically; compatible token parameters and redacted errors support different providers. Opt-in persistence stores keys in plaintext on the server.
+- Cute ocean interface with six persistent views, blue/lilac/mint/pink gradients, rounded cards, keyboard and history navigation, desktop/tablet/mobile layouts and reduced-motion support.
+- AI-generated 3D whale/starfish artwork delivered as a transparent 143 KiB WebP; preview, artwork documentation and bilingual README stay in sync. All assets ship locally in the deployment package.
+- Fix wrapped chart legends, preserve diagnostic trial plots across view changes and show completed tasks correctly. Example prompts fill the input for review before sending.
+- Release smoke checks now verify the application version, packaged ocean/model-settings assets and model configuration endpoint alongside existing experiment, diagnostic and restart checks. Schema 1 and algorithm 0.2.0 remain unchanged.
 
-- Cute ocean UI: blue/lilac surfaces, original whale illustration, six persistent workspace views, responsive layout and accessible navigation.
-- Chart colors match the light theme, wrapped legends reserve space, diagnostic trial plots survive view changes, and completed tasks correctly show completion. Updated preview and bilingual README screenshots.
-
-- Per-session model API setup with provider presets, dynamic model lists, text connection tests, immediate application and optional restart persistence.
-- Keys are separate from experiment snapshots/task history; browser storage contains no keys. Local mode, configuration removal, compatible token parameters and safe error reporting.
-
-新增模型 API 配置向导与可爱海洋界面，待后续版本发布。
+新增页面内模型 API 配置，统一发布海洋 UI、AI 鲸鱼插画与图表/任务提示修复。升级前停止服务并备份整个 `data/`；若启用“记住配置”，备份包含明文 Key，需妥善保护。本地工具链仍无需 Key。
 
 ## v0.2.6 · 2026-10-06
 

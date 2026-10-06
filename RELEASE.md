@@ -1,8 +1,8 @@
-# v0.2.6 · Installation and deployment
+# v0.3.0 · Installation and deployment
 
-Download `random-signal-agent-v0.2.6-deploy.zip` from the [v0.2.6 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.2.6) and extract it; the archive contains source, Web assets, configuration, documentation and example data. Use **Python 3.12–3.14** or **Docker**. The [previous v0.1.0 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.1.0) remains available and requires Python 3.12.
+Download `random-signal-agent-v0.3.0-deploy.zip` from the [v0.3.0 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.0) and extract it; the archive contains source, Web assets, configuration, documentation and example data. Use **Python 3.12–3.14** or **Docker**. The [previous v0.1.0 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.1.0) remains available and requires Python 3.12.
 
-Open a terminal in `random-signal-agent/工程文件/代码` (or `random-signal-agent-v0.2.6/工程文件/代码` in a deployment archive).
+Open a terminal in `random-signal-agent/工程文件/代码` (or `random-signal-agent-v0.3.0/工程文件/代码` in a deployment archive).
 
 ## Windows
 
@@ -45,22 +45,32 @@ The check covers health, Web assets, Agent mode, streaming responses, CSV upload
 
 ## 中文说明
 
-下载 v0.2.6 部署包并解压，进入 `工程文件/代码` 后按上方命令启动。支持 Python 3.12–3.14，依赖版本在 `requirements-repro.txt` 固定。也可使用 Docker Compose；默认地址为 <http://127.0.0.1:8000>。实验可导出 ZIP，升级前停止服务并备份整个 `data/` 目录。
+下载 v0.3.0 部署包并解压，进入 `工程文件/代码` 后按上方命令启动。支持 Python 3.12–3.14，依赖版本在 `requirements-repro.txt` 固定。也可使用 Docker Compose；默认地址为 <http://127.0.0.1:8000>。实验可导出 ZIP，升级前停止服务并备份整个 `data/` 目录。
 
 完整应用包含对话、分析、上传及音频处理，不需要外部模型密钥即可使用本地工具链。服务器部署、模型配置与日志查看见[部署说明](工程文件/代码/DEPLOY.md)。
 
-## Upgrading from v0.2.0 / v0.2.1 / v0.2.5
+## Upgrading from v0.2.0 / v0.2.1 / v0.2.5 / v0.2.6
 
-Stop the old service and back up the entire `data/` directory, then copy it into the new deployment at the same relative location (or keep `RS_AGENT_DATA_DIR` pointing to it). Keep `uploads/` and `outputs/` to retain file and audio attachments. Restart using the same host and browser profile so its session ID is preserved. v0.2.0/v0.2.1/v0.2.5 snapshots and experiment ZIPs remain readable: schema 1 and algorithm 0.2.0 are unchanged. No database reset is needed.
+Stop the old service and back up the entire `data/` directory, then copy it into the new deployment at the same relative location (or keep `RS_AGENT_DATA_DIR` pointing to it). Keep `uploads/` and `outputs/` to retain file and audio attachments. Restart using the same host and browser profile so its session ID is preserved. v0.2.0/v0.2.1/v0.2.5/v0.2.6 snapshots and experiment ZIPs remain readable: schema 1 and algorithm 0.2.0 are unchanged. No database reset is needed.
 
 Upgrades from v0.2.0/v0.2.1 add an operation-label column to the task database (introduced in v0.2.5). Existing results remain intact. To roll back to an older application, restore the pre-upgrade data backup rather than reusing the migrated database. Run only one backend process against a data directory.
 
 The new import wizard accepts UTF-8 CSV/TXT and validates selected columns before changing the workspace. Task cancellation is cooperative; an external request or native calculation must reach a checkpoint before it stops. Storage cleanup requires a preview and confirmation and only removes unreferenced NPZ files; it does not delete task history, uploads or audio.
 
-## Diagnostic laboratory (v0.2.6)
+## Diagnostic laboratory (introduced in v0.2.6)
 
 Load the fault demo in the diagnostic laboratory to inspect time-frequency evidence. Locate an event or drag a time range, run a processing trial, and inspect before/after metrics. True error is available only with a clean reference. Adopt a trial and save it as a snapshot. Blind mode hides truth and reference error until reveal; full experiment export and snapshot comparisons are blocked until then, while the diagnostic report remains available.
 
 在“信号诊断实验室”载入故障演示，查看时频图与证据卡片。点击“定位波形”或拖动时频图选择区间，运行验证实验查看前后变化；只有存在干净参考时显示真实误差。采用结果后可保存快照。盲测在揭晓前隐藏真值和参考误差，禁止完整实验导出与快照对比；独立诊断报告可导出。
 
 Back up the entire `data/` directory before upgrading. Schema 1 and preprocessing algorithm 0.2.0 remain readable; diagnostic configuration has its own version 1.0. No additional production dependencies are required.
+
+## Model API setup and ocean UI (v0.3.0)
+
+Open **模型与设置 → 模型 API 配置**. Choose OpenAI, DeepSeek or a custom Chat Completions-compatible endpoint, enter your own key, load/select a model and choose **测试并应用**. Configuration takes effect for the current browser session without restarting. You can return to local mode or clear the configuration at any time. No external model is needed for the built-in signal tools.
+
+Keys are held in server memory by default. Opting into **记住配置** stores the key in plaintext in `data/model-settings.sqlite3`; protect this file and any data backups. Browser storage, task history and experiment ZIPs do not contain keys. An existing `.env` configuration remains the service default. See the [model setup guide](工程文件/代码/docs/model-api-setup.md) for endpoint and parameter compatibility.
+
+The package includes the six-view ocean interface, transparent AI-generated whale artwork, responsive charts and all local styles/scripts. GitHub Pages is a static preview; API configuration and interactive experiments require the Python backend.
+
+打开“模型与设置 → 模型 API 配置”，选择服务、输入自己的 Key、读取模型列表并“测试并应用”，无需重启。默认只在服务内存保存；勾选“记住配置”后会将 Key 明文写入 `data/model-settings.sqlite3`，需保护该文件及数据备份。可随时切回本地模式或清除配置。v0.3.0 部署包已包含海洋界面及所有图片资源；GitHub Pages 仍为静态预览。
