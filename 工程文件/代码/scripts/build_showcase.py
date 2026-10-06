@@ -6,6 +6,8 @@ import csv
 import html
 import json
 import platform
+import re
+import shutil
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,6 +18,23 @@ from src.agents import RandomSignalOrchestrator
 from src.preprocessing import PREPROCESS_METHODS, PreprocessConfig, preprocess_signal
 from src.signal_processing import SignalConfig, generate_random_signal, estimate_snr
 from src.visualization import render_demo_html
+
+
+def decorate_preview(page):
+    """Keep the checked-in static preview consistent when regenerating results."""
+    if 'href="showcase.css"' not in page:
+        page = page.replace('</head>', '  <link rel="stylesheet" href="showcase.css">\n</head>', 1)
+    header = '''<header><div><span class="eyebrow">YOUR LITTLE SIGNAL LAB</span>
+      <h1>谛听 · 随机信号智能体</h1><p>从一条波形开始，探索噪声、规律与细节里的异常。</p>
+      <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent#readme">开始使用</a> · 固定实验结果预览</p></div>
+      <img src="images/ocean.svg" alt="" width="420" height="180"></header>'''
+    page = re.sub(r'<header>.*?</header>', lambda _: header, page, count=1, flags=re.S)
+    if 'id="ocean-preview"' not in page:
+        page = page.replace('<main>', '''<main><section id="ocean-preview"><h2>一个轻松探索信号的小实验室</h2>
+        <p>蓝紫色海洋主题、鲸鱼插画与六个功能分区：工作区、模板与实验、数据导入、对比与报告、诊断实验室、模型与设置。切换分区时保留当前输入。</p>
+        <a href="images/ocean-ui.png"><img class="preview-image" src="images/ocean-ui.png" alt="可爱海洋工作区，包含对话、波形频谱和分析工具箱" loading="lazy"></a>
+        <p>新界面已在主分支提供；交互实验需要启动 Python 服务。已发布的 v0.2.6 ZIP 保留该版本的原有界面。</p></section>''', 1)
+    return page
 
 
 def main():
@@ -72,7 +91,9 @@ def main():
     page = page.replace("  </style>", "table {width:100%;border-collapse:collapse} th,td {padding:12px;text-align:left;border-bottom:1px solid #e2e8f0} p {line-height:1.7} a {color:#0f766e} @media(max-width:600px){header{padding:22px}main{padding:12px}section{padding:14px}}\n  </style>")
     page = page.replace("<h2>结构化分析结果</h2>", "<details><summary>展开结构化分析结果</summary>")
     page = page.replace("</pre>\n    </section>", "</pre></details>\n    </section>")
-    (pages / "index.html").write_text(page, encoding="utf-8")
+    (pages / "images").mkdir(exist_ok=True)
+    shutil.copyfile(ROOT / "web/ocean.svg", pages / "images/ocean.svg")
+    (pages / "index.html").write_text(decorate_preview(page), encoding="utf-8")
     (pages / ".nojekyll").touch()
     log = ROOT / "logs/showcase/latest.log"
     log.parent.mkdir(parents=True, exist_ok=True)

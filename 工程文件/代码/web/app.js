@@ -1731,7 +1731,7 @@ function createSessionId() {
       const risk = current?.risk || { score: 0, level: "idle", reasons: ["等待分析结果"] };
       const score = Number(risk.score || 0);
       const color = risk.level === "high" ? "#dc2626" : (risk.level === "medium" ? "#d97706" : "#164c8c");
-      $("riskGauge").style.background = `conic-gradient(${color} ${score * 3.6}deg, #2b394c 0deg)`;
+      $("riskGauge").style.background = `conic-gradient(${color} ${score * 3.6}deg, #e5eaf4 0deg)`;
       $("riskScore").textContent = score.toFixed(0);
       $("riskReasons").innerHTML = (risk.reasons || []).map(item => `<li>${escapeHtml(item)}</li>`).join("");
     }
@@ -1952,10 +1952,10 @@ function createSessionId() {
         return;
       }
       const signalSeries = [
-        { key: "observed", name: "原始观测", x: current.series.time || [], y: current.series.observed || [], color: "#6fb6ff" }
+        { key: "observed", name: "原始观测", x: current.series.time || [], y: current.series.observed || [], color: "#4475bd" }
       ];
       if (current.series.comparison_series?.length) {
-        const colors = ["#fb7185", "#60a5fa", "#fbbf24", "#a78bfa", "#22d3ee", "#f472b6", "#818cf8", "#34d399", "#c084fc", "#f8fafc"];
+        const colors = ["#bd5276", "#4475bd", "#a97617", "#7965be", "#168494", "#ad4c9d", "#5266b8", "#237c60", "#9155b3", "#536887"];
         current.series.comparison_series.forEach((item, index) => {
           signalSeries.push({
             key: item.key,
@@ -1984,7 +1984,7 @@ function createSessionId() {
       const selected = selectedAnalysis(current);
       if (selected?.frequency?.length) {
         drawChart($("spectrumChart"), [
-          { key: `${state.selectedSeriesKey}_spectrum`, name: `${selected.label} 功率谱`, x: selected.frequency, y: selected.power, color: "#a78bfa" }
+          { key: `${state.selectedSeriesKey}_spectrum`, name: `${selected.label} 功率谱`, x: selected.frequency, y: selected.power, color: "#7965be" }
         ], progress ? `频域功率谱 · 动态估计 · 第 ${progress.chunk_index} 片` : "频域功率谱", {
           zoomable: !progress,
           xUnit: "频率 / Hz",
@@ -1992,7 +1992,7 @@ function createSessionId() {
         });
       } else if (current.series.frequency?.length) {
         drawChart($("spectrumChart"), [
-          { key: "spectrum", name: "功率谱", x: current.series.frequency, y: current.series.power, color: "#a78bfa" }
+          { key: "spectrum", name: "功率谱", x: current.series.frequency, y: current.series.power, color: "#7965be" }
         ], "频域功率谱", {
           zoomable: !progress,
           xUnit: "频率 / Hz",
@@ -2014,15 +2014,16 @@ function createSessionId() {
     }
 
     function clearChart(canvas, text) {
+      canvas.style.minHeight = "";
       resizeCanvasToDisplaySize(canvas);
       canvas.__chartMeta = null;
       canvas.__seriesHitRegions = [];
       setChartToolsVisible(canvas.id, false);
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#101823";
+      ctx.fillStyle = "#fbfcff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#a8b3c7";
+      ctx.fillStyle = "#647490";
       ctx.font = "16px Microsoft YaHei, Segoe UI, Arial";
       ctx.fillText(text, 38, 42);
     }
@@ -2062,14 +2063,18 @@ function createSessionId() {
       resizeCanvasToDisplaySize(canvas);
       const ctx = canvas.getContext("2d");
       const width = canvas.width;
-      const height = canvas.height;
+      let height = canvas.height;
       const padLeft = 76;
       const padRight = 34;
       const padBottom = 64;
       const hitRegions = [];
       canvas.__seriesHitRegions = hitRegions;
       const legendLayout = layoutLegend(ctx, series, width, padLeft, options);
-      const plotTop = Math.min(height - padBottom - 90, Math.max(46, legendLayout.plotTop));
+      // Wrapped legends need their own space even on narrow screens.
+      canvas.style.minHeight = `${Math.max(210, legendLayout.plotTop + padBottom + 110)}px`;
+      resizeCanvasToDisplaySize(canvas);
+      height = canvas.height;
+      const plotTop = Math.max(46, legendLayout.plotTop);
       const plotHeight = Math.max(90, height - padBottom - plotTop);
       const allX = series.flatMap(item => item.x);
       const allY = series.flatMap(item => item.y);
@@ -2116,11 +2121,11 @@ function createSessionId() {
         plotBottom
       };
       ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = "#101823";
+      ctx.fillStyle = "#fbfcff";
       ctx.fillRect(0, 0, width, height);
       const xTicks = axisTicks(viewMin, viewMax, Math.max(3, Math.floor(plotWidth / 120)));
       const yTicks = axisTicks(yMin, yMax, Math.max(3, Math.floor(plotHeight / 56)));
-      ctx.strokeStyle = "#1f2d3e";
+      ctx.strokeStyle = "#e7edf6";
       ctx.lineWidth = 1;
       yTicks.forEach(value => {
         const y = plotBottom - (value - yMin) / ((yMax - yMin) || 1) * plotHeight;
@@ -2136,7 +2141,7 @@ function createSessionId() {
         ctx.lineTo(x, plotBottom);
         ctx.stroke();
       });
-      ctx.strokeStyle = "#3a4d66";
+      ctx.strokeStyle = "#a9b9cf";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(plotLeft, plotBottom);
@@ -2144,14 +2149,14 @@ function createSessionId() {
       ctx.moveTo(plotLeft, plotTop);
       ctx.lineTo(plotLeft, plotBottom);
       ctx.stroke();
-      ctx.fillStyle = "#a8b3c7";
+      ctx.fillStyle = "#647490";
       ctx.font = "11px Microsoft YaHei, Segoe UI, Arial";
       ctx.textBaseline = "middle";
       ctx.textAlign = "right";
       yTicks.forEach(value => {
         const y = plotBottom - (value - yMin) / ((yMax - yMin) || 1) * plotHeight;
         const isNearYAxisUnit = options.yUnit && y < plotTop + 28;
-        ctx.strokeStyle = "#4a5f7a";
+        ctx.strokeStyle = "#91a3bc";
         ctx.beginPath();
         ctx.moveTo(plotLeft - 5, y);
         ctx.lineTo(plotLeft, y);
@@ -2162,14 +2167,14 @@ function createSessionId() {
       ctx.textBaseline = "top";
       xTicks.forEach(value => {
         const x = plotLeft + (value - viewMin) / ((viewMax - viewMin) || 1) * plotWidth;
-        ctx.strokeStyle = "#4a5f7a";
+        ctx.strokeStyle = "#91a3bc";
         ctx.beginPath();
         ctx.moveTo(x, plotBottom);
         ctx.lineTo(x, plotBottom + 5);
         ctx.stroke();
         ctx.fillText(formatTick(value, viewMax - viewMin), x, plotBottom + 9);
       });
-      ctx.fillStyle = "#c4d2e5";
+      ctx.fillStyle = "#536887";
       ctx.font = "12px Microsoft YaHei, Segoe UI, Arial";
       if (options.xUnit) {
         ctx.textAlign = "right";
@@ -2181,14 +2186,14 @@ function createSessionId() {
         ctx.textBaseline = "top";
         ctx.fillText(options.yUnit, plotLeft - 58, plotTop + 4);
       }
-      ctx.fillStyle = "#eaf2ff";
+      ctx.fillStyle = "#263858";
       ctx.font = "14px Microsoft YaHei, Segoe UI, Arial";
       ctx.textAlign = "left";
       ctx.textBaseline = "alphabetic";
       ctx.fillText(title, padLeft, 24);
       if (options.zoomable) {
         const zoomText = `${chartZoomLevel(canvas.id).toFixed(1)}x`;
-        ctx.fillStyle = "#a8b3c7";
+        ctx.fillStyle = "#647490";
         ctx.font = "12px Microsoft YaHei, Segoe UI, Arial";
         ctx.fillText(`滚轮缩放，拖拽平移 · ${zoomText}`, padLeft, Math.max(40, plotTop - 8));
       }
@@ -2229,14 +2234,14 @@ function createSessionId() {
         }
         if (selected) {
           ctx.fillStyle = "rgba(96, 165, 250, 0.14)";
-          ctx.strokeStyle = "#60a5fa";
+          ctx.strokeStyle = "#4475bd";
           ctx.lineWidth = 1;
           ctx.fillRect(legendX - 7, legendY - 17, legendWidth + 8, 25);
           ctx.strokeRect(legendX - 7, legendY - 17, legendWidth + 8, 25);
         }
         ctx.fillStyle = item.color;
         ctx.fillRect(legendX, legendY, 18, 4);
-        ctx.fillStyle = "#c4d2e5";
+        ctx.fillStyle = "#536887";
         ctx.font = "12px Microsoft YaHei, Segoe UI, Arial";
         ctx.fillText(item.name, legendX + 24, legendY + 6);
       });
@@ -2473,7 +2478,8 @@ function createSessionId() {
     function updateWorkspaceSizing() {
       const workspace = document.querySelector(".workspace");
       if (!workspace || window.matchMedia("(max-width: 1180px)").matches) return;
-      workspace.style.setProperty("--chart-height", "300px");
+      const height = Math.max(220, Math.min(300, Math.floor((workspace.clientHeight - 178) / 2)));
+      workspace.style.setProperty("--chart-height", `${height}px`);
     }
 
     function initResizableLayout() {
@@ -2483,8 +2489,8 @@ function createSessionId() {
       if (!root || !leftSplitter || !rightSplitter) return;
       const saved = JSON.parse(localStorage.getItem("rs_agent_layout") || "{}");
       const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-      let left = Number(saved.left) || 390;
-      let right = Number(saved.right) || 360;
+      let left = Number(saved.left) || 350;
+      let right = Number(saved.right) || 280;
 
       function applyLayout() {
         const available = root.clientWidth - 28 - 16;

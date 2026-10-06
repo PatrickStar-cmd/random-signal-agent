@@ -84,9 +84,10 @@
     }
     if (!final) throw new Error("连接中断；点击恢复未完成请求继续等待同一任务。");
     sessionStorage.removeItem("rs_pending_workbench");
-    apply(final); status("已完成并自动保存"); await refreshList();
-    return final;
+    apply(final);
     $("agentProgressStatus").textContent = "已完成";
+    status("已完成并自动保存"); await refreshList();
+    return final;
   }
   $("wbForm").addEventListener("submit", event => {
     event.preventDefault();

@@ -123,3 +123,7 @@ STFT 把信号切成带重叠的短片段，每段乘 Hann 窗后作实数 FFT�
 同 Base URL 才允许留空沿用旧 Key。远程地址需要 HTTPS，localhost 可用 HTTP；拒绝 URL 中的用户密码、查询和 fragment、完整子接口路径。调用拒绝重定向，错误仅显示状态分类，不反射服务正文；测试不返回模型原始回复。记住的 Key 为明文 SQLite 数据，服务的文件访问权限与部署认证仍需保护。SQLite 连接提交后关闭，secure_delete 删除原记录内容；不声称能删除此前备份或系统存储副本。
 
 配置表单不使用 localStorage/sessionStorage 保存 Key；成功应用后清空密码框。浏览器只保留原会话 ID。模型配置日志只记录模拟测试结论：logs/model-settings/latest.log 和 browser.log 覆盖写入；调试截图位于 debug/model-settings，不含真实 Key。
+
+## 海洋主题与分区导航
+
+浅色语义颜色同步用于 HTML/CSS 与 Canvas，装饰 SVG 与科学曲线分离。六个分区只切换 DOM 可见性，表单和实验状态持续保留；使用 HTML 锚点和浏览器历史。每次显现后重算画布尺寸；当前验证曲线按方法、区间与指标匹配缓存，重新载入快照仍需重做验证。无新运行依赖。详情及 logs/ocean-ui/ 日志说明见 [ui-design.md](ui-design.md)。

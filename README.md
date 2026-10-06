@@ -38,6 +38,7 @@
 
 | 功能 | 可以完成的实验 |
 | --- | --- |
+| 🐳 可爱海洋界面（主分支新增） | 蓝紫配色、鲸鱼插画与六个功能分区，桌面/平板/手机自适应；尚未包含在 v0.2.6 部署包。 |
 | 🔑 模型 API 配置（主分支新增） | 在页面选择服务与模型、填写 Key、测试并应用；可按会话记住配置。尚未包含在 v0.2.6 部署包中。 |
 | 🩺 信号诊断实验室 | STFT 时频图联动异常区间，六类可复现故障注入、盲测揭晓评分，以及保留原始观测的验证实验。 |
 | 💾 实验工作台 | 用模板创建实验，保存、恢复、复制、搜索、重命名或删除快照；服务重启后继续工作。 |
@@ -56,6 +57,10 @@
 <a id="zh-interface"></a>
 
 ## 🎬 界面展示
+
+![主分支新增：可爱海洋工作区](docs/images/ocean-ui.png)
+
+工作区、模板与实验、数据导入、对比与报告、诊断实验室及模型设置分区清晰，切换时保留输入。详见 [界面说明](工程文件/代码/docs/ui-design.md)。
 
 ![v0.2.6 信号诊断实验室](docs/images/diagnostics-v026.png)
 
@@ -306,6 +311,7 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 
 | Capability | What you can do |
 | --- | --- |
+| 🐳 Ocean UI (new on main) | Soft blue/lilac surfaces, original whale art and six persistent views for desktop, tablet and mobile. Not in the v0.2.6 ZIP yet. |
 | 🔑 Model API setup (new on main) | Choose a provider/model, enter a key and test/apply in the UI; optional per-session persistence. Not included in the v0.2.6 deployment ZIP yet. |
 | 🩺 Diagnostic laboratory | Linked STFT and event timeline, six seeded fault types, blind challenge evaluation, and reversible evidence-based processing trials. |
 | 💾 Experiment workbench | Create from templates, save, reopen, duplicate, search, rename or delete snapshots, and resume after a restart. |
@@ -324,6 +330,10 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 <a id="en-interface"></a>
 
 ## 🎬 Interface
+
+![New on main: the ocean workspace](docs/images/ocean-ui.png)
+
+Six focused views organize chat, templates, data import, comparisons, diagnostics and settings while preserving inputs. See the [UI guide](工程文件/代码/docs/ui-design.md).
 
 ![v0.2.6 diagnostic laboratory](docs/images/diagnostics-v026.png)
 

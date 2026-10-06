@@ -95,7 +95,7 @@ GitHub Pages 从 `main` 分支 `/docs` 发布；生成结果后提交该目录�
 
 ## v0.2.0 工作台与验证
 
-启动后在页面顶部选择模板和目标、设置采样率/时长/基频/幅值/噪声/种子/AR 系数/脉冲概率，运行比较。命名并“保存为新快照”产生独立实验；“打开”恢复选中实验，“复制”保留原件并生成副本。每次成功操作还会自动保存当前会话。ZIP 可移到另一个浏览器或兼容算法版本的服务导入，CSV 保留每个采样点。HTML 无需后端即可打开。
+启动后进入“模板与实验”，选择模板和目标、设置采样率/时长/基频/幅值/噪声/种子/AR 系数/脉冲概率，运行比较。命名并“保存为新快照”产生独立实验；“打开”恢复选中实验，“复制”保留原件并生成副本。每次成功操作还会自动保存当前会话。ZIP 可移到另一个浏览器或兼容算法版本的服务导入，CSV 保留每个采样点。HTML 无需后端即可打开。
 
 ```bash
 python -m pip install -r requirements-test.txt
@@ -158,4 +158,8 @@ API：`POST /api/diagnostics/{analyze,inject,demo,reveal,verify,adopt}`，共同
 
 ## 模型 API 配置（待发布）
 
-展开页面顶部“模型 API 配置”，选服务、输入 Key、读取模型列表后点击“测试并应用”。具体操作、配置文件各字段、API 与保存行为见 [模型配置指南](model-api-setup.md)。运行 `python scripts/test_model_settings.py`；结果覆盖写入 `logs/model-settings/latest.log`。配置保存于独立的 data/model-settings.sqlite3，实验导出不含 Key。停止服务并备份整个 data/ 会同时备份记住的 Key，按部署数据权限保存。
+点击顶部“模型与设置”，展开“模型 API 配置”，选服务、输入 Key、读取模型列表后点击“测试并应用”。具体操作、配置文件各字段、API 与保存行为见 [模型配置指南](model-api-setup.md)。运行 `python scripts/test_model_settings.py`；结果覆盖写入 `logs/model-settings/latest.log`。配置保存于独立的 data/model-settings.sqlite3，实验导出不含 Key。停止服务并备份整个 data/ 会同时备份记住的 Key，按部署数据权限保存。
+
+## 可爱海洋界面（待发布）
+
+启动命令不变。默认进入“信号工作区”，其余操作位于六个顶栏入口；模型配置、任务队列与清理位于“模型与设置”。示例按钮只填写指令。界面说明与验证日志位置见 [ui-design.md](ui-design.md)。

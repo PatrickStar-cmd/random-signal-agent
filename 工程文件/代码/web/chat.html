@@ -9,115 +9,35 @@
   <link rel="stylesheet" href="studio.css">
   <link rel="stylesheet" href="diagnostics.css">
   <link rel="stylesheet" href="model-settings.css">
+  <link rel="stylesheet" href="ocean.css">
 </head>
 <body>
-  <header>
-    <div>
-      <h1>谛听<span class="title-suffix">随机信号智能体</span></h1>
-      <div class="sub">By YangCheng</div>
-    </div>
-    <div class="session" id="sessionLabel">时间初始化中</div>
+  <a class="skip-link" href="#layoutRoot">跳到工作区</a>
+  <header class="app-header">
+    <a class="brand" href="#layoutRoot" data-view-link="workspace"><span class="brand-icon" aria-hidden="true">≈</span><div><h1>谛听<span class="title-suffix">随机信号智能体</span></h1><div class="sub">SIGNAL EXPLORER · By YangCheng</div></div></a>
+    <div class="header-meta"><span class="local-badge">信号工具 · 本地计算</span><div class="session" id="sessionLabel">时间初始化中</div></div>
   </header>
-
-  <nav class="workflow-nav" aria-label="实验流程"><a href="#dataPanel">1 · 导入数据</a><a href="#workbenchPanel">2 · 处理与保存</a><a href="#comparisonPanel">3 · 对比与报告</a><a href="#diagnosticPanel">4 · 诊断实验室</a><span id="dataSummary">可导入 CSV/TXT，也可使用下方模板生成信号</span></nav>
-  <section class="studio studio-grid" aria-label="数据和任务管理">
-    <details id="modelPanel" class="model-panel"><summary>模型 API 配置 <span id="modelBadge">本地工具链</span></summary>
-      <p class="studio-hint">为当前浏览器会话选择对话模型。信号仿真、滤波与诊断无需 Key；外部模型用于知识问答和对话。</p>
-      <form id="modelForm">
-        <div class="studio-fields">
-          <label>服务商<select id="modelProvider"><option value="custom">自定义兼容接口</option></select></label>
-          <label>API Base URL<input id="modelBase" type="url" placeholder="https://服务地址/v1" maxlength="1000" required></label>
-          <label>API Key<input id="modelKey" type="password" autocomplete="off" spellcheck="false" placeholder="输入 Key；已有同地址 Key 可留空" maxlength="8192"></label>
-          <label>模型<select id="modelChoice"><option value="">先读取模型列表，或手动填写</option></select></label>
-          <label>模型 ID（可手动填写）<input id="modelId" maxlength="200" placeholder="服务提供的准确模型 ID" required></label>
-        </div>
-        <div class="studio-actions"><button id="modelList" type="button">读取模型列表</button><button id="modelApply" type="submit">测试并应用</button><button id="modelDisable" type="button">切回本地工具链</button><button id="modelClear" type="button">移除当前会话配置</button><a id="modelKeyLink" target="_blank" rel="noopener noreferrer" hidden>获取 API Key</a></div>
-        <label class="model-remember"><input id="modelRemember" type="checkbox">记住配置，服务重启后继续使用</label>
-        <p class="studio-hint">Key 不存入浏览器或实验包。未勾选时仅保存在服务内存中；勾选后 Key 以明文保存在此服务的数据目录，请在自己信任的服务上使用。测试会发送简短问候，可能产生少量 API 费用。</p>
-        <details><summary>高级兼容设置</summary><div class="studio-fields">
-          <label>超时 / 秒<input id="modelTimeout" type="number" min="5" max="120" value="45"></label>
-          <label>输出限制参数<select id="modelTokenParameter"><option value="max_tokens">max_tokens</option><option value="max_completion_tokens">max_completion_tokens</option></select></label>
-          <label>发送温度参数<select id="modelTemperature"><option value="yes">是</option><option value="no">否（部分推理模型适用）</option></select></label>
-        </div><button id="modelSave" type="button">只应用配置，不测试</button></details>
-      </form>
-      <p id="modelStatus" role="status">配置只作用于当前会话；切换或恢复实验不会携带 Key。</p>
-    </details>
-    <details id="dataPanel"><summary>1 · 数据导入向导</summary>
-      <p class="studio-hint">预览前 20 行，选择要分析的列。错误数据会标明行列位置，修正后再导入。</p>
-      <label class="file-choice">CSV / TXT 文件<input id="diFile" type="file" accept=".csv,.txt"></label>
-      <div class="studio-fields">
-        <label>分隔符<select id="diDelimiter"><option value="auto">自动识别</option><option value="comma">逗号</option><option value="semicolon">分号</option><option value="tab">制表符</option><option value="space">空格</option></select></label>
-        <label>首行表头<select id="diHeader"><option value="auto">自动识别</option><option value="yes">有表头</option><option value="no">无表头</option></select></label>
-        <label>时间列<select id="diTime"><option value="">按采样率生成时间</option></select></label>
-        <label>信号列<select id="diSignal"><option value="0">列 1</option></select></label>
-        <label>时间单位<select id="diUnit"><option value="s">秒 s</option><option value="ms">毫秒 ms</option><option value="us">微秒 μs</option><option value="ns">纳秒 ns</option></select></label>
-        <label>采样率 / Hz<input id="diRate" type="number" value="200" min="0.000001" max="192000" step="any"></label>
-      </div>
-      <div class="studio-actions"><button id="diPreview">预览并校验</button><button id="diImport" disabled>确认导入当前工作区</button></div>
-      <p id="diStatus" role="status">尚未选择文件</p><div id="diIssues"></div><div id="diTable" class="studio-scroll"></div>
-    </details>
-    <div class="studio-utilities">
-      <details id="taskPanel"><summary>任务与排队 <span id="taskCount"></span></summary><p class="studio-hint">运行中的任务会在安全检查点取消；外部请求需等到返回或超时。</p><div id="taskList"></div><p id="taskStatus" role="status"></p></details>
-      <details id="storagePanel"><summary>存储占用与清理</summary><p class="studio-hint">检查此服务所有实验的共享采样文件。只清理无快照引用的文件，自动保存和已保存实验会保留。</p><button id="storagePreview">查看清理预览</button><p id="storageInfo" role="status"></p><div id="storageFiles" class="studio-scroll"></div><button id="storageClean" disabled>确认清理无引用文件</button></details>
-    </div>
+  <nav class="workflow-nav" aria-label="工作区导航">
+    <a href="#layoutRoot" data-view-link="workspace">⌁ <span>信号工作区</span></a>
+    <a href="#workbenchPanel" data-view-link="templates">◈ <span>模板与实验</span></a>
+    <a href="#dataPanel" data-view-link="data">⇧ <span>导入数据</span></a>
+    <a href="#comparisonPanel" data-view-link="comparison">▥ <span>对比与报告</span></a>
+    <a href="#diagnosticPanel" data-view-link="diagnostics">⌕ <span>诊断实验室</span></a>
+    <a href="#modelPanel" data-view-link="settings">⚙ <span>模型与设置</span></a>
+  </nav>
+<section data-view="workspace" aria-label="信号工作区">
+  <section class="ocean-hero" aria-label="开始探索信号">
+    <div><span class="eyebrow">YOUR LITTLE SIGNAL LAB</span><h2>让每一段信号，讲出自己的故事。</h2><p>从一条波形开始，探索噪声、规律与藏在细节里的异常。</p><div class="hero-actions"><a class="ocean-primary" href="#workbenchPanel" data-view-link="templates">开始一个实验 <span aria-hidden="true">→</span></a><a href="#dataPanel" data-view-link="data">带上我的数据</a><span class="hero-note">无需 API Key 即可体验</span></div></div>
+    <img src="ocean.svg" class="ocean-mascot" alt="" width="420" height="180">
   </section>
-  <section id="workbenchPanel" class="workbench" aria-label="实验工作台">
-    <div class="wb-heading"><strong>2 · 处理与保存 <small>v0.2.6</small></strong><span id="wbStatus" role="status">每次操作后自动保存</span><button id="wbRecover" type="button">恢复未完成请求</button></div>
-    <details id="wbPanel" open><summary>模板与实验管理</summary>
-      <form id="wbForm" class="wb-fields">
-        <label>信号模板<select id="wbTemplate"><option value="sine">正弦 + 高斯噪声</option><option value="impulse">正弦 + 脉冲干扰</option><option value="ar">AR(1) 随机过程</option><option value="current">当前信号</option></select></label>
-        <label>采样率 / Hz<input id="wbRate" type="number" value="200" min="1" max="192000" required></label>
-        <label>时长 / s<input id="wbDuration" type="number" value="8" min="0.01" step="any" required></label>
-        <label>基频 / Hz<input id="wbFrequency" type="number" value="8" min="0" step="any" required></label>
-        <label>噪声标准差<input id="wbNoise" type="number" value="0.55" min="0" step="any" required></label>
-        <label>信号幅值<input id="wbAmplitude" type="number" value="1.2" min="0" step="any" required></label>
-        <label>随机种子<input id="wbSeed" type="number" value="42" min="0" max="4294967294" required></label>
-        <label>AR 系数<input id="wbAR" type="number" value="0.86" min="-1" max="1" step="any" required></label>
-        <label>脉冲概率<input id="wbImpulse" type="number" value="0.012" min="0" max="1" step="any" required></label>
-        <label>比较目标<select id="wbGoal"><option value="waveform">保留波形</option><option value="denoise">抑噪</option><option value="transient">保留瞬态</option></select></label>
-        <button id="wbRun" type="submit">运行并比较六种方法</button>
-      </form>
-      <p class="wb-hint">同一参数与种子生成相同信号。运行或恢复后，默认仅比较当前数据；选择其他模板可生成新信号。最多 200,000 个采样点。</p>
-      <div class="wb-actions"><input id="wbName" aria-label="实验名称" placeholder="实验名称" maxlength="120" value="我的信号实验"><button id="wbSave">保存为新快照</button></div>
-      <div class="wb-actions"><input id="wbSearch" type="search" aria-label="搜索已保存实验" placeholder="按名称搜索实验"><select id="wbExperiments" aria-label="已保存实验"><option value="">选择已保存的实验</option></select><button id="wbOpen">打开</button><button id="wbDuplicate">复制</button><button id="wbRename">按上方名称重命名</button><button id="wbDelete">删除快照</button></div>
-      <div class="wb-actions"><span>导出：</span><button data-export="zip">完整实验包 ZIP</button><button data-export="html">HTML 报告</button><button data-export="csv">完整数据 CSV</button><button data-export="json">参数与清单 JSON</button><label class="wb-import">导入实验包<input id="wbImport" type="file" accept=".zip"></label></div>
-      <details id="wbScores"><summary>评分依据与耗时</summary><div id="wbScoreContent">运行比较后显示。分数仅用于相同数据与目标下的方法比较。</div></details>
-    </details>
-  </section>
-  <section class="studio"><details id="comparisonPanel"><summary>3 · 跨实验对比与报告</summary>
-    <p class="studio-hint">选择 2–4 个快照，比较各自保存的处理结果。相同输入、参考、目标和评分版本下才直接比较评分。</p>
-    <div id="compareChoices" class="compare-choices"></div><div class="studio-actions"><button id="compareRun">对比所选实验</button><button id="compareExport" disabled>下载对比 HTML 报告</button></div>
-    <p id="compareStatus" role="status"></p><div id="compareResult"></div>
-  </details></section>
-  <section class="studio diagnostic-lab" id="diagnosticPanel"><details open><summary>4 · 信号诊断实验室</summary>
-    <p class="studio-hint">定位异常 → 查看证据 → 验证处理。时间均相对首个采样点；检测结果是特征提示，需结合来源判断。</p>
-    <div class="studio-fields">
-      <label>诊断来源<select id="dgSource"><option value="observed">原始观测</option><option value="processed">处理结果</option></select></label>
-      <label>窗长 / 点<select id="dgWindow"><option>32</option><option>64</option><option selected>128</option><option>256</option><option>512</option><option>1024</option><option>2048</option></select></label>
-      <label>重叠比例<select id="dgOverlap"><option value="0">0%</option><option value="0.5">50%</option><option value="0.75" selected>75%</option></select></label>
-      <label>开始 / s<input id="dgStart" type="number" min="0" step="any" value="0"></label>
-      <label>结束 / s<input id="dgEnd" type="number" min="0" step="any" placeholder="全段"></label>
-    </div>
-    <div class="studio-actions"><button id="dgAnalyze">诊断所选区间</button><button id="dgFull">选择全段</button><button id="dgDemo">载入故障演示</button><button id="dgReport">下载诊断 HTML</button></div>
-    <p id="dgStatus" role="status">生成或导入信号后即可诊断，也可载入 8 秒故障演示。</p>
-    <div id="dgResolution"></div>
-    <figure class="dg-figure"><figcaption>时频图 · 在图中拖动选择时间区间</figcaption><canvas id="dgHeat" width="1000" height="300" aria-label="时频图，时间选择也可使用上方数值输入"></canvas><p id="dgLegend">紫色低 → 蓝色 → 绿色 → 黄色高；PSD 相对本区间最大值 −80 至 0 dB</p></figure>
-    <figure class="dg-figure"><figcaption>联动波形 · 橙色为所选事件区间</figcaption><canvas id="dgWave" width="1000" height="180"></canvas></figure>
-    <div id="dgEvents" class="dg-events"></div>
-    <section id="dgVerification" hidden><h3>验证实验</h3><p id="dgVerdict"></p><pre id="dgMetrics"></pre><canvas id="dgTrial" width="1000" height="180"></canvas><p class="studio-hint">青色：处理前；绿色：试验后。原始观测保留；采用后可在工作台保存快照。</p><button id="dgAdopt">采用验证结果为当前处理信号</button></section>
-    <details class="dg-challenge"><summary>故障注入与盲测</summary>
-      <p class="studio-hint">每次注入均从此挑战的原始基线开始，同一种子可复现。强度表示幅值、漂移终值或削顶阈值；归零不使用强度。盲测隐藏真值、种子与参考误差，揭晓后评分；手动设定的故障参数仍由你知晓。</p>
-      <div class="studio-fields"><label>随机种子<input id="dgSeed" type="number" min="0" max="4294967294" value="42"></label><label class="dg-check"><input id="dgBlind" type="checkbox">盲测（演示也适用）</label></div>
-      <div id="dgFaults"></div><div class="studio-actions"><button id="dgAddFault">增加故障</button><button id="dgInject">注入并诊断</button><button id="dgReveal">揭晓并评估全段</button></div><pre id="dgTruth"></pre>
-    </details>
-  </details></section>
+  <div class="workspace-caption"><div><span class="eyebrow">WORKSPACE</span><h2>信号工作区</h2></div><span id="dataSummary">还没有信号 · 试试模板或导入数据</span></div>
   <main id="layoutRoot">
-    <section class="panel chat">
+    <section class="panel chat"><div class="panel-heading"><span class="heading-icon" aria-hidden="true">✦</span><div><h2>和谛听聊聊</h2><p>提问、采集，或说出你的分析需求</p></div></div>
       <div class="upload">
         <div class="upload-row">
-          <input id="fileInput" type="file" accept=".csv,.txt">
-          <input id="sampleRate" type="number" value="200" min="1" step="1" title="采样率">
-          <button id="uploadButton" type="button" title="默认第一列时间、第二列信号；需要选择列请使用上方导入向导">快速上传</button>
+          <input id="fileInput" type="file" accept=".csv,.txt" aria-label="快速上传信号文件">
+          <label class="quick-rate">采样率 / Hz<input id="sampleRate" type="number" value="200" min="1" step="1"></label>
+          <button id="uploadButton" type="button" title="默认第一列时间、第二列信号；需要选择列请使用“导入数据”向导">快速上传</button>
           <button id="microphoneButton" type="button" title="使用当前电脑麦克风作为外部传感器网关">麦克风采集</button>
         </div>
         <div class="agent-mode-bar">
@@ -140,7 +60,7 @@
       </div>
       <div class="messages" id="messages"></div>
       <div class="composer">
-        <input id="messageInput" type="text" placeholder="向智能体发指令，例如：采集 10 秒 500Hz 主频 12Hz 的随机信号并分析">
+        <input id="messageInput" type="text" aria-label="对话指令" placeholder="说出你的信号分析需求…">
         <button id="stopRealtimeButton" type="button" hidden>停止采集</button>
         <button class="primary" id="sendButton" type="button">发送</button>
       </div>
@@ -148,7 +68,7 @@
 
     <div class="splitter" data-splitter="left" title="拖动调整左侧对话区宽度"></div>
 
-    <section class="panel workspace">
+    <section class="panel workspace"><div class="panel-heading"><span class="heading-icon lilac" aria-hidden="true">⌁</span><div><h2>波形与频谱</h2><p>同一信号的两个视角</p></div></div>
       <div class="metrics-module collapsed" id="metricsModule">
         <div class="metrics-summary-bar" id="metricsToggle" role="button" tabindex="0" aria-expanded="false">
           <div class="metrics-summary-title">
@@ -160,7 +80,7 @@
         <div class="metrics-content" id="metricsContent"></div>
       </div>
       <div class="charts">
-        <div class="chart-frame">
+        <div class="chart-frame"><div class="chart-caption">时域波形 <span>TIME DOMAIN</span></div>
           <div class="chart-tools" data-chart-tools="signalChart" hidden>
             <button type="button" data-chart-zoom="out" title="缩小">-</button>
             <span data-chart-zoom-label>1x</span>
@@ -169,7 +89,7 @@
           </div>
           <canvas id="signalChart" width="1000" height="300"></canvas>
         </div>
-        <div class="chart-frame">
+        <div class="chart-frame"><div class="chart-caption">频域分析 <span>FREQUENCY DOMAIN</span></div>
           <div class="chart-tools" data-chart-tools="spectrumChart" hidden>
             <button type="button" data-chart-zoom="out" title="缩小">-</button>
             <span data-chart-zoom-label>1x</span>
@@ -195,7 +115,7 @@
 
     <div class="splitter" data-splitter="right" title="拖动调整右侧分析区宽度"></div>
 
-    <aside class="panel side">
+    <aside class="panel side"><div class="panel-heading"><span class="heading-icon coral" aria-hidden="true">◈</span><div><h2>分析工具箱</h2><p>选择方法，查看证据与建议</p></div></div>
       <div class="side-block">
         <h2>风险与控制</h2>
         <div class="risk">
@@ -210,11 +130,122 @@
       </div>
     </aside>
   </main>
+</section>
+<section data-view="templates" class="tool-view" aria-label="实验从这里开始"><div class="view-heading"><div><span class="eyebrow">SIGNAL LAB / TEMPLATES</span><h2>实验从这里开始</h2><p>用可复现的模板探索信号，保存你值得回看的发现。</p></div><a href="#layoutRoot" data-view-link="workspace">查看工作区 →</a></div>
+  <section id="workbenchPanel" class="workbench" aria-label="实验工作台">
+    <div class="wb-heading"><strong>2 · 处理与保存 <small>v0.2.6</small></strong><span id="wbStatus" role="status">每次操作后自动保存</span><button id="wbRecover" type="button">恢复未完成请求</button></div>
+    <details id="wbPanel" open><summary>模板与实验管理</summary>
+      <form id="wbForm" class="wb-fields">
+        <label>信号模板<select id="wbTemplate"><option value="sine">正弦 + 高斯噪声</option><option value="impulse">正弦 + 脉冲干扰</option><option value="ar">AR(1) 随机过程</option><option value="current">当前信号</option></select></label>
+        <label>采样率 / Hz<input id="wbRate" type="number" value="200" min="1" max="192000" required></label>
+        <label>时长 / s<input id="wbDuration" type="number" value="8" min="0.01" step="any" required></label>
+        <label>基频 / Hz<input id="wbFrequency" type="number" value="8" min="0" step="any" required></label>
+        <label>噪声标准差<input id="wbNoise" type="number" value="0.55" min="0" step="any" required></label>
+        <label>信号幅值<input id="wbAmplitude" type="number" value="1.2" min="0" step="any" required></label>
+        <label>随机种子<input id="wbSeed" type="number" value="42" min="0" max="4294967294" required></label>
+        <label>AR 系数<input id="wbAR" type="number" value="0.86" min="-1" max="1" step="any" required></label>
+        <label>脉冲概率<input id="wbImpulse" type="number" value="0.012" min="0" max="1" step="any" required></label>
+        <label>比较目标<select id="wbGoal"><option value="waveform">保留波形</option><option value="denoise">抑噪</option><option value="transient">保留瞬态</option></select></label>
+        <button id="wbRun" type="submit">运行并比较六种方法</button>
+      </form>
+      <p class="wb-hint">同一参数与种子生成相同信号。运行或恢复后，默认仅比较当前数据；选择其他模板可生成新信号。最多 200,000 个采样点。</p>
+      <div class="wb-actions"><input id="wbName" aria-label="实验名称" placeholder="实验名称" maxlength="120" value="我的信号实验"><button id="wbSave">保存为新快照</button></div>
+      <div class="wb-actions"><input id="wbSearch" type="search" aria-label="搜索已保存实验" placeholder="按名称搜索实验"><select id="wbExperiments" aria-label="已保存实验"><option value="">选择已保存的实验</option></select><button id="wbOpen">打开</button><button id="wbDuplicate">复制</button><button id="wbRename">按上方名称重命名</button><button id="wbDelete">删除快照</button></div>
+      <div class="wb-actions"><span>导出：</span><button data-export="zip">完整实验包 ZIP</button><button data-export="html">HTML 报告</button><button data-export="csv">完整数据 CSV</button><button data-export="json">参数与清单 JSON</button><label class="wb-import">导入实验包<input id="wbImport" type="file" accept=".zip"></label></div>
+      <details id="wbScores"><summary>评分依据与耗时</summary><div id="wbScoreContent">运行比较后显示。分数仅用于相同数据与目标下的方法比较。</div></details>
+    </details>
+  </section>
+
+</section>
+<section data-view="data" class="tool-view" aria-label="带上你的信号"><div class="view-heading"><div><span class="eyebrow">SIGNAL LAB / DATA</span><h2>带上你的信号</h2><p>选择数据列、核对采样信息，让真实数据加入实验。</p></div><a href="#layoutRoot" data-view-link="workspace">查看工作区 →</a></div>
+  <section class="studio" aria-label="导入数据">
+    <details id="dataPanel" open><summary>1 · 数据导入向导</summary>
+      <p class="studio-hint">预览前 20 行，选择要分析的列。错误数据会标明行列位置，修正后再导入。</p>
+      <label class="file-choice">CSV / TXT 文件<input id="diFile" type="file" accept=".csv,.txt"></label>
+      <div class="studio-fields">
+        <label>分隔符<select id="diDelimiter"><option value="auto">自动识别</option><option value="comma">逗号</option><option value="semicolon">分号</option><option value="tab">制表符</option><option value="space">空格</option></select></label>
+        <label>首行表头<select id="diHeader"><option value="auto">自动识别</option><option value="yes">有表头</option><option value="no">无表头</option></select></label>
+        <label>时间列<select id="diTime"><option value="">按采样率生成时间</option></select></label>
+        <label>信号列<select id="diSignal"><option value="0">列 1</option></select></label>
+        <label>时间单位<select id="diUnit"><option value="s">秒 s</option><option value="ms">毫秒 ms</option><option value="us">微秒 μs</option><option value="ns">纳秒 ns</option></select></label>
+        <label>采样率 / Hz<input id="diRate" type="number" value="200" min="0.000001" max="192000" step="any"></label>
+      </div>
+      <div class="studio-actions"><button id="diPreview">预览并校验</button><button id="diImport" disabled>确认导入当前工作区</button></div>
+      <p id="diStatus" role="status">尚未选择文件</p><div id="diIssues"></div><div id="diTable" class="studio-scroll"></div>
+    </details>
+  </section>
+
+</section>
+<section data-view="comparison" class="tool-view" aria-label="把不同尝试放在一起"><div class="view-heading"><div><span class="eyebrow">SIGNAL LAB / COMPARISON</span><h2>把不同尝试放在一起</h2><p>并排观察实验结果，找到适合当前信号的方法。</p></div><a href="#layoutRoot" data-view-link="workspace">查看工作区 →</a></div>
+  <section class="studio"><details id="comparisonPanel" open><summary>3 · 跨实验对比与报告</summary>
+    <p class="studio-hint">选择 2–4 个快照，比较各自保存的处理结果。相同输入、参考、目标和评分版本下才直接比较评分。</p>
+    <div id="compareChoices" class="compare-choices"></div><div class="studio-actions"><button id="compareRun">对比所选实验</button><button id="compareExport" disabled>下载对比 HTML 报告</button></div>
+    <p id="compareStatus" role="status"></p><div id="compareResult"></div>
+  </details></section>
+
+</section>
+<section data-view="diagnostics" class="tool-view" aria-label="找一找，信号里的小异常"><div class="view-heading"><div><span class="eyebrow">SIGNAL LAB / DIAGNOSTICS</span><h2>找一找，信号里的小异常</h2><p>从时频线索出发，定位事件，再用试验验证判断。</p></div><a href="#layoutRoot" data-view-link="workspace">查看工作区 →</a></div>
+  <section class="studio diagnostic-lab" id="diagnosticPanel"><details open><summary>4 · 信号诊断实验室</summary>
+    <p class="studio-hint">定位异常 → 查看证据 → 验证处理。时间均相对首个采样点；检测结果是特征提示，需结合来源判断。</p>
+    <div class="studio-fields">
+      <label>诊断来源<select id="dgSource"><option value="observed">原始观测</option><option value="processed">处理结果</option></select></label>
+      <label>窗长 / 点<select id="dgWindow"><option>32</option><option>64</option><option selected>128</option><option>256</option><option>512</option><option>1024</option><option>2048</option></select></label>
+      <label>重叠比例<select id="dgOverlap"><option value="0">0%</option><option value="0.5">50%</option><option value="0.75" selected>75%</option></select></label>
+      <label>开始 / s<input id="dgStart" type="number" min="0" step="any" value="0"></label>
+      <label>结束 / s<input id="dgEnd" type="number" min="0" step="any" placeholder="全段"></label>
+    </div>
+    <div class="studio-actions"><button id="dgAnalyze">诊断所选区间</button><button id="dgFull">选择全段</button><button id="dgDemo">载入故障演示</button><button id="dgReport">下载诊断 HTML</button></div>
+    <p id="dgStatus" role="status">生成或导入信号后即可诊断，也可载入 8 秒故障演示。</p>
+    <div id="dgResolution"></div>
+    <figure class="dg-figure"><figcaption>时频图 · 在图中拖动选择时间区间</figcaption><canvas id="dgHeat" width="1000" height="300" aria-label="时频图，时间选择也可使用上方数值输入"></canvas><p id="dgLegend">紫色低 → 蓝色 → 绿色 → 黄色高；PSD 相对本区间最大值 −80 至 0 dB</p></figure>
+    <figure class="dg-figure"><figcaption>联动波形 · 橙色为所选事件区间</figcaption><canvas id="dgWave" width="1000" height="180"></canvas></figure>
+    <div id="dgEvents" class="dg-events"></div>
+    <section id="dgVerification" hidden><h3>验证实验</h3><p id="dgVerdict"></p><pre id="dgMetrics"></pre><canvas id="dgTrial" width="1000" height="180"></canvas><p class="studio-hint">青色：处理前；绿色：试验后。原始观测保留；采用后可在工作台保存快照。</p><button id="dgAdopt">采用验证结果为当前处理信号</button></section>
+    <details class="dg-challenge"><summary>故障注入与盲测</summary>
+      <p class="studio-hint">每次注入均从此挑战的原始基线开始，同一种子可复现。强度表示幅值、漂移终值或削顶阈值；归零不使用强度。盲测隐藏真值、种子与参考误差，揭晓后评分；手动设定的故障参数仍由你知晓。</p>
+      <div class="studio-fields"><label>随机种子<input id="dgSeed" type="number" min="0" max="4294967294" value="42"></label><label class="dg-check"><input id="dgBlind" type="checkbox">盲测（演示也适用）</label></div>
+      <div id="dgFaults"></div><div class="studio-actions"><button id="dgAddFault">增加故障</button><button id="dgInject">注入并诊断</button><button id="dgReveal">揭晓并评估全段</button></div><pre id="dgTruth"></pre>
+    </details>
+  </details></section>
+
+</section>
+<section data-view="settings" class="tool-view" aria-label="按你的方式使用谛听"><div class="view-heading"><div><span class="eyebrow">SIGNAL LAB / SETTINGS</span><h2>按你的方式使用谛听</h2><p>连接对话模型，也可以一直使用本地信号工具。</p></div><a href="#layoutRoot" data-view-link="workspace">查看工作区 →</a></div>
+  <section class="studio studio-grid" aria-label="数据和任务管理">
+    <details id="modelPanel" class="model-panel" open><summary>模型 API 配置 <span id="modelBadge">本地工具链</span></summary>
+      <p class="studio-hint">为当前浏览器会话选择对话模型。信号仿真、滤波与诊断无需 Key；外部模型用于知识问答和对话。</p>
+      <form id="modelForm">
+        <div class="studio-fields">
+          <label>服务商<select id="modelProvider"><option value="custom">自定义兼容接口</option></select></label>
+          <label>API Base URL<input id="modelBase" type="url" placeholder="https://服务地址/v1" maxlength="1000" required></label>
+          <label>API Key<input id="modelKey" type="password" autocomplete="off" spellcheck="false" placeholder="输入 Key；已有同地址 Key 可留空" maxlength="8192"></label>
+          <label>模型<select id="modelChoice"><option value="">先读取模型列表，或手动填写</option></select></label>
+          <label>模型 ID（可手动填写）<input id="modelId" maxlength="200" placeholder="服务提供的准确模型 ID" required></label>
+        </div>
+        <div class="studio-actions"><button id="modelList" type="button">读取模型列表</button><button id="modelApply" type="submit">测试并应用</button><button id="modelDisable" type="button">切回本地工具链</button><button id="modelClear" type="button">移除当前会话配置</button><a id="modelKeyLink" target="_blank" rel="noopener noreferrer" hidden>获取 API Key</a></div>
+        <label class="model-remember"><input id="modelRemember" type="checkbox">记住配置，服务重启后继续使用</label>
+        <p class="studio-hint">Key 不存入浏览器或实验包。未勾选时仅保存在服务内存中；勾选后 Key 以明文保存在此服务的数据目录，请在自己信任的服务上使用。测试会发送简短问候，可能产生少量 API 费用。</p>
+        <details><summary>高级兼容设置</summary><div class="studio-fields">
+          <label>超时 / 秒<input id="modelTimeout" type="number" min="5" max="120" value="45"></label>
+          <label>输出限制参数<select id="modelTokenParameter"><option value="max_tokens">max_tokens</option><option value="max_completion_tokens">max_completion_tokens</option></select></label>
+          <label>发送温度参数<select id="modelTemperature"><option value="yes">是</option><option value="no">否（部分推理模型适用）</option></select></label>
+        </div><button id="modelSave" type="button">只应用配置，不测试</button></details>
+      </form>
+      <p id="modelStatus" role="status">配置只作用于当前会话；切换或恢复实验不会携带 Key。</p>
+    </details>
+    <div class="studio-utilities">
+      <details id="taskPanel"><summary>任务与排队 <span id="taskCount"></span></summary><p class="studio-hint">运行中的任务会在安全检查点取消；外部请求需等到返回或超时。</p><div id="taskList"></div><p id="taskStatus" role="status"></p></details>
+      <details id="storagePanel"><summary>存储占用与清理</summary><p class="studio-hint">检查此服务所有实验的共享采样文件。只清理无快照引用的文件，自动保存和已保存实验会保留。</p><button id="storagePreview">查看清理预览</button><p id="storageInfo" role="status"></p><div id="storageFiles" class="studio-scroll"></div><button id="storageClean" disabled>确认清理无引用文件</button></details>
+    </div>
+  </section>
+
+</section>
+
 
   <script src="app.js"></script>
   <script src="workbench.js"></script>
   <script src="studio.js"></script>
   <script src="diagnostics.js"></script>
   <script src="model-settings.js"></script>
+  <script src="ocean.js"></script>
 </body>
 </html>

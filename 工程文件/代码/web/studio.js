@@ -1,7 +1,7 @@
 /* Data import, task control and read-only snapshot comparisons. */
 (() => {
   let preview=null, storage=null, importBusy=false, haveColumns=false, comparedIds=null;
-  const esc=escapeHtml, colors=['#a78bfa','#22d3ee','#fb923c','#4ade80'];
+  const esc=escapeHtml, colors=['#7965be','#168494','#b5672f','#237c60'];
   const goals={waveform:'保留波形',denoise:'抑噪',transient:'保留瞬态'};
   const statuses={queued:'排队中',running:'运行中',cancelling:'正在取消',cancelled:'已取消',done:'已完成',error:'失败'};
   const operations={diagnose:'时频诊断',demo:'故障演示',inject:'故障注入',reveal:'盲测揭晓',verify:'验证实验',adopt:'采用验证结果',task:'旧版任务',chat:'对话',experiment:'方法比较',save:'保存快照',open:'恢复快照',duplicate:'复制快照',rename:'重命名',delete:'删除快照',import:'导入实验包','import-data':'导入数据',upload:'上传',microphone:'音频处理',stop:'停止采集'};
@@ -49,8 +49,8 @@
     try{
       const body=form(preview.token);body.append('request_id',createSessionId());importControls(true);tell('diStatus','正在导入…');
       const response=await fetch('/api/data/import',{method:'POST',body});const data=await response.json();if(!response.ok||data.error)throw Error(data.error||'导入失败');
-      window.workbench.apply(data);await window.workbench.refreshList();tell('diStatus','已导入当前工作区，可前往“处理与保存”比较方法。');
-      $('wbPanel').open=true;$('workbenchPanel').scrollIntoView({behavior:'smooth',block:'start'});
+      window.workbench.apply(data);await window.workbench.refreshList();tell('diStatus','已导入当前工作区，可在“模板与实验”中比较方法。');
+      $('wbPanel').open=true;window.dispatchEvent(new CustomEvent('workspace-navigate',{detail:'templates'}));
     }catch(error){tell('diStatus',error.message,true)}finally{importControls(false);refreshTasks()}
   };
   let taskLoading=false, lastActive=0;

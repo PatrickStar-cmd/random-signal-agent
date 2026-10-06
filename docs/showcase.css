@@ -1,0 +1,19 @@
+/* Static result preview shares the application's ocean palette. */
+* { box-sizing: border-box; }
+body { color: #263858; background: radial-gradient(ellipse at 100% 0, #eae6fb, transparent 40%), #f4f7fc; font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif; }
+header { display: flex; justify-content: space-between; align-items: center; gap: 20px; max-width: 1120px; margin: 24px auto 0; padding: 30px; background: linear-gradient(110deg, #eaf4fb, #f0edfb 65%, #f8f1f8); color: #263858; border: 1px solid #dce6f6; border-radius: 24px; }
+header h1 { font-size: clamp(23px, 3vw, 30px); margin: 10px 0; }
+header p { color: #647490; font-size: 13px; }
+header img { width: 260px; height: auto; }
+.eyebrow { color: #7d87aa; font-size: 11px; letter-spacing: 1.6px; }
+section { border: 1px solid #dfe6f2; border-radius: 20px; padding: 24px; box-shadow: 0 7px 25px #41578506; }
+h2 { color: #263858; font-size: 20px; }p, li { font-size: 14px; }
+a { color: #5266b8; text-underline-offset: 3px; }
+.metric { border-radius: 14px; background: #f7f9fd; border-color: #dfe6f2; }.metric strong { color: #5266b8; }
+img { display: block; max-width: 100%; height: auto; border-radius: 14px; }.preview-image { border: 1px solid #dfe6f2; }
+svg { border-color: #dfe6f2; border-radius: 14px; }
+pre { background: #f4f6fc; color: #405777; border: 1px solid #dfe6f2; border-radius: 14px; }
+summary { cursor: pointer; color: #5266b8; }.table-scroll { overflow-x: auto; }
+:is(a, summary):focus-visible { outline: 3px solid #788add; outline-offset: 4px; }
+@media(max-width: 1150px) { header { margin: 16px 24px 0; } }
+@media(max-width: 600px) { header { margin: 12px; padding: 22px; }header img { width: 90px; }main { padding: 12px; }section { padding: 16px; } }
