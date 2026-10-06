@@ -10,7 +10,7 @@ This experiment compares six preprocessing methods on a random process with mixe
 
 ## Reproduce the experiment
 
-With Python 3.12, run the following commands from `工程文件/代码`:
+With Python 3.12–3.14, run the following commands from `工程文件/代码`:
 
 ```bash
 python -m pip install -r requirements-repro.txt
@@ -46,7 +46,7 @@ SNR is calculated against the clean simulation signal. `sample.csv` contains onl
 
 Web Agent mode searches preprocessing parameters automatically and may produce different results from this fixed-parameter experiment.
 
-The screenshots and walkthrough on the project home page use a **sine signal with Gaussian noise**. This experiment uses a **random process with mixed noise**.
+The v0.3.0 workspace capture and acquisition walkthrough use a **sine signal with Gaussian noise**; the diagnostic capture uses the built-in fault demo. This experiment uses a **random process with mixed noise**.
 
 Run log: `工程文件/代码/logs/showcase/latest.log`.
 

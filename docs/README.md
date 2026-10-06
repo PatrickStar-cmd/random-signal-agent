@@ -11,7 +11,7 @@
 
 ## 复现实验
 
-在 Python 3.12 环境下，进入 `工程文件/代码`：
+在 Python 3.12–3.14 环境下，进入 `工程文件/代码`：
 
 ```bash
 python -m pip install -r requirements-repro.txt
@@ -32,7 +32,7 @@ python scripts/build_showcase.py
 
 SNR 以仿真干净信号为参考。`sample.csv` 仅包含观测值，上传后不计算真实 SNR。Web Agent 会自动搜索预处理参数，与本实验的固定参数结果可能不同。
 
-首页的界面截图和操作演示使用**正弦信号 + 高斯噪声**，本实验使用**随机过程 + 混合噪声**。
+首页 v0.3.0 的工作区截图与采集演示使用**正弦信号 + 高斯噪声**；诊断截图使用内置故障演示。本实验使用**随机过程 + 混合噪声**。
 
 运行日志：`工程文件/代码/logs/showcase/latest.log`。
 
@@ -51,7 +51,7 @@ This experiment compares six preprocessing methods on a random process with mixe
 
 ## Reproduce the experiment
 
-With Python 3.12, run the following commands from `工程文件/代码`:
+With Python 3.12–3.14, run the following commands from `工程文件/代码`:
 
 ```bash
 python -m pip install -r requirements-repro.txt
@@ -87,7 +87,7 @@ SNR is calculated against the clean simulation signal. `sample.csv` contains onl
 
 Web Agent mode searches preprocessing parameters automatically and may produce different results from this fixed-parameter experiment.
 
-The screenshots and walkthrough on the project home page use a **sine signal with Gaussian noise**. This experiment uses a **random process with mixed noise**.
+The v0.3.0 workspace capture and acquisition walkthrough use a **sine signal with Gaussian noise**; the diagnostic capture uses the built-in fault demo. This experiment uses a **random process with mixed noise**.
 
 Run log: `工程文件/代码/logs/showcase/latest.log`.
 

@@ -58,20 +58,33 @@
 
 ## 🎬 界面展示
 
-![v0.3.0 可爱海洋工作区](docs/images/ocean-ui.png)
+v0.3.0 的海洋界面将信号工作区、模板与实验、导入数据、对比与报告、诊断实验室、模型与设置分为六个入口。切换分区时保留当前输入与实验状态。
 
-工作区、模板与实验、数据导入、对比与报告、诊断实验室及模型设置分区清晰，切换时保留输入。详见 [界面说明](工程文件/代码/docs/ui-design.md)。
-
-![信号诊断实验室](docs/images/diagnostics-v026.png)
-
-![v0.2.5 实验工作台](docs/images/workbench-v025.png)
+![v0.3.0 海洋工作区：Agent 分析、波形与频谱](docs/images/ocean-ui.png)
 
 <details>
-<summary><strong>查看 Agent 模式操作演示</strong></summary>
+<summary><strong>查看模板、诊断与 API 配置</strong></summary>
 
-开启 **Agent 模式**，输入采集指令，即可查看预处理方法比较和分析结果。
+**模板与实验**：比较六种方法，保存命名快照，导入或导出完整实验包。
 
-![Agent 模式操作演示](docs/images/web-demo.gif)
+![v0.3.0 模板与实验](docs/images/workbench-v030.png)
+
+**诊断实验室**：时频图与波形联动，定位异常区间并验证处理效果。
+
+![v0.3.0 诊断实验室：时频图与联动波形](docs/images/diagnostics-v030.png)
+
+**模型与设置**：选择服务商、模型与保存方式，在页面完成连接配置。
+
+![v0.3.0 模型 API 配置表单](docs/images/model-api-v030.png)
+
+</details>
+
+<details>
+<summary><strong>观看 v0.3.0 操作演示</strong></summary>
+
+Agent 采集与分析 → 保存实验快照 → 查看故障诊断 → 打开模型配置。演示使用本地信号工具链。
+
+![v0.3.0 海洋界面操作演示](docs/images/ocean-demo-v030.gif)
 
 </details>
 
@@ -94,7 +107,7 @@ cd "random-signal-agent/工程文件/代码"
 
 ### 2. 安装并启动
 
-**Windows PowerShell**：确认使用 Python 3.12。
+**Windows PowerShell**：使用 Python 3.12–3.14。
 
 ```powershell
 python -m venv .venv
@@ -134,26 +147,23 @@ Windows 将第一条命令替换为 `Copy-Item .env.example .env`。上传文件
 
 ## 🧪 第一个实验
 
-v0.3.0 提供“模型 API 配置”：选择服务商、输入 Key、读取模型列表，再点击“测试并应用”，无需修改环境变量或重启。支持 OpenAI、DeepSeek 和自定义兼容接口；[配置指南](工程文件/代码/docs/model-api-setup.md)说明保存方式及高级参数。此功能已包含在 v0.3.0 部署包中。
-
-在“信号诊断实验室”载入故障演示，查看时频图与证据卡片。点击“定位波形”或拖动时频图选择区间，运行验证实验查看前后变化；只有存在干净参考时显示真实误差。采用结果后可保存快照。盲测在揭晓前隐藏真值和参考误差，禁止完整实验导出与快照对比；独立诊断报告可导出。
-
-使用自己的数据时，先打开“数据导入向导”，上传 UTF-8 CSV/TXT，选择时间列、信号列和时间单位。没有时间列时填写采样率。校验通过后确认导入，运行比较并保存不同方案的快照；在“跨实验对比与报告”中选择 2–4 个快照查看叠加图和指标。只有输入、参考信号、目标和评分版本一致时才直接比较评分。
-
-在页面顶部选择模板与比较目标，调整参数后点击“运行并比较六种方法”。完成后命名并保存快照，或导出实验 ZIP；导入该 ZIP 可以恢复全部采样、结果及工具记录。当前实验每次成功操作后自动保存。运行或恢复后默认比较当前数据；选择其他模板可生成新信号。实验列表支持按名称搜索，输入新名称后可重命名选中快照；删除前会确认，并保留当前工作区与其他快照。
-
-
-1. 在对话栏输入采集指令：
+1. 打开 **信号工作区**。可先开启 **Agent 模式**，自动比较六种预处理方法，再输入：
 
    > 采集一段 8 秒、采样率 200Hz、主频 8Hz 的正弦信号加高斯噪声，随机种子 42
 
-2. 继续输入预处理与分析指令：
+2. 查看中间的波形、频谱与统计指标。使用命令式交互时，可继续输入：
 
    > 使用滑动平均预处理并分析时域和频域特征
 
-3. 查看曲线和指标。也可以在采集前开启 **Agent 模式**，自动比较预处理方法。
+3. 切换到 **模板与实验**，填写名称并点击“保存为新快照”；也可导出完整实验 ZIP，恢复全部采样、结果及工具记录。当前实验每次成功操作后自动保存。运行或恢复后默认比较当前数据；选择其他模板可生成新信号。
+4. 使用自己的数据时，打开 **导入数据**，上传 UTF-8 CSV/TXT，选择时间列、信号列和时间单位，没有时间列则填写采样率。确认导入后进入模板与实验，比较方法并保存结果。
+5. 在 **对比与报告** 选择 2–4 个快照，查看叠加曲线与指标，下载 HTML 报告。只有输入、参考信号、目标和评分版本一致时才直接比较评分。
 
-保持相同参数和随机种子，可重复生成同一组仿真样本。导入向导支持多列文件中的单个信号；“快速上传”仍按单列采样值或前两列“时间（秒）、采样值”读取，格式见[实验说明](docs/README.md)。
+想尝试异常定位时，先保存当前实验，再到 **诊断实验室** 点击“载入故障演示”。查看时频图与证据卡片，定位或选择区间后验证处理效果；采用结果后可保存快照。盲测在揭晓前隐藏真值和参考误差，限制完整实验导出与快照对比；独立诊断报告仍可导出。
+
+外部模型是可选功能，入口为 **模型与设置 → 模型 API 配置**，操作见下方配置说明。
+
+保持相同参数和随机种子，可重复生成同一组仿真样本。导入向导支持多列文件中的单个信号；工作区的“快速上传”按单列采样值或前两列“时间（秒）、采样值”读取，格式见[实验说明](docs/README.md)。
 
 <a id="zh-workflow"></a>
 
@@ -184,7 +194,18 @@ flowchart TD
 
 ## ⚙️ 配置说明
 
-快速开始命令使用本地工具链。需要接入外部模型时，将 `config/server.env.example` 复制为 `config/server.env`，填写模型地址、名称与密钥。
+默认使用本地工具链。接入外部模型时，打开 **模型与设置 → 模型 API 配置**：
+
+1. 选择 OpenAI、DeepSeek 或自定义 Chat Completions 兼容服务，输入该服务的 Key。
+2. 点击“读取模型列表”并选择模型，或手动填写准确模型 ID。
+3. 点击“测试并应用”，当前浏览器会话立即生效，无需重启。可随时切回本地工具链或移除配置。
+
+默认只在服务内存保存；勾选“记住配置”后，Key 明文保存在 `data/model-settings.sqlite3`。浏览器存储、实验 ZIP 和任务记录不含 Key。接口兼容性、保存优先级与高级参数见[模型配置指南](工程文件/代码/docs/model-api-setup.md)。
+
+<details>
+<summary><strong>服务器默认配置与启动脚本</strong></summary>
+
+管理员也可将 `config/server.env.example` 复制为 `config/server.env`，设置整个服务的默认地址、模型与 Key。会话配置优先于这些默认值。
 
 | 配置项 | 用途 |
 | --- | --- |
@@ -198,6 +219,8 @@ flowchart TD
 激活虚拟环境后，Windows 使用 `scripts/start_server.ps1`，Linux/macOS 使用 `bash scripts/start_server.sh`，即可加载该配置文件。直接运行 `server.py` 不会加载 `config/server.env`。
 
 Docker Compose 读取代码目录下的 `.env`。Docker 参数、HTTPS 部署与服务管理见[部署说明](工程文件/代码/DEPLOY.md)。
+
+</details>
 
 <a id="zh-results"></a>
 
@@ -231,7 +254,7 @@ Docker Compose 读取代码目录下的 `.env`。Docker 参数、HTTPS 部署与
 .venv/bin/python scripts/smoke_deployment.py --base-url http://127.0.0.1:8000
 ```
 
-检查覆盖健康接口、页面资源、Agent 模式、流式响应、CSV 上传和合成音频下载，结果写入 `logs/deployment/latest.log`。Release 附件还包含 `SHA256SUMS.txt` 和 `verification.json`。
+检查覆盖应用版本、海洋页面资源、模型配置接口、Agent 模式、流式响应、导入导出与诊断，结果写入 `logs/deployment/latest.log`。Release 附件还包含 `SHA256SUMS.txt` 和 `verification.json`。
 
 </details>
 
@@ -243,7 +266,7 @@ Docker Compose 读取代码目录下的 `.env`。Docker 参数、HTTPS 部署与
 | --- | --- |
 | 为什么在线预览不能运行新实验？ | GitHub Pages 提供已保存的展示内容。运行本地后端或使用 Docker 部署，即可交互实验。 |
 | 必须配置 API Key 吗？ | 本地信号工具无需密钥；模型辅助对话属于可选功能。 |
-| 支持哪些 Python 版本？ | v0.3.0 支持 3.12–3.14，已移除 `cgi`；旧 v0.1.0 包仍需 Python 3.12。 |
+| 支持哪些 Python 版本？ | v0.3.0 支持 Python 3.12、3.13、3.14。 |
 | Windows 无法激活虚拟环境怎么办？ | 快速开始命令直接调用 `.venv\Scripts\python.exe`，无需激活。 |
 | 麦克风无法使用怎么办？ | 通过 localhost 或 HTTPS 访问应用，并在浏览器中允许麦克风权限。 |
 | 为什么上传信号没有 SNR 数值？ | 基于参考信号的 SNR 需要干净信号；上传样本与麦克风音频不包含该参考。 |
@@ -255,6 +278,8 @@ Docker Compose 读取代码目录下的 `.env`。Docker 参数、HTTPS 部署与
 
 | 文档 | 内容 |
 | --- | --- |
+| [模型配置指南](工程文件/代码/docs/model-api-setup.md) | 页面选模、Key 保存方式与兼容设置。 |
+| [界面说明](工程文件/代码/docs/ui-design.md) | 六分区导航、响应式布局与操作入口。 |
 | [安装与发布说明](RELEASE.md) | 部署 ZIP、各系统启动命令与校验方式。 |
 | [实验说明](docs/README.md) | 展示数据、参数、文件格式与复现步骤。 |
 | [代码概览](工程文件/代码/README.md) | 模块结构与模型配置。 |
@@ -263,8 +288,6 @@ Docker Compose 读取代码目录下的 `.env`。Docker 参数、HTTPS 部署与
 | [算法原理](工程文件/代码/docs/principle.md) | 信号处理与分析方法。 |
 | [部署说明](工程文件/代码/DEPLOY.md) | Docker、HTTPS、systemd 与健康检查。 |
 | [更新日志](CHANGELOG.md) | 版本变更。 |
-
-仓库也包含[原始 PDF 配置教程](工程文件/配置文档/随机信号智能体配置教程.pdf)。
 
 <a id="zh-contributing"></a>
 
@@ -331,20 +354,33 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 
 ## 🎬 Interface
 
-![New on main: the ocean workspace](docs/images/ocean-ui.png)
+The v0.3.0 ocean interface has six views: workspace, templates, data import, comparison, diagnostics and settings. Switching views preserves inputs and experiment state.
 
-Six focused views organize chat, templates, data import, comparisons, diagnostics and settings while preserving inputs. See the [UI guide](工程文件/代码/docs/ui-design.md).
-
-![Diagnostic laboratory](docs/images/diagnostics-v026.png)
-
-![v0.2.5 experiment workbench](docs/images/workbench-v025.png)
+![v0.3.0 ocean workspace: Agent analysis, waveform and spectrum](docs/images/ocean-ui.png)
 
 <details>
-<summary><strong>Watch an Agent mode experiment</strong></summary>
+<summary><strong>Explore templates, diagnostics and API setup</strong></summary>
 
-Enable **Agent mode**, enter an acquisition command, and follow the preprocessing comparisons and analysis results.
+**Templates and experiments**: compare six methods, save named snapshots and import/export full experiment packages.
 
-![Agent mode walkthrough](docs/images/web-demo.gif)
+![v0.3.0 templates and experiments](docs/images/workbench-v030.png)
+
+**Diagnostic laboratory**: inspect linked time-frequency and waveform plots, locate events and verify processing trials.
+
+![v0.3.0 diagnostic laboratory with linked plots](docs/images/diagnostics-v030.png)
+
+**Models and settings**: choose your provider, model and persistence options in the browser.
+
+![v0.3.0 model API setup form](docs/images/model-api-v030.png)
+
+</details>
+
+<details>
+<summary><strong>Watch the v0.3.0 walkthrough</strong></summary>
+
+Agent acquisition and analysis → save a snapshot → inspect fault diagnostics → open model settings. The walkthrough uses the local signal tools.
+
+![v0.3.0 ocean interface walkthrough](docs/images/ocean-demo-v030.gif)
 
 </details>
 
@@ -367,7 +403,7 @@ cd "random-signal-agent/工程文件/代码"
 
 ### 2. Install and start
 
-**Windows PowerShell** — use a Python 3.12 installation:
+**Windows PowerShell** — use Python 3.12–3.14:
 
 ```powershell
 python -m venv .venv
@@ -407,28 +443,27 @@ The [online preview](https://patrickstar-cmd.github.io/random-signal-agent/) sho
 
 ## 🧪 Your first experiment
 
-v0.3.0 includes model API setup: choose a provider, enter a key, load available models and test/apply without restarting. OpenAI, DeepSeek and custom compatible endpoints are supported; see the [setup guide](工程文件/代码/docs/model-api-setup.md). This feature is included in the v0.3.0 deployment ZIP.
-
-Load the fault demo in the diagnostic laboratory to inspect time-frequency evidence. Locate an event or drag a time range, run a processing trial, and inspect before/after metrics. True error is available only with a clean reference. Adopt a trial and save it as a snapshot. Blind mode hides truth and reference error until reveal; full experiment export and snapshot comparisons are blocked until then, while the diagnostic report remains available.
-
-For your own data, open the import wizard and upload a UTF-8 CSV/TXT file. Select the time and signal columns and time unit, or enter a sample rate when no time column exists. Confirm the validated preview, compare methods, and save each setup. Select 2–4 snapshots in the comparison panel to inspect waveform/spectrum overlays and export an HTML report. Scores are directly comparable only when input, reference, goal and scoring version match.
-
-Choose a template and comparison goal in the workbench, then run the six methods. Name and save a snapshot, or export an experiment ZIP to restore full samples, results and tool records later. Successful operations automatically save the current experiment. After running or restoring, comparisons reuse the current data; select a different template to generate a new signal. Search snapshots by name, rename a selected snapshot using the name field, or delete it after confirmation. Deletion preserves the current workspace and other snapshots.
-
-
-1. Enter this acquisition command in the chat. The example uses Chinese, as supported by the local command parser:
+1. Open **信号工作区 (Workspace)**. Enable **Agent mode** to compare six preprocessing methods automatically, then enter this command. The local command parser supports Chinese:
 
    > 采集一段 8 秒、采样率 200Hz、主频 8Hz 的正弦信号加高斯噪声，随机种子 42
 
    This creates an 8-second sine signal with Gaussian noise at 200 Hz, with an 8 Hz target frequency and seed 42.
 
-2. Ask for preprocessing and analysis:
+2. Inspect the waveform, spectrum and statistics. In command mode, continue with:
 
    > 使用滑动平均预处理并分析时域和频域特征
 
-3. Inspect the curves and metrics. Enable **Agent mode** before acquisition to compare preprocessing methods automatically.
+   This applies a moving average and analyzes time/frequency features.
 
-Keep the same parameters and random seed to reproduce the same simulated samples. Use the wizard to select one signal from a multicolumn file. Quick upload still reads a single value column or the first two columns as time in seconds and values; see the [data guide](docs/README.en.md).
+3. Open **模板与实验 (Templates)**, enter a name and save a snapshot. Export an experiment ZIP to restore full samples, results and tool records later. Successful operations automatically save the current experiment. After running or restoring, comparisons reuse current data; select another template to generate a new signal.
+4. For your own data, open **导入数据 (Import)** and upload UTF-8 CSV/TXT. Select the time/signal columns and time unit, or enter a sample rate when no time column exists. Confirm the preview, then compare and save results in Templates.
+5. Open **对比与报告 (Comparison)**, select 2–4 snapshots and inspect overlays and metrics or download an HTML report. Scores are directly comparable only when inputs, references, goals and scoring versions match.
+
+For anomaly detection, save your current experiment before loading the fault demo in **诊断实验室 (Diagnostics)**. Inspect evidence, select an interval and verify a processing trial. Adopt a result and save it as a snapshot. Blind mode hides truth and reference error until reveal and restricts full experiment export and comparisons; the diagnostic report remains available.
+
+External models are optional. Open **模型与设置 → 模型 API 配置 (Settings → Model API)**; see Configuration below.
+
+Keep the same parameters and seed to reproduce simulated samples. The import wizard selects one signal from multicolumn data. Quick upload reads a single value column or the first two columns as time in seconds and values; see the [data guide](docs/README.en.md).
 
 <a id="en-workflow"></a>
 
@@ -459,7 +494,18 @@ All component paths are relative to `工程文件/代码`.
 
 ## ⚙️ Configuration
 
-The quick-start commands use the local toolchain. To connect an external model, copy `config/server.env.example` to `config/server.env` and fill in your endpoint, model, and key.
+The local toolchain is the default. To connect an external model, open **模型与设置 → 模型 API 配置 (Settings → Model API)**:
+
+1. Choose OpenAI, DeepSeek or a custom Chat Completions-compatible provider and enter its key.
+2. Load the model list and select a model, or enter the exact model ID manually.
+3. Choose **测试并应用 (Test and apply)**. The current browser session updates immediately without restarting; you can switch back to local tools or remove the configuration.
+
+Keys stay in server memory by default. Opting into restart persistence stores them in plaintext in `data/model-settings.sqlite3`. Browser storage, experiment ZIPs and task history contain no keys. See the [model setup guide](工程文件/代码/docs/model-api-setup.md) for compatibility, persistence and advanced parameters.
+
+<details>
+<summary><strong>Server defaults and startup scripts</strong></summary>
+
+Administrators can copy `config/server.env.example` to `config/server.env` to set service-wide defaults. Per-session configuration takes precedence.
 
 | Setting | Purpose |
 | --- | --- |
@@ -473,6 +519,8 @@ The quick-start commands use the local toolchain. To connect an external model, 
 After activating the virtual environment, use `scripts/start_server.ps1` on Windows or `bash scripts/start_server.sh` on Linux/macOS to load this file. Directly running `server.py` does not load `config/server.env`.
 
 Docker Compose reads `.env` in the code directory. See the [deployment guide](工程文件/代码/DEPLOY.md) for Docker settings, HTTPS hosting, and service management.
+
+</details>
 
 <a id="en-results"></a>
 
@@ -506,7 +554,7 @@ With the application running, open another terminal in `工程文件/代码` and
 .venv/bin/python scripts/smoke_deployment.py --base-url http://127.0.0.1:8000
 ```
 
-The check covers health, Web assets, Agent mode, streaming, CSV upload, and synthetic audio download. Its result is written to `logs/deployment/latest.log`. Release assets also include `SHA256SUMS.txt` and `verification.json`.
+The check covers the application version, ocean assets, model settings API, Agent mode, streaming, import/export and diagnostics. Its result is written to `logs/deployment/latest.log`. Release assets also include `SHA256SUMS.txt` and `verification.json`.
 
 </details>
 
@@ -518,7 +566,7 @@ The check covers health, Web assets, Agent mode, streaming, CSV upload, and synt
 | --- | --- |
 | Why does the online preview not run new experiments? | GitHub Pages serves the saved showcase. Start the backend locally or deploy it with Docker for interactive use. |
 | Do I need an API key? | The local signal tools do not require one. Model-assisted dialogue is optional. |
-| Which Python versions work? | v0.3.0 supports 3.12–3.14 and removes `cgi`. The older v0.1.0 package still requires Python 3.12. |
+| Which Python versions work? | v0.3.0 supports Python 3.12, 3.13 and 3.14. |
 | Why can I not activate the virtual environment on Windows? | The quick-start commands call `.venv\Scripts\python.exe` directly and do not require activation. |
 | Why is the microphone unavailable? | Open the app on localhost or HTTPS and allow microphone access in the browser. |
 | Why does my uploaded signal have no SNR value? | Reference-based SNR requires a clean signal. Uploaded samples and microphone audio do not provide that reference. |
@@ -530,6 +578,8 @@ The check covers health, Web assets, Agent mode, streaming, CSV upload, and synt
 
 | Guide | Contents |
 | --- | --- |
+| [Model API setup](工程文件/代码/docs/model-api-setup.md) | Browser configuration, key persistence and compatibility. |
+| [UI guide](工程文件/代码/docs/ui-design.md) | Six-view navigation, responsive layout and controls. |
 | [Installation & release](RELEASE.md) | Deployment ZIP, platform commands, and checksums. |
 | [Experiment guide](docs/README.en.md) | Saved data, parameters, file formats, and reproduction. |
 | [Code overview](工程文件/代码/README.md) | Modules and model configuration. |
@@ -539,7 +589,7 @@ The check covers health, Web assets, Agent mode, streaming, CSV upload, and synt
 | [Deployment](工程文件/代码/DEPLOY.md) | Docker, HTTPS, systemd, and health checks. |
 | [Changelog](CHANGELOG.md) | Release history. |
 
-The code and algorithm guides are in Chinese. The [original PDF setup guide](工程文件/配置文档/随机信号智能体配置教程.pdf) is also included.
+The code and algorithm guides are in Chinese.
 
 <a id="en-contributing"></a>
 

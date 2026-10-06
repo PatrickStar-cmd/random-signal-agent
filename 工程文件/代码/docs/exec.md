@@ -175,3 +175,9 @@ API：`POST /api/diagnostics/{analyze,inject,demo,reveal,verify,adopt}`，共同
 部署冒烟新增校验应用版本与 `config/release.json` 一致、海洋图片及模型配置脚本实际交付内容匹配解压文件、模型配置接口返回预设服务且不返回 Key。单独运行 `python scripts/smoke_deployment.py --base-url http://127.0.0.1:8000` 时须使用与该源码版本相同的服务。
 
 产物位于 `outputs/release/`：部署 ZIP、`SHA256SUMS.txt`、`verification-windows.json` 或 `verification-linux.json`；构建和验收日志分别覆盖写入 `logs/release/build.log`、`latest.log`、`server.log`。临时解压及环境在 `debug/release/` 中，验证完成自动移除临时环境。CI 覆盖 Windows/Linux 的 Python 3.12–3.14 和 Linux Docker 重启持久化。
+
+## README 图片与演示
+
+启动应用后，在信号工作区开启 Agent 模式，采集 8 秒、200 Hz、8 Hz、种子 42 的正弦加高斯噪声，保存快照；随后载入诊断故障演示并打开模型设置。首页媒体由该流程实际截图与录制，API 表单截图未输入 Key。`docs/images/ocean-ui.png`、`workbench-v030.png`、`diagnostics-v030.png`、`model-api-v030.png` 和 `ocean-demo-v030.gif` 均相对于仓库根目录。
+
+此次独立录制数据、帧与调试脚本在 `debug/readme-v030/`；界面、GIF 和 GitHub 渲染检查覆盖写入 `logs/readme-v030/browser.log`、`media.log`、`render.log`，独立服务日志在同目录 `server.log`。无需增加生产依赖或配置外部模型。静态展示数据的固定实验参数未改变，页面截图的正弦实验与展示数据的随机过程实验分别说明。
