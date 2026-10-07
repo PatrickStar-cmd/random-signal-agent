@@ -1,6 +1,7 @@
 """FastAPI workbench. Run one process: session locks are process-local."""
 from __future__ import annotations
 import argparse
+import copy
 import base64
 import hashlib
 import json
@@ -21,6 +22,7 @@ from src.tasks import TaskEngine, TaskConflict, TaskBusy, emit_progress
 from src.limits import LIMITS
 from src.data_import import inspect_data
 from src import diagnostics
+from src import pdf_report
 from src.model_settings import ModelSettings, CONFIG as MODEL_CONFIG
 from src.llm_client import LLMClientError
 from src.experiment_compare import compare_experiments, comparison_html, comparison_svg
@@ -492,6 +494,30 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
             store.delete(key, session)
             return {"id": key, "deleted": True}
         return await run_task(payload, "delete", operation)
+
+    @app.post('/api/reports/{action}')
+    async def analysis_report(action: str, request: Request):
+        if action not in ('preview', 'pdf'):
+            raise ValueError('未知报告操作。')
+        if request.headers.get('content-type','').split(';')[0] != 'application/json':
+            raise ValueError('报告请求须使用 JSON。')
+        payload = await body(request)
+        if set(payload) - {'session_id','options','token'}:
+            raise ValueError('报告请求包含未知字段。')
+        session = session_key(payload.get('session_id'))
+        preferences = pdf_report.options(payload.get('options'))
+        def prepare():
+            frozen = locked(session, lambda: copy.deepcopy(agent.get_session(session)))
+            return pdf_report.build(frozen, preferences)
+        facts = await run_in_threadpool(prepare)
+        if action == 'preview':
+            return pdf_report.preview(facts)
+        token = payload.get('token')
+        if not isinstance(token,str) or not secrets.compare_digest(token, facts['token']):
+            raise TaskConflict('实验或报告设置已变化，请重新预览后下载。')
+        raw = await run_in_threadpool(pdf_report.render, facts)
+        return Response(raw, media_type='application/pdf',
+                        headers={'Content-Disposition':'attachment; filename="signal-analysis.pdf"'})
 
     @app.get("/api/experiments/export")
     def export(session_id: str, format: str = "zip", name: str = "Experiment"):

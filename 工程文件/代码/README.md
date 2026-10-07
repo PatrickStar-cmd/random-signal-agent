@@ -88,3 +88,7 @@ bash scripts/start_server.sh
 复现检查及限制见 [docs/review.md](docs/review.md)，完整运行步骤和配置说明见 [docs/exec.md](docs/exec.md)，算法原理见 [docs/principle.md](docs/principle.md)。
 
 原配置教程见 `../配置文档/随机信号智能体配置教程.pdf`。PDF 中的 Python 版本和 systemd 解释器路径以当前 Markdown 文档及脚本为准。
+
+## PDF 报告
+
+v0.3.1 可在“模板与实验 → PDF 分析报告”生成单实验中文报告。填写信息、预览摘要后下载，使用全部采样计算指标并包含当前可用图表与复现参数，详见 [使用说明](docs/pdf-report.md)。

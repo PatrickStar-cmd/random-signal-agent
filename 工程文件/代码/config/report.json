@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "plot_points": 780,
+  "max_title": 120,
+  "max_author": 80,
+  "max_purpose": 1200,
+  "max_pages": 24,
+  "render_workers": 2,
+  "font": "assets/fonts/NotoSansSC-Regular.ttf"
+}

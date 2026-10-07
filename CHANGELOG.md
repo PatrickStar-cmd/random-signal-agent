@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.3.1 · 2026-10-08
+
+- Single-experiment Chinese PDF reports: title, author, purpose and units; preview the measured summary/sections, then download a brief or standard edition.
+- A4 ocean cover, embedded searchable Chinese font, vector waveform/FFT/Welch PSD/autocorrelation plots, available method comparisons and diagnostics, full-sample metrics and reproduction hashes/parameters.
+- Evidence-based wording for absent references, degraded processing, constant/short/nonuniform data; blind experiments require reveal. Reports exclude model keys, chat history and server paths.
+- Frozen-state calculation and content tokens reject stale previews; bounded concurrent rendering and page/input limits. Fix diagnostic heatmap layout and retain actual filter parameters.
+- 14 PDF acceptance tests plus desktop/mobile download checks and page-by-page visual inspection. Fresh-package validation now covers font/license and live PDF download; pinned ReportLab/Pillow/charset-normalizer ship with an OFL Chinese font.
+- Bilingual README, current screenshots, PDF example and static preview updated. Experiment schema 1 and algorithm 0.2.0 are unchanged.
+
+新增无需模型 Key 的中文 PDF 报告，支持简版/标准版、预览与下载。升级 v0.3.0 后重新安装固定依赖；中文字体随包交付。旧实验继续可读，升级前停止服务并备份数据。
+
 ## v0.3.0 · 2026-10-06
 
 - Model API setup in the browser: OpenAI, DeepSeek and custom Chat Completions-compatible providers, dynamic model lists, text connection tests and immediate per-session application without restarting. Optional restart persistence, local-mode switching and configuration removal.

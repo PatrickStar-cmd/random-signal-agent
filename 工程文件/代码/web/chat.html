@@ -133,7 +133,7 @@
 </section>
 <section data-view="templates" class="tool-view" aria-label="实验从这里开始"><div class="view-heading"><div><span class="eyebrow">SIGNAL LAB / TEMPLATES</span><h2>实验从这里开始</h2><p>用可复现的模板探索信号，保存你值得回看的发现。</p></div><a href="#layoutRoot" data-view-link="workspace">查看工作区 →</a></div>
   <section id="workbenchPanel" class="workbench" aria-label="实验工作台">
-    <div class="wb-heading"><strong>2 · 处理与保存 <small>v0.3.0</small></strong><span id="wbStatus" role="status">每次操作后自动保存</span><button id="wbRecover" type="button">恢复未完成请求</button></div>
+    <div class="wb-heading"><strong>2 · 处理与保存 <small>v0.3.1</small></strong><span id="wbStatus" role="status">每次操作后自动保存</span><button id="wbRecover" type="button">恢复未完成请求</button></div>
     <details id="wbPanel" open><summary>模板与实验管理</summary>
       <form id="wbForm" class="wb-fields">
         <label>信号模板<select id="wbTemplate"><option value="sine">正弦 + 高斯噪声</option><option value="impulse">正弦 + 脉冲干扰</option><option value="ar">AR(1) 随机过程</option><option value="current">当前信号</option></select></label>
@@ -153,6 +153,19 @@
       <div class="wb-actions"><input id="wbSearch" type="search" aria-label="搜索已保存实验" placeholder="按名称搜索实验"><select id="wbExperiments" aria-label="已保存实验"><option value="">选择已保存的实验</option></select><button id="wbOpen">打开</button><button id="wbDuplicate">复制</button><button id="wbRename">按上方名称重命名</button><button id="wbDelete">删除快照</button></div>
       <div class="wb-actions"><span>导出：</span><button data-export="zip">完整实验包 ZIP</button><button data-export="html">HTML 报告</button><button data-export="csv">完整数据 CSV</button><button data-export="json">参数与清单 JSON</button><label class="wb-import">导入实验包<input id="wbImport" type="file" accept=".zip"></label></div>
       <details id="wbScores"><summary>评分依据与耗时</summary><div id="wbScoreContent">运行比较后显示。分数仅用于相同数据与目标下的方法比较。</div></details>
+      <details id="reportPanel"><summary>生成 PDF 分析报告</summary>
+        <p class="wb-hint">从当前实验生成可搜索的图文报告。先预览结论与章节，再下载；不需要模型 Key。</p>
+        <form id="reportForm" class="wb-fields">
+          <label>报告标题<input id="reportTitle" value="信号处理与分析报告" maxlength="120" required></label>
+          <label>作者（可选）<input id="reportAuthor" maxlength="80" placeholder="姓名或团队"></label>
+          <label>报告篇幅<select id="reportEdition"><option value="standard">标准版 · 完整分析与复现信息</option><option value="brief">简版 · 概览、波形与频谱</option></select></label>
+          <label>信号量纲<input id="reportUnit" value="a.u." maxlength="20" required></label>
+          <label class="report-purpose">分析目的（可选）<textarea id="reportPurpose" maxlength="1200" rows="3" placeholder="想了解哪些特征，或比较哪些处理效果？"></textarea></label>
+          <button id="reportPreview" type="submit">预览摘要与章节</button>
+        </form>
+        <p id="reportStatus" role="status">请先生成或导入信号。</p>
+        <div id="reportSummary" hidden></div><button id="reportDownload" disabled>下载 PDF 报告</button>
+      </details>
     </details>
   </section>
 
@@ -247,5 +260,6 @@
   <script src="diagnostics.js"></script>
   <script src="model-settings.js"></script>
   <script src="ocean.js"></script>
+  <script src="report.js"></script>
 </body>
 </html>

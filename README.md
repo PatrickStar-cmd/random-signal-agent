@@ -20,7 +20,7 @@
 
 项目面向 **UESTC 随机信号课程**。本地工具链无需模型 API Key 即可运行，也可接入兼容 Chat Completions 的服务，增强对话能力。
 
-[🌐 实验预览](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 下载 v0.3.0](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.0) · [📘 安装指南](RELEASE.md)
+[🌐 实验预览](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 下载 v0.3.1](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.1) · [📘 安装指南](RELEASE.md)
 
 ## 🧭 快速导航
 
@@ -38,8 +38,9 @@
 
 | 功能 | 可以完成的实验 |
 | --- | --- |
-| 🐳 可爱海洋界面（v0.3.0） | 海蓝/薰衣草紫渐变、AI 立体鲸鱼插画与六个功能分区，桌面/平板/手机自适应。 |
-| 🔑 模型 API 配置（v0.3.0） | 在页面选择服务与模型、填写 Key、测试并应用；可按会话记住配置。已包含在 v0.3.0 部署包中。 |
+| 🐳 可爱海洋界面 | 海蓝/薰衣草紫渐变、AI 立体鲸鱼插画与六个功能分区，桌面/平板/手机自适应。 |
+| 🔑 模型 API 配置 | 在页面选择服务与模型、填写 Key、测试并应用；可按会话记住配置。已包含在 v0.3.1 部署包中。 |
+| 📄 PDF 分析报告（v0.3.1） | 填写标题、作者与目的，预览后导出中文简版或标准版，包含矢量图表、真实指标和复现信息。 |
 | 🩺 信号诊断实验室 | STFT 时频图联动异常区间，六类可复现故障注入、盲测揭晓评分，以及保留原始观测的验证实验。 |
 | 💾 实验工作台 | 用模板创建实验，保存、恢复、复制、搜索、重命名或删除快照；服务重启后继续工作。 |
 | 📥 数据导入向导 | 预览 CSV/TXT，自选时间列与信号列，转换时间单位并定位错误行。 |
@@ -58,29 +59,29 @@
 
 ## 🎬 界面展示
 
-v0.3.0 的海洋界面将信号工作区、模板与实验、导入数据、对比与报告、诊断实验室、模型与设置分为六个入口。切换分区时保留当前输入与实验状态。
+v0.3.1 的海洋界面将信号工作区、模板与实验、导入数据、对比与报告、诊断实验室、模型与设置分为六个入口。切换分区时保留当前输入与实验状态。
 
-![v0.3.0 海洋工作区：Agent 分析、波形与频谱](docs/images/ocean-ui.png)
+![v0.3.1 海洋工作区：Agent 分析、波形与频谱](docs/images/ocean-ui.png)
 
 <details>
 <summary><strong>查看模板、诊断与 API 配置</strong></summary>
 
 **模板与实验**：比较六种方法，保存命名快照，导入或导出完整实验包。
 
-![v0.3.0 模板与实验](docs/images/workbench-v030.png)
+![v0.3.1 模板与实验](docs/images/workbench-v031.png)
 
 **诊断实验室**：时频图与波形联动，定位异常区间并验证处理效果。
 
-![v0.3.0 诊断实验室：时频图与联动波形](docs/images/diagnostics-v030.png)
+![v0.3.1 诊断实验室：时频图与联动波形](docs/images/diagnostics-v031.png)
 
 **模型与设置**：选择服务商、模型与保存方式，在页面完成连接配置。
 
-![v0.3.0 模型 API 配置表单](docs/images/model-api-v030.png)
+![v0.3.1 模型 API 配置表单](docs/images/model-api-v031.png)
 
 </details>
 
 <details>
-<summary><strong>观看 v0.3.0 操作演示</strong></summary>
+<summary><strong>观看海洋界面操作演示（v0.3.0）</strong></summary>
 
 Agent 采集与分析 → 保存实验快照 → 查看故障诊断 → 打开模型配置。演示使用本地信号工具链。
 
@@ -88,15 +89,25 @@ Agent 采集与分析 → 保存实验快照 → 查看故障诊断 → 打开�
 
 </details>
 
+## 📄 导出 PDF 分析报告
+
+完成采集或载入实验后，打开 **模板与实验 → PDF 分析报告**，填写标题、作者、分析目的与量纲，选择简版或标准版。点击 **预览摘要与章节**，核对内容后点击 **下载 PDF**。
+
+标准版包含波形、指标、频谱、Welch 功率谱、自相关、已有的方法比较与诊断，以及结论和复现参数。简版保留概览、关键指标、波形和频谱。说明由实际数据生成，无需模型 Key；无干净参考时不计算真实 SNR/RMSE，盲测须先揭晓。
+
+![v0.3.1 报告预览与下载](docs/images/pdf-report-v031.png)
+
+[查看示例 PDF](docs/report-example.pdf) · [报告使用说明](工程文件/代码/docs/pdf-report.md)
+
 <a id="zh-quick-start"></a>
 
 ## 🚀 快速开始
 
-使用 **Python 3.12–3.14** 或 **Docker Compose v2**。v0.3.0 使用 FastAPI 后端；部署检查覆盖 Windows、Linux 的 Python 3.12–3.14 和 Linux Docker。
+使用 **Python 3.12–3.14** 或 **Docker Compose v2**。v0.3.1 使用 FastAPI 后端；部署检查覆盖 Windows、Linux 的 Python 3.12–3.14 和 Linux Docker。
 
 ### 1. 获取项目
 
-下载并解压 v0.3.0 的[部署 ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.3.0/random-signal-agent-v0.3.0-deploy.zip)，在解压目录中的 `工程文件/代码` 打开终端。
+下载并解压 v0.3.1 的[部署 ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.3.1/random-signal-agent-v0.3.1-deploy.zip)，在解压目录中的 `工程文件/代码` 打开终端。
 
 也可以克隆仓库：
 
@@ -254,7 +265,7 @@ Docker Compose 读取代码目录下的 `.env`。Docker 参数、HTTPS 部署与
 .venv/bin/python scripts/smoke_deployment.py --base-url http://127.0.0.1:8000
 ```
 
-检查覆盖应用版本、海洋页面资源、模型配置接口、Agent 模式、流式响应、导入导出与诊断，结果写入 `logs/deployment/latest.log`。Release 附件还包含 `SHA256SUMS.txt` 和 `verification.json`。
+检查覆盖应用版本、海洋页面资源、模型配置接口、Agent 模式、流式响应、导入导出、诊断与 PDF 下载，结果写入 `logs/deployment/latest.log`。Release 附件还包含 `SHA256SUMS.txt` 和 `verification.json`。
 
 </details>
 
@@ -266,7 +277,7 @@ Docker Compose 读取代码目录下的 `.env`。Docker 参数、HTTPS 部署与
 | --- | --- |
 | 为什么在线预览不能运行新实验？ | GitHub Pages 提供已保存的展示内容。运行本地后端或使用 Docker 部署，即可交互实验。 |
 | 必须配置 API Key 吗？ | 本地信号工具无需密钥；模型辅助对话属于可选功能。 |
-| 支持哪些 Python 版本？ | v0.3.0 支持 Python 3.12、3.13、3.14。 |
+| 支持哪些 Python 版本？ | v0.3.1 支持 Python 3.12、3.13、3.14。 |
 | Windows 无法激活虚拟环境怎么办？ | 快速开始命令直接调用 `.venv\Scripts\python.exe`，无需激活。 |
 | 麦克风无法使用怎么办？ | 通过 localhost 或 HTTPS 访问应用，并在浏览器中允许麦克风权限。 |
 | 为什么上传信号没有 SNR 数值？ | 基于参考信号的 SNR 需要干净信号；上传样本与麦克风音频不包含该参考。 |
@@ -278,6 +289,7 @@ Docker Compose 读取代码目录下的 `.env`。Docker 参数、HTTPS 部署与
 
 | 文档 | 内容 |
 | --- | --- |
+| [PDF 报告](工程文件/代码/docs/pdf-report.md) | 标题、预览、章节、数据依据与导出。 |
 | [模型配置指南](工程文件/代码/docs/model-api-setup.md) | 页面选模、Key 保存方式与兼容设置。 |
 | [界面说明](工程文件/代码/docs/ui-design.md) | 六分区导航、响应式布局与操作入口。 |
 | [安装与发布说明](RELEASE.md) | 部署 ZIP、各系统启动命令与校验方式。 |
@@ -316,7 +328,7 @@ Diting turns Random Signals coursework into reproducible experiments. Generate a
 
 Built for the Random Signals course at **UESTC**. The local toolchain works without a model API key; an optional Chat Completions-compatible service adds model-assisted dialogue.
 
-[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.3.0](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.0) · [📘 Installation guide](RELEASE.md)
+[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.3.1](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.1) · [📘 Installation guide](RELEASE.md)
 
 ## 🧭 Explore
 
@@ -334,8 +346,9 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 
 | Capability | What you can do |
 | --- | --- |
-| 🐳 Ocean UI (v0.3.0) | Layered ocean/lilac gradients, AI-generated 3D whale art and six persistent views for desktop, tablet and mobile. |
-| 🔑 Model API setup (v0.3.0) | Choose a provider/model, enter a key and test/apply in the UI; optional per-session persistence. |
+| 🐳 Ocean UI | Layered ocean/lilac gradients, AI-generated 3D whale art and six persistent views for desktop, tablet and mobile. |
+| 🔑 Model API setup | Choose a provider/model, enter a key and test/apply in the UI; optional per-session persistence. |
+| 📄 PDF analysis reports (v0.3.1) | Preview and export Chinese brief/standard reports with vector plots, measured metrics, optional diagnosis and reproduction details. |
 | 🩺 Diagnostic laboratory | Linked STFT and event timeline, six seeded fault types, blind challenge evaluation, and reversible evidence-based processing trials. |
 | 💾 Experiment workbench | Create from templates, save, reopen, duplicate, search, rename or delete snapshots, and resume after a restart. |
 | 📥 Data import wizard | Preview CSV/TXT, select time and signal columns, convert time units and locate invalid rows. |
@@ -354,29 +367,29 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 
 ## 🎬 Interface
 
-The v0.3.0 ocean interface has six views: workspace, templates, data import, comparison, diagnostics and settings. Switching views preserves inputs and experiment state.
+The v0.3.1 ocean interface has six views: workspace, templates, data import, comparison, diagnostics and settings. Switching views preserves inputs and experiment state.
 
-![v0.3.0 ocean workspace: Agent analysis, waveform and spectrum](docs/images/ocean-ui.png)
+![v0.3.1 ocean workspace: Agent analysis, waveform and spectrum](docs/images/ocean-ui.png)
 
 <details>
 <summary><strong>Explore templates, diagnostics and API setup</strong></summary>
 
 **Templates and experiments**: compare six methods, save named snapshots and import/export full experiment packages.
 
-![v0.3.0 templates and experiments](docs/images/workbench-v030.png)
+![v0.3.1 templates and experiments](docs/images/workbench-v031.png)
 
 **Diagnostic laboratory**: inspect linked time-frequency and waveform plots, locate events and verify processing trials.
 
-![v0.3.0 diagnostic laboratory with linked plots](docs/images/diagnostics-v030.png)
+![v0.3.1 diagnostic laboratory with linked plots](docs/images/diagnostics-v031.png)
 
 **Models and settings**: choose your provider, model and persistence options in the browser.
 
-![v0.3.0 model API setup form](docs/images/model-api-v030.png)
+![v0.3.1 model API setup form](docs/images/model-api-v031.png)
 
 </details>
 
 <details>
-<summary><strong>Watch the v0.3.0 walkthrough</strong></summary>
+<summary><strong>Watch the ocean walkthrough (v0.3.0)</strong></summary>
 
 Agent acquisition and analysis → save a snapshot → inspect fault diagnostics → open model settings. The walkthrough uses the local signal tools.
 
@@ -384,15 +397,25 @@ Agent acquisition and analysis → save a snapshot → inspect fault diagnostics
 
 </details>
 
+## 📄 Export a PDF analysis report
+
+After collecting or restoring an experiment, open **模板与实验 → PDF 分析报告 (Templates & Experiments → PDF report)**. Set the title, author, purpose, units and brief/standard edition. Select **预览摘要与章节** to review the summary, then **下载 PDF** to download.
+
+Reports currently use Chinese. Standard reports include waveform metrics, FFT, Welch PSD, autocorrelation, existing method comparisons/diagnostics and reproduction details; brief reports focus on the overview, key metrics, waveform and FFT. Narrative statements use the measured data and require no model key. True SNR/RMSE need a clean reference, and blind experiments must be revealed first.
+
+![v0.3.1 PDF preview and download](docs/images/pdf-report-v031.png)
+
+[Example PDF](docs/report-example.pdf) · [Report guide (Chinese)](工程文件/代码/docs/pdf-report.md)
+
 <a id="en-quick-start"></a>
 
 ## 🚀 Quick start
 
-Use **Python 3.12–3.14** or **Docker Compose v2**. v0.3.0 uses FastAPI; deployment checks cover Python 3.12–3.14 on Windows and Linux, plus Docker on Linux.
+Use **Python 3.12–3.14** or **Docker Compose v2**. v0.3.1 uses FastAPI; deployment checks cover Python 3.12–3.14 on Windows and Linux, plus Docker on Linux.
 
 ### 1. Get the project
 
-Download the v0.3.0 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.3.0/random-signal-agent-v0.3.0-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
+Download the v0.3.1 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.3.1/random-signal-agent-v0.3.1-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
 
 Or clone the repository:
 
@@ -554,7 +577,7 @@ With the application running, open another terminal in `工程文件/代码` and
 .venv/bin/python scripts/smoke_deployment.py --base-url http://127.0.0.1:8000
 ```
 
-The check covers the application version, ocean assets, model settings API, Agent mode, streaming, import/export and diagnostics. Its result is written to `logs/deployment/latest.log`. Release assets also include `SHA256SUMS.txt` and `verification.json`.
+The check covers the application version, ocean assets, model settings API, Agent mode, streaming, import/export, diagnostics and PDF download. Its result is written to `logs/deployment/latest.log`. Release assets also include `SHA256SUMS.txt` and `verification.json`.
 
 </details>
 
@@ -566,7 +589,7 @@ The check covers the application version, ocean assets, model settings API, Agen
 | --- | --- |
 | Why does the online preview not run new experiments? | GitHub Pages serves the saved showcase. Start the backend locally or deploy it with Docker for interactive use. |
 | Do I need an API key? | The local signal tools do not require one. Model-assisted dialogue is optional. |
-| Which Python versions work? | v0.3.0 supports Python 3.12, 3.13 and 3.14. |
+| Which Python versions work? | v0.3.1 supports Python 3.12, 3.13 and 3.14. |
 | Why can I not activate the virtual environment on Windows? | The quick-start commands call `.venv\Scripts\python.exe` directly and do not require activation. |
 | Why is the microphone unavailable? | Open the app on localhost or HTTPS and allow microphone access in the browser. |
 | Why does my uploaded signal have no SNR value? | Reference-based SNR requires a clean signal. Uploaded samples and microphone audio do not provide that reference. |
@@ -578,6 +601,7 @@ The check covers the application version, ocean assets, model settings API, Agen
 
 | Guide | Contents |
 | --- | --- |
+| [PDF report guide](工程文件/代码/docs/pdf-report.md) | Report options, preview, sections and measured evidence (Chinese). |
 | [Model API setup](工程文件/代码/docs/model-api-setup.md) | Browser configuration, key persistence and compatibility. |
 | [UI guide](工程文件/代码/docs/ui-design.md) | Six-view navigation, responsive layout and controls. |
 | [Installation & release](RELEASE.md) | Deployment ZIP, platform commands, and checksums. |

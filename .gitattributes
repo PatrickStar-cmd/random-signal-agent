@@ -4,3 +4,4 @@
 *.md text eol=lf
 *.pdf binary
 *.jpg binary
+*.ttf binary

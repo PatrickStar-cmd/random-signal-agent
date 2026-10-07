@@ -34,7 +34,7 @@ def check(base_url):
     assert b'<html' in request('/').lower()
     release = json.loads((ROOT / 'config/release.json').read_text(encoding='utf-8'))
     assert health['version'] == release['version'], 'Running application version differs from this package'
-    for asset in ('ocean-whale.webp', 'ocean.css', 'ocean.js', 'model-settings.css', 'model-settings.js'):
+    for asset in ('ocean-whale.webp', 'ocean.css', 'ocean.js', 'model-settings.css', 'model-settings.js', 'report.js'):
         delivered = request('/' + asset)
         assert delivered == (ROOT / 'web' / asset).read_bytes(), f'Missing or stale packaged asset: {asset}'
     artwork = request('/ocean-whale.webp')
@@ -49,6 +49,10 @@ def check(base_url):
     result = json.loads(request('/api/chat', {'session_id': session, 'message': message, 'agent_mode': True}))
     assert result['state']['has_processed'] and result['state']['has_summary']
     assert result['state']['signal']['sample_count'] == config['sample_rate'] * config['duration']
+    report_payload = {'session_id':session,'options':{'title':'部署验收分析报告','edition':'brief'}}
+    report_preview = json.loads(request('/api/reports/preview',report_payload))
+    pdf = request('/api/reports/pdf',{**report_payload,'token':report_preview['token']})
+    assert pdf.startswith(b'%PDF-') and len(pdf)>10000
     stream = request('/api/chat/stream', {'session_id': session, 'message': '分析时域和频域特征'}).decode('utf-8')
     assert 'data: [DONE]' in stream
     events = [json.loads(line[6:]) for line in stream.splitlines() if line.startswith('data: {')]
@@ -112,7 +116,7 @@ def check(base_url):
     assert request(f'/api/experiments/export?session_id={diagnostic_session}&format=zip').startswith(b'PK')
     return {'status': 'passed', 'session_id':session, 'saved_experiment':saved['id'], 'csv_sha256':hashlib.sha256(data).hexdigest(),
             'diagnostic_session':diagnostic_session,
-            'checks': ['health', 'application_version', 'web_assets', 'ocean_ui_assets', 'model_settings_api', 'agent_pipeline', 'sse', 'csv_upload', 'synthetic_audio_download', 'experiment_save', 'full_data_export', 'snapshot_rename_duplicate_delete', 'delete_retry', 'shared_data_preserved', 'mapped_import', 'snapshot_comparison_report', 'task_list_cancel_endpoint', 'storage_preview', 'diagnostic_blind_trial_reveal_export']}
+            'checks': ['health', 'application_version', 'web_assets', 'ocean_ui_assets', 'model_settings_api', 'pdf_report', 'agent_pipeline', 'sse', 'csv_upload', 'synthetic_audio_download', 'experiment_save', 'full_data_export', 'snapshot_rename_duplicate_delete', 'delete_retry', 'shared_data_preserved', 'mapped_import', 'snapshot_comparison_report', 'task_list_cancel_endpoint', 'storage_preview', 'diagnostic_blind_trial_reveal_export']}
 
 
 def check_persistence(base_url, previous):

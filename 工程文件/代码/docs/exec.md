@@ -181,3 +181,13 @@ API：`POST /api/diagnostics/{analyze,inject,demo,reveal,verify,adopt}`，共同
 启动应用后，在信号工作区开启 Agent 模式，采集 8 秒、200 Hz、8 Hz、种子 42 的正弦加高斯噪声，保存快照；随后载入诊断故障演示并打开模型设置。首页媒体由该流程实际截图与录制，API 表单截图未输入 Key。`docs/images/ocean-ui.png`、`workbench-v030.png`、`diagnostics-v030.png`、`model-api-v030.png` 和 `ocean-demo-v030.gif` 均相对于仓库根目录。
 
 此次独立录制数据、帧与调试脚本在 `debug/readme-v030/`；界面、GIF 和 GitHub 渲染检查覆盖写入 `logs/readme-v030/browser.log`、`media.log`、`render.log`，独立服务日志在同目录 `server.log`。无需增加生产依赖或配置外部模型。静态展示数据的固定实验参数未改变，页面截图的正弦实验与展示数据的随机过程实验分别说明。
+
+## PDF 分析报告（v0.3.1）
+
+启动方式不变，依赖已固定在 requirements-repro.txt（ReportLab 5.0.1、Pillow 12.3.0、charset-normalizer 3.5.2）；测试依赖 pypdf 6.12.2。运行 `python scripts/test_pdf_report.py`，14 项验收结果覆盖写入 logs/pdf-report/latest.log。页面操作和 HTTP 接口见 [pdf-report.md](pdf-report.md)。
+
+config/report.json 全部字段：version=1.0 为报告版式契约；plot_points=780 为图表采样显示上限；max_title=120、max_author=80、max_purpose=1200 为输入字符上限；max_pages=24 为输出页数上限；render_workers=2 为同时渲染上限；font 为随包交付的 TrueType 中文字体路径。量纲限制 20 字符，edition 仅 brief/standard。不修改实验 schema 1 或算法 0.2.0。
+
+发布命令仍为 `python scripts/build_release.py`、`python scripts/verify_release.py`，在已提交干净源码上执行。新验证涵盖字体/许可证打包、14 项 PDF 验收和服务实际 PDF 下载；全部套件共 104 项，另有 540 个数值基准案例。源码、页面与 release.json 版本均为 0.3.1。
+
+报告生成、逐页 PNG 和浏览器下载验证脚本/产物保存在 debug/pdf-report/，浏览器结果在 logs/pdf-report/browser.log，独立服务在 logs/pdf-report/server.log。README v0.3.1 四张截图已从运行界面重录，PDF 示例为真实 Agent 的 8 秒、200 Hz、8 Hz、种子 42 正弦加高斯噪声实验。旧 GIF 标明 v0.3.0，静态固定展示实验保持原参数。

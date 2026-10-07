@@ -48,6 +48,7 @@
     finally {
       busy = false;
       document.querySelectorAll('.workbench button').forEach(b => b.disabled = false);
+      window.analysisReport?.syncButtons();
       recoverVisibility();
     }
   }
