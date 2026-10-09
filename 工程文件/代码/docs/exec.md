@@ -192,12 +192,14 @@ config/report.json 全部字段：version=2.0 为当前报告版式契约；plot
 
 报告生成、逐页 PNG 和浏览器下载验证脚本/产物保存在 debug/pdf-report/，浏览器结果在 logs/pdf-report/browser.log，独立服务在 logs/pdf-report/server.log。README v0.3.1 四张截图已从运行界面重录，PDF 示例为真实 Agent 的 8 秒、200 Hz、8 Hz、种子 42 正弦加高斯噪声实验。旧 GIF 标明 v0.3.0，静态固定展示实验保持原参数。
 
-## 历史结果合并 PDF（尚未发行）
+## v0.3.2 历史结果合并 PDF
 
-启动方式和生产依赖不变。历史写入 data/experiments.sqlite3 的独立 report_history 表，完整数组使用原 NPZ 格式；首次启动自动创建新表。升级前停止服务并备份整个 data/。当前单实验入口保持兼容，已发行的 v0.3.1 部署 ZIP 不含本次扩展。
+启动方式和生产依赖不变。历史写入 data/experiments.sqlite3 的独立 report_history 表，完整数组使用原 NPZ 格式；首次启动自动创建新表。升级前停止服务并备份整个 data/。当前单实验入口保持兼容，v0.3.2 部署 ZIP 包含本次扩展，应用/页面/release.json 版本统一 0.3.2。
 
 在“模板与实验 → 生成 PDF 分析报告”选择历史模式，勾选最多 50 组处理结果，可补充手动快照并选择时间顺序，再预览、下载。操作与 HTTP selection 参数见 [报告指南](pdf-report.md)。最近记录按浏览器会话保存；未留存的旧处理结果不能自动补回。
 
 运行 `python scripts/test_report_history.py`，15 项验收覆盖留存/重启、重复请求、回滚、会话隔离、盲测、清理、全组图表和 PDF 导航，日志覆盖写入 logs/report-history/latest.log。结合原有套件共 119 项；verify_release.py 已加入此验收，部署冒烟与重启检查增加 history/缩略图/选择 PDF。
+
+验收自动创建 debug/report-history/ 及说明文件，可在部署 ZIP 的全新环境运行，不依赖已有调试目录。提交源码后运行 `python scripts/build_release.py`、`python scripts/verify_release.py`；产物与覆盖日志位置保持原发布约定。
 
 本次独立浏览器测试结果在 logs/report-history/browser.log，390 像素手机和桌面选择、50 组下载、快照补充及淘汰提示均通过。最大输入测试在 logs/report-history/maximum-input.json：50 组、每组 200000 点，事实整理约 4.3 秒、排版约 2.9 秒，实际耗时随机器和诊断内容变化。debug/report-history/ 存放独立测试数据、脚本、截图与逐页 PDF 渲染。未调用外部模型。

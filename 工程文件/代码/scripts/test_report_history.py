@@ -36,6 +36,10 @@ def capture(store, key, s):
 
 
 class HistoryTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        out=ROOT/'debug/report-history';out.mkdir(parents=True,exist_ok=True)
+        (out/'note.md').write_text('Synthetic history/PDF acceptance outputs; no existing user data.\n',encoding='utf-8')
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.store=ExperimentStore(Path(self.temp.name))
     def tearDown(self):self.temp.cleanup()

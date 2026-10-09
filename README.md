@@ -20,7 +20,7 @@
 
 项目面向 **UESTC 随机信号课程**。本地工具链无需模型 API Key 即可运行，也可接入兼容 Chat Completions 的服务，增强对话能力。
 
-[🌐 实验预览](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 下载 v0.3.1](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.1) · [📘 安装指南](RELEASE.md)
+[🌐 实验预览](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 下载 v0.3.2](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.2) · [📘 安装指南](RELEASE.md)
 
 ## 🧭 快速导航
 
@@ -39,8 +39,8 @@
 | 功能 | 可以完成的实验 |
 | --- | --- |
 | 🐳 可爱海洋界面 | 海蓝/薰衣草紫渐变、AI 立体鲸鱼插画与六个功能分区，桌面/平板/手机自适应。 |
-| 🔑 模型 API 配置 | 在页面选择服务与模型、填写 Key、测试并应用；可按会话记住配置。已包含在 v0.3.1 部署包中。 |
-| 📄 PDF 分析报告（v0.3.1） | 填写标题、作者与目的，预览后导出中文简版或标准版，包含矢量图表、真实指标和复现信息。 |
+| 🔑 模型 API 配置 | 在页面选择服务与模型、填写 Key、测试并应用；可按会话记住配置。已包含在 v0.3.2 部署包中。 |
+| 📄 PDF 分析报告（v0.3.2） | 填写标题、作者与目的，预览后导出中文简版或标准版，包含矢量图表、真实指标和复现信息。 |
 | 🩺 信号诊断实验室 | STFT 时频图联动异常区间，六类可复现故障注入、盲测揭晓评分，以及保留原始观测的验证实验。 |
 | 💾 实验工作台 | 用模板创建实验，保存、恢复、复制、搜索、重命名或删除快照；服务重启后继续工作。 |
 | 📥 数据导入向导 | 预览 CSV/TXT，自选时间列与信号列，转换时间单位并定位错误行。 |
@@ -59,7 +59,7 @@
 
 ## 🎬 界面展示
 
-v0.3.1 的海洋界面将信号工作区、模板与实验、导入数据、对比与报告、诊断实验室、模型与设置分为六个入口。切换分区时保留当前输入与实验状态。
+v0.3.2 的海洋界面将信号工作区、模板与实验、导入数据、对比与报告、诊断实验室、模型与设置分为六个入口。切换分区时保留当前输入与实验状态。
 
 ![v0.3.1 海洋工作区：Agent 分析、波形与频谱](docs/images/ocean-ui.png)
 
@@ -99,17 +99,17 @@ Agent 采集与分析 → 保存实验快照 → 查看故障诊断 → 打开�
 
 [查看示例 PDF](docs/report-example.pdf) · [报告使用说明](工程文件/代码/docs/pdf-report.md)
 
-**源码新功能（尚未发行）**：在“报告数据”选择处理历史，勾选最近 50 次以内的结果，也可补充已保存实验。按时间排序后导出统一封面、汇总表、可跳转目录和分组图表；总计最多 50 组，历史重启后保留。升级前未保存的结果无法补回；v0.3.1 部署 ZIP 仍为单实验报告。
+**v0.3.2 新增**：在“报告数据”选择处理历史，勾选最近 50 次以内的结果，也可补充已保存实验。按时间排序后导出统一封面、汇总表、可跳转目录和分组图表；总计最多 50 组，历史重启后保留。升级前未保存的结果无法补回。
 
 <a id="zh-quick-start"></a>
 
 ## 🚀 快速开始
 
-使用 **Python 3.12–3.14** 或 **Docker Compose v2**。v0.3.1 使用 FastAPI 后端；部署检查覆盖 Windows、Linux 的 Python 3.12–3.14 和 Linux Docker。
+使用 **Python 3.12–3.14** 或 **Docker Compose v2**。v0.3.2 使用 FastAPI 后端；部署检查覆盖 Windows、Linux 的 Python 3.12–3.14 和 Linux Docker。
 
 ### 1. 获取项目
 
-下载并解压 v0.3.1 的[部署 ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.3.1/random-signal-agent-v0.3.1-deploy.zip)，在解压目录中的 `工程文件/代码` 打开终端。
+下载并解压 v0.3.2 的[部署 ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.3.2/random-signal-agent-v0.3.2-deploy.zip)，在解压目录中的 `工程文件/代码` 打开终端。
 
 也可以克隆仓库：
 
@@ -279,7 +279,7 @@ Docker Compose 读取代码目录下的 `.env`。Docker 参数、HTTPS 部署与
 | --- | --- |
 | 为什么在线预览不能运行新实验？ | GitHub Pages 提供已保存的展示内容。运行本地后端或使用 Docker 部署，即可交互实验。 |
 | 必须配置 API Key 吗？ | 本地信号工具无需密钥；模型辅助对话属于可选功能。 |
-| 支持哪些 Python 版本？ | v0.3.1 支持 Python 3.12、3.13、3.14。 |
+| 支持哪些 Python 版本？ | v0.3.2 支持 Python 3.12、3.13、3.14。 |
 | Windows 无法激活虚拟环境怎么办？ | 快速开始命令直接调用 `.venv\Scripts\python.exe`，无需激活。 |
 | 麦克风无法使用怎么办？ | 通过 localhost 或 HTTPS 访问应用，并在浏览器中允许麦克风权限。 |
 | 为什么上传信号没有 SNR 数值？ | 基于参考信号的 SNR 需要干净信号；上传样本与麦克风音频不包含该参考。 |
@@ -330,7 +330,7 @@ Diting turns Random Signals coursework into reproducible experiments. Generate a
 
 Built for the Random Signals course at **UESTC**. The local toolchain works without a model API key; an optional Chat Completions-compatible service adds model-assisted dialogue.
 
-[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.3.1](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.1) · [📘 Installation guide](RELEASE.md)
+[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.3.2](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.2) · [📘 Installation guide](RELEASE.md)
 
 ## 🧭 Explore
 
@@ -350,7 +350,7 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 | --- | --- |
 | 🐳 Ocean UI | Layered ocean/lilac gradients, AI-generated 3D whale art and six persistent views for desktop, tablet and mobile. |
 | 🔑 Model API setup | Choose a provider/model, enter a key and test/apply in the UI; optional per-session persistence. |
-| 📄 PDF analysis reports (v0.3.1) | Preview and export Chinese brief/standard reports with vector plots, measured metrics, optional diagnosis and reproduction details. |
+| 📄 PDF analysis reports (v0.3.2) | Preview and export Chinese brief/standard reports with vector plots, measured metrics, optional diagnosis and reproduction details. |
 | 🩺 Diagnostic laboratory | Linked STFT and event timeline, six seeded fault types, blind challenge evaluation, and reversible evidence-based processing trials. |
 | 💾 Experiment workbench | Create from templates, save, reopen, duplicate, search, rename or delete snapshots, and resume after a restart. |
 | 📥 Data import wizard | Preview CSV/TXT, select time and signal columns, convert time units and locate invalid rows. |
@@ -369,7 +369,7 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 
 ## 🎬 Interface
 
-The v0.3.1 ocean interface has six views: workspace, templates, data import, comparison, diagnostics and settings. Switching views preserves inputs and experiment state.
+The v0.3.2 ocean interface has six views: workspace, templates, data import, comparison, diagnostics and settings. Switching views preserves inputs and experiment state.
 
 ![v0.3.1 ocean workspace: Agent analysis, waveform and spectrum](docs/images/ocean-ui.png)
 
@@ -409,17 +409,17 @@ Reports currently use Chinese. Standard reports include waveform metrics, FFT, W
 
 [Example PDF](docs/report-example.pdf) · [Report guide (Chinese)](工程文件/代码/docs/pdf-report.md)
 
-**New in source (unreleased):** Select up to 50 recent processing results, optionally include saved snapshots, and arrange them chronologically. Export one PDF with a shared cover, summary, clickable contents and plots for every group. History survives server restarts; older unsaved results cannot be recovered. The published v0.3.1 deployment ZIP still provides single-experiment reports.
+**New in v0.3.2:** Select up to 50 recent processing results, optionally include saved snapshots, and arrange them chronologically. Export one PDF with a shared cover, summary, clickable contents and plots for every group. History survives server restarts; older unsaved results cannot be recovered.
 
 <a id="en-quick-start"></a>
 
 ## 🚀 Quick start
 
-Use **Python 3.12–3.14** or **Docker Compose v2**. v0.3.1 uses FastAPI; deployment checks cover Python 3.12–3.14 on Windows and Linux, plus Docker on Linux.
+Use **Python 3.12–3.14** or **Docker Compose v2**. v0.3.2 uses FastAPI; deployment checks cover Python 3.12–3.14 on Windows and Linux, plus Docker on Linux.
 
 ### 1. Get the project
 
-Download the v0.3.1 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.3.1/random-signal-agent-v0.3.1-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
+Download the v0.3.2 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.3.2/random-signal-agent-v0.3.2-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
 
 Or clone the repository:
 
@@ -593,7 +593,7 @@ The check covers the application version, ocean assets, model settings API, Agen
 | --- | --- |
 | Why does the online preview not run new experiments? | GitHub Pages serves the saved showcase. Start the backend locally or deploy it with Docker for interactive use. |
 | Do I need an API key? | The local signal tools do not require one. Model-assisted dialogue is optional. |
-| Which Python versions work? | v0.3.1 supports Python 3.12, 3.13 and 3.14. |
+| Which Python versions work? | v0.3.2 supports Python 3.12, 3.13 and 3.14. |
 | Why can I not activate the virtual environment on Windows? | The quick-start commands call `.venv\Scripts\python.exe` directly and do not require activation. |
 | Why is the microphone unavailable? | Open the app on localhost or HTTPS and allow microphone access in the browser. |
 | Why does my uploaded signal have no SNR value? | Reference-based SNR requires a clean signal. Uploaded samples and microphone audio do not provide that reference. |

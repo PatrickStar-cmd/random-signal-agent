@@ -33,9 +33,9 @@ def decorate_preview(page):
         page = page.replace('<main>', '''<main><section id="ocean-preview"><h2>一个轻松探索信号的小实验室</h2>
         <p>海蓝与薰衣草紫渐变、AI 立体鲸鱼插画与六个功能分区：工作区、模板与实验、数据导入、对比与报告、诊断实验室、模型与设置。切换分区时保留当前输入。</p>
         <a href="images/ocean-ui.png"><img class="preview-image" src="images/ocean-ui.png" alt="可爱海洋工作区，包含对话、波形频谱和分析工具箱" loading="lazy"></a>
-        <p>海洋界面与模型 API 配置已包含在 <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.1">v0.3.1 部署包</a>中；交互实验需要启动 Python 服务。</p></section>''', 1)
+        <p>海洋界面与模型 API 配置已包含在 <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.2">v0.3.2 部署包</a>中；交互实验需要启动 Python 服务。</p></section>''', 1)
     if 'id="pdf-report-preview"' not in page:
-        page = page.replace('<main>', '<main>' + '<section id="pdf-report-preview"><h2>把实验整理成一份清晰的 PDF</h2><p>v0.3.1 支持中文简版与标准版：实验概览、矢量图表、真实指标、已有诊断与复现信息。运行后端后，在“模板与实验 → PDF 分析报告”预览并下载。</p><p><a href="report-example.pdf">查看真实实验的示例 PDF</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.1">下载 v0.3.1</a></p><a href="images/pdf-report-v031.png"><img class="preview-image" src="images/pdf-report-v031.png" alt="PDF 分析报告的摘要预览与下载" loading="lazy"></a></section>', 1)
+        page = page.replace('<main>', '<main>' + '<section id="pdf-report-preview"><h2>把实验整理成一份清晰的 PDF</h2><p>v0.3.2 支持当前实验或最近 50 次处理结果的中文简版/标准版报告：统一封面、汇总表、可跳转目录、逐组矢量图表、指标与复现信息。运行后端后，在“模板与实验 → PDF 分析报告”选择历史、预览并下载。</p><p><a href="report-example.pdf">查看真实实验的示例 PDF</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.2">下载 v0.3.2</a></p><a href="images/pdf-report-v031.png"><img class="preview-image" src="images/pdf-report-v031.png" alt="PDF 分析报告的摘要预览与下载" loading="lazy"></a></section>', 1)
     return page
 
 

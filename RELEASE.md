@@ -1,8 +1,8 @@
-# v0.3.1 · Installation and deployment
+# v0.3.2 · Installation and deployment
 
-Download `random-signal-agent-v0.3.1-deploy.zip` from the [v0.3.1 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.1) and extract it; the archive contains source, Web assets, configuration, documentation and example data. Use **Python 3.12–3.14** or **Docker**. The [previous v0.1.0 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.1.0) remains available and requires Python 3.12.
+Download `random-signal-agent-v0.3.2-deploy.zip` from the [v0.3.2 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.2) and extract it; the archive contains source, Web assets, configuration, documentation and example data. Use **Python 3.12–3.14** or **Docker**. The [previous v0.1.0 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.1.0) remains available and requires Python 3.12.
 
-Open a terminal in `random-signal-agent/工程文件/代码` (or `random-signal-agent-v0.3.1/工程文件/代码` in a deployment archive).
+Open a terminal in `random-signal-agent/工程文件/代码` (or `random-signal-agent-v0.3.2/工程文件/代码` in a deployment archive).
 
 ## Windows
 
@@ -45,7 +45,7 @@ The check covers health, Web assets, Agent mode, streaming responses, CSV upload
 
 ## 中文说明
 
-下载 v0.3.1 部署包并解压，进入 `工程文件/代码` 后按上方命令启动。支持 Python 3.12–3.14，依赖版本在 `requirements-repro.txt` 固定。也可使用 Docker Compose；默认地址为 <http://127.0.0.1:8000>。实验可导出 ZIP，升级前停止服务并备份整个 `data/` 目录。
+下载 v0.3.2 部署包并解压，进入 `工程文件/代码` 后按上方命令启动。支持 Python 3.12–3.14，依赖版本在 `requirements-repro.txt` 固定。也可使用 Docker Compose；默认地址为 <http://127.0.0.1:8000>。实验可导出 ZIP，升级前停止服务并备份整个 `data/` 目录。
 
 完整应用包含对话、分析、上传及音频处理，不需要外部模型密钥即可使用本地工具链。服务器部署、模型配置与日志查看见[部署说明](工程文件/代码/DEPLOY.md)。
 
@@ -73,12 +73,22 @@ Keys are held in server memory by default. Opting into **记住配置** stores t
 
 The package includes the six-view ocean interface, transparent AI-generated whale artwork, responsive charts and all local styles/scripts. GitHub Pages is a static preview; API configuration and interactive experiments require the Python backend.
 
-打开“模型与设置 → 模型 API 配置”，选择服务、输入自己的 Key、读取模型列表并“测试并应用”，无需重启。默认只在服务内存保存；勾选“记住配置”后会将 Key 明文写入 `data/model-settings.sqlite3`，需保护该文件及数据备份。可随时切回本地模式或清除配置。v0.3.1 部署包已包含海洋界面及所有图片资源；GitHub Pages 仍为静态预览。
+打开“模型与设置 → 模型 API 配置”，选择服务、输入自己的 Key、读取模型列表并“测试并应用”，无需重启。默认只在服务内存保存；勾选“记住配置”后会将 Key 明文写入 `data/model-settings.sqlite3`，需保护该文件及数据备份。可随时切回本地模式或清除配置。v0.3.2 部署包已包含海洋界面及所有图片资源；GitHub Pages 仍为静态预览。
 
-## PDF analysis reports (v0.3.1)
+## PDF analysis reports (v0.3.2)
 
 In **模板与实验 → PDF 分析报告**, enter report details, choose brief/standard, preview the summary, then download. Reports currently use Chinese and include measured results, vector plots and reproduction information; existing comparison and diagnosis sections appear when available. No model key is required. Blind experiments must be revealed first; true SNR/RMSE need a clean reference.
 
 Reinstall requirements-repro.txt when upgrading from v0.3.0: ReportLab, Pillow and charset-normalizer are new pinned runtime dependencies. The package includes an OFL-licensed Chinese font (about 10 MiB) for offline PDF generation, plus its license. No browser, external converter or system Chinese font is needed. Existing data and algorithm versions remain unchanged. See the [report guide](工程文件/代码/docs/pdf-report.md) and [example](docs/report-example.pdf).
 
 完成采集/恢复实验后，打开“模板与实验 → PDF 分析报告”，填写信息，预览再下载。升级 v0.3.0 时重新安装固定依赖；中文字体及许可证已随包交付，无需系统字体或外部转换器。报告不包含 Key、聊天或服务器路径，旧实验数据可继续读取。
+
+## Multi-result PDF reports (v0.3.2)
+
+Choose **报告数据 → 选择处理历史 / 已保存实验** in the PDF report panel. Select 1–50 groups in total, including saved snapshots if needed; choose the time order, preview and download. Each group retains its own full-sample metrics and vector plots. A shared cover, summary, clickable contents, PDF bookmarks and continuous page numbers keep long reports navigable.
+
+Successful processing tasks retain the latest 50 final results per browser session across server restarts. Retries do not duplicate a task; ordinary questions, opening snapshots, failed or cancelled tasks do not add results. Older unsaved results from before this upgrade cannot be recovered. Blind records created before reveal remain locked; reveal the current experiment to create an exportable result.
+
+Stop the service and back up the entire `data/` directory before upgrading. The existing `experiments.sqlite3` gains a `report_history` table automatically; experiment schema 1 and algorithm 0.2.0 stay unchanged. Confirmed storage cleanup protects arrays referenced by both history and saved snapshots. Reinstall the pinned requirements or rebuild Docker after replacing the source.
+
+在 PDF 报告中选择“处理历史 / 已保存实验”，勾选最近 50 次以内的结果，可补充手动快照，合计最多 50 组。选择顺序并预览后下载；统一封面、汇总、可跳转目录与逐组图表，历史重启后保留。升级前未保存的数据无法补回；先停止服务并备份整个 data/，新历史表会自动创建。
