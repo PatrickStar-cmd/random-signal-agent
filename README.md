@@ -99,6 +99,8 @@ Agent 采集与分析 → 保存实验快照 → 查看故障诊断 → 打开�
 
 [查看示例 PDF](docs/report-example.pdf) · [报告使用说明](工程文件/代码/docs/pdf-report.md)
 
+**源码新功能（尚未发行）**：在“报告数据”选择处理历史，勾选最近 50 次以内的结果，也可补充已保存实验。按时间排序后导出统一封面、汇总表、可跳转目录和分组图表；总计最多 50 组，历史重启后保留。升级前未保存的结果无法补回；v0.3.1 部署 ZIP 仍为单实验报告。
+
 <a id="zh-quick-start"></a>
 
 ## 🚀 快速开始
@@ -406,6 +408,8 @@ Reports currently use Chinese. Standard reports include waveform metrics, FFT, W
 ![v0.3.1 PDF preview and download](docs/images/pdf-report-v031.png)
 
 [Example PDF](docs/report-example.pdf) · [Report guide (Chinese)](工程文件/代码/docs/pdf-report.md)
+
+**New in source (unreleased):** Select up to 50 recent processing results, optionally include saved snapshots, and arrange them chronologically. Export one PDF with a shared cover, summary, clickable contents and plots for every group. History survives server restarts; older unsaved results cannot be recovered. The published v0.3.1 deployment ZIP still provides single-experiment reports.
 
 <a id="en-quick-start"></a>
 

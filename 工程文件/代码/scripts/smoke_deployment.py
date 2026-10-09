@@ -53,6 +53,13 @@ def check(base_url):
     report_preview = json.loads(request('/api/reports/preview',report_payload))
     pdf = request('/api/reports/pdf',{**report_payload,'token':report_preview['token']})
     assert pdf.startswith(b'%PDF-') and len(pdf)>10000
+    history = json.loads(request(f'/api/reports/history?session_id={session}'))['history']
+    assert len(history)==1 and not history[0]['locked']
+    assert request(f'/api/reports/plot/history/{history[0]["id"]}?session_id={session}').startswith(b'<svg')
+    selected = {**report_payload,'selection':[{'kind':'history','id':history[0]['id']}]}
+    multi_preview = json.loads(request('/api/reports/preview',selected))
+    assert multi_preview['group_count']==1
+    assert request('/api/reports/pdf',{**selected,'token':multi_preview['token']}).startswith(b'%PDF-')
     stream = request('/api/chat/stream', {'session_id': session, 'message': '分析时域和频域特征'}).decode('utf-8')
     assert 'data: [DONE]' in stream
     events = [json.loads(line[6:]) for line in stream.splitlines() if line.startswith('data: {')]
@@ -115,8 +122,8 @@ def check(base_url):
     assert request(f'/api/diagnostics/view?session_id={diagnostic_session}&format=html').startswith(b'<!doctype html>')
     assert request(f'/api/experiments/export?session_id={diagnostic_session}&format=zip').startswith(b'PK')
     return {'status': 'passed', 'session_id':session, 'saved_experiment':saved['id'], 'csv_sha256':hashlib.sha256(data).hexdigest(),
-            'diagnostic_session':diagnostic_session,
-            'checks': ['health', 'application_version', 'web_assets', 'ocean_ui_assets', 'model_settings_api', 'pdf_report', 'agent_pipeline', 'sse', 'csv_upload', 'synthetic_audio_download', 'experiment_save', 'full_data_export', 'snapshot_rename_duplicate_delete', 'delete_retry', 'shared_data_preserved', 'mapped_import', 'snapshot_comparison_report', 'task_list_cancel_endpoint', 'storage_preview', 'diagnostic_blind_trial_reveal_export']}
+            'diagnostic_session':diagnostic_session,'report_history_id':history[0]['id'],
+            'checks': ['health', 'application_version', 'web_assets', 'ocean_ui_assets', 'model_settings_api', 'pdf_report', 'report_history', 'agent_pipeline', 'sse', 'csv_upload', 'synthetic_audio_download', 'experiment_save', 'full_data_export', 'snapshot_rename_duplicate_delete', 'delete_retry', 'shared_data_preserved', 'mapped_import', 'snapshot_comparison_report', 'task_list_cancel_endpoint', 'storage_preview', 'diagnostic_blind_trial_reveal_export']}
 
 
 def check_persistence(base_url, previous):
@@ -138,6 +145,9 @@ def check_persistence(base_url, previous):
     with urllib.request.urlopen(base_url+f'/api/diagnostics/view?session_id={previous["diagnostic_session"]}',timeout=30) as response:
         diagnostic=json.load(response);assert diagnostic['lab']['revealed'] and diagnostic['lab']['verification']
     previous['checks'].append('diagnostic_restart_persistence')
+    with urllib.request.urlopen(base_url+f'/api/reports/history?session_id={session}',timeout=15) as response:
+        assert any(e['id']==previous['report_history_id'] for e in json.load(response)['history'])
+    previous['checks'].append('report_history_restart_persistence')
     return previous
 
 

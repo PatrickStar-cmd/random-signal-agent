@@ -23,6 +23,7 @@ from src.limits import LIMITS
 from src.data_import import inspect_data
 from src import diagnostics
 from src import pdf_report
+from src import report_history
 from src.model_settings import ModelSettings, CONFIG as MODEL_CONFIG
 from src.llm_client import LLMClientError
 from src.experiment_compare import compare_experiments, comparison_html, comparison_svg
@@ -495,6 +496,15 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
             return {"id": key, "deleted": True}
         return await run_task(payload, "delete", operation)
 
+    @app.get('/api/reports/history')
+    def report_results(session_id: str):
+        return report_history.listing(store, session_key(session_id))
+
+    @app.get('/api/reports/plot/{kind}/{key}')
+    def report_plot(kind: str, key: str, session_id: str):
+        svg = report_history.plot(store, session_key(session_id), kind, key)
+        return Response(svg, media_type='image/svg+xml')
+
     @app.post('/api/reports/{action}')
     async def analysis_report(action: str, request: Request):
         if action not in ('preview', 'pdf'):
@@ -502,11 +512,16 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
         if request.headers.get('content-type','').split(';')[0] != 'application/json':
             raise ValueError('报告请求须使用 JSON。')
         payload = await body(request)
-        if set(payload) - {'session_id','options','token'}:
+        if set(payload) - {'session_id','options','token','selection'}:
             raise ValueError('报告请求包含未知字段。')
         session = session_key(payload.get('session_id'))
         preferences = pdf_report.options(payload.get('options'))
         def prepare():
+            if 'selection' in payload:
+                try:
+                    return report_history.collection(store, session, payload['selection'], preferences)
+                except KeyError as exc:
+                    raise TaskConflict('已选结果不可用，请刷新历史列表后重新选择。') from exc
             frozen = locked(session, lambda: copy.deepcopy(agent.get_session(session)))
             return pdf_report.build(frozen, preferences)
         facts = await run_in_threadpool(prepare)

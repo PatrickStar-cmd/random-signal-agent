@@ -80,6 +80,7 @@ def main():
             run([python, 'scripts/test_diagnostics.py'])
             run([python, 'scripts/test_model_settings.py'])
             run([python, 'scripts/test_pdf_report.py'])
+            run([python, 'scripts/test_report_history.py'])
             run([python, 'scripts/benchmark_algorithms.py'])
             report['benchmark'] = json.loads((code / 'outputs/benchmark/summary.json').read_text(encoding='utf-8'))
             env['PATH'] = str(bin_dir) + os.pathsep + env.get('PATH', '')
@@ -105,7 +106,7 @@ def main():
                 report['checks'] = ['archive_contents', 'sha256', 'fresh_venv_install', 'pip_check',
                                     'regression_suite', 'integration_suite', 'workbench_roundtrip', 'numerical_benchmark', 'real_startup_script',
                                     'health', 'application_version', 'web_assets', 'ocean_ui_assets', 'model_settings_api',
-                                    'model_settings_acceptance', 'pdf_report_acceptance', 'studio_acceptance', 'agent_pipeline', 'sse', 'csv_upload',
+                                    'model_settings_acceptance', 'pdf_report_acceptance', 'report_history_acceptance', 'studio_acceptance', 'agent_pipeline', 'sse', 'csv_upload',
                                     'synthetic_audio_download', 'diagnostic_acceptance']
             finally:
                 if process is not None and process.poll() is None:

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Select 1–50 recent processing results, with waveform thumbnails, chronological ordering and saved snapshot supplements, for one Chinese PDF report.
+- Retain immutable per-session processing evidence across restarts; commit autosave, history retention and task completion together. Retries, ordinary questions, failed/cancelled tasks and snapshot opening do not create duplicate processing records.
+- Shared cover and summary, clickable contents/bookmarks, independent full-sample metrics/vector plots and continuous page numbers. Preserve blind-test restrictions and reject deleted/evicted selections; storage cleanup protects all referenced history arrays.
+- Fix simulation source labels and include actual simulation parameters/seeds. Add 15 acceptance cases, browser checks and deployment/restart coverage.
+
+新增最近 50 次处理结果选择与多组合并 PDF；未包含在 v0.3.1 Release 的部署 ZIP 中，升级前未保存的结果无法补回。
+
 ## v0.3.1 · 2026-10-08
 
 - Single-experiment Chinese PDF reports: title, author, purpose and units; preview the measured summary/sections, then download a brief or standard edition.

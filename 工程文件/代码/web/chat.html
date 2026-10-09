@@ -154,8 +154,10 @@
       <div class="wb-actions"><span>导出：</span><button data-export="zip">完整实验包 ZIP</button><button data-export="html">HTML 报告</button><button data-export="csv">完整数据 CSV</button><button data-export="json">参数与清单 JSON</button><label class="wb-import">导入实验包<input id="wbImport" type="file" accept=".zip"></label></div>
       <details id="wbScores"><summary>评分依据与耗时</summary><div id="wbScoreContent">运行比较后显示。分数仅用于相同数据与目标下的方法比较。</div></details>
       <details id="reportPanel"><summary>生成 PDF 分析报告</summary>
-        <p class="wb-hint">从当前实验生成可搜索的图文报告。先预览结论与章节，再下载；不需要模型 Key。</p>
+        <p class="wb-hint">可选当前实验或最近 50 次处理结果，图表和指标按组进入报告。先预览再下载；不需要模型 Key。</p>
         <form id="reportForm" class="wb-fields">
+          <label>报告数据<select id="reportSource"><option value="current">当前实验</option><option value="history">选择处理历史 / 已保存实验</option></select></label>
+          <label>分组顺序<select id="reportOrder"><option value="newest">最近结果在前</option><option value="oldest">按时间先后</option></select></label>
           <label>报告标题<input id="reportTitle" value="信号处理与分析报告" maxlength="120" required></label>
           <label>作者（可选）<input id="reportAuthor" maxlength="80" placeholder="姓名或团队"></label>
           <label>报告篇幅<select id="reportEdition"><option value="standard">标准版 · 完整分析与复现信息</option><option value="brief">简版 · 概览、波形与频谱</option></select></label>
@@ -164,6 +166,12 @@
           <button id="reportPreview" type="submit">预览摘要与章节</button>
         </form>
         <p id="reportStatus" role="status">请先生成或导入信号。</p>
+        <div id="reportPicker" hidden>
+          <div class="wb-actions"><button id="reportRefresh" type="button">刷新结果</button><button id="reportSelectAll" type="button">全选最近结果</button><button id="reportClear" type="button">清空选择</button><span id="reportCount" role="status" aria-live="polite">已选 0 / 50 组</span></div>
+          <p class="wb-hint">每次成功处理任务保存一组最终结果，最多保留当前会话最近 50 组，重启后仍可选择。图中海蓝为原始观测，紫色为处理结果；盲测未揭晓的存档不可选。</p>
+          <div id="reportHistory" class="report-history-list" aria-label="最近处理结果"></div>
+          <details><summary>补充选择已保存实验</summary><div id="reportSnapshots" class="report-history-list" aria-label="已保存实验"></div></details>
+        </div>
         <div id="reportSummary" hidden></div><button id="reportDownload" disabled>下载 PDF 报告</button>
       </details>
     </details>

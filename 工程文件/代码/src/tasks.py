@@ -135,6 +135,7 @@ class TaskEngine:
                 db.commit()
                 self.events[key] = []
                 self.active[key] = {"session": session, "lock": lock, "operation": operation,
+                                    "operation_name": str(payload.get('operation', 'task')),
                                     "cancel": threading.Event(), "cancellable": cancellable, "started": False, "committing": False}
                 self.pending.append(key)
                 self._dispatch()
@@ -180,6 +181,7 @@ class TaskEngine:
                     check_cancelled()
                     db.execute("UPDATE tasks SET status='running' WHERE id=?", (key,))
                 previous = copy.deepcopy(self.agent.get_session(session))
+                prior_processed = self.agent.get_session(session).processed
                 try:
                     emit_progress("task", "running")
                     result = record["operation"]()
@@ -190,11 +192,15 @@ class TaskEngine:
                         check_cancelled()
                         record["committing"] = True
                     # Cancellation is refused after the save boundary.
-                    self.store.autosave(self.agent.get_session(session))
+                    current = self.agent.get_session(session)
+                    capture = (current.bundle is not None and current.processed is not None and
+                               'error' not in result and record['operation_name'] not in
+                               ('open', 'import', 'save', 'rename', 'duplicate', 'delete') and
+                               (current.processed is not prior_processed or record['operation_name'] == 'reveal'))
+                    self.store.complete_task(key, current, result, capture)
                 except (TaskCancelled, Exception):
                     self.agent.sessions[session] = previous
                     raise
-                self._finish(key, "done", result)
         except TaskCancelled as exc:
             self._finish(key, "cancelled", {"error": str(exc), "cancelled": True})
         except Exception as exc:

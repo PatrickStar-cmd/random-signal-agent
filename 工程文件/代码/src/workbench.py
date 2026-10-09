@@ -12,6 +12,7 @@ import time
 import uuid
 import zipfile
 from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import fields, is_dataclass
 from html import escape
 from pathlib import Path
@@ -123,6 +124,7 @@ class ExperimentStore:
     def __init__(self, root: Path):
         self.root = root
         self.file_lock = threading.RLock()
+        self.transaction = ContextVar('experiment_transaction', default=None)
         root.mkdir(parents=True, exist_ok=True)
         with self.connect() as db:
             db.executescript("""
@@ -130,6 +132,9 @@ class ExperimentStore:
                     name TEXT NOT NULL, document BLOB NOT NULL, data_file TEXT NOT NULL, updated REAL NOT NULL);
                 CREATE TABLE IF NOT EXISTS tasks(id TEXT PRIMARY KEY, session TEXT NOT NULL,
                     fingerprint TEXT NOT NULL, status TEXT NOT NULL, result TEXT, created REAL NOT NULL);
+                CREATE TABLE IF NOT EXISTS report_history(id TEXT PRIMARY KEY, session TEXT NOT NULL,
+                    document BLOB NOT NULL, data_file TEXT NOT NULL, metadata TEXT NOT NULL, created REAL NOT NULL);
+                CREATE INDEX IF NOT EXISTS report_history_session ON report_history(session,created);
             """)
             if "operation" not in {row[1] for row in db.execute("PRAGMA table_info(tasks)")}:
                 db.execute("ALTER TABLE tasks ADD COLUMN operation TEXT NOT NULL DEFAULT 'task'")
@@ -138,6 +143,10 @@ class ExperimentStore:
 
     @contextmanager
     def connect(self):
+        active = self.transaction.get()
+        if active is not None:
+            yield active
+            return
         db = sqlite3.connect(self.root / "experiments.sqlite3", timeout=30)
         db.row_factory = sqlite3.Row
         try:
@@ -202,9 +211,25 @@ class ExperimentStore:
     def autosave(self, state):
         self.save(state, experiment_id=self.auto_id(state.session_id))
 
+    def complete_task(self, key, state, result, capture=False):
+        # Autosave, history retention and task completion commit together.
+        # Failed writes leave only unreferenced array files for normal cleanup.
+        from .report_history import capture_result
+        with self.file_lock, self.connect() as db:
+            token = self.transaction.set(db)
+            try:
+                self.autosave(state)
+                if capture:
+                    capture_result(self, db, key, state)
+                db.execute("UPDATE tasks SET status='done',result=? WHERE id=?",
+                           (json.dumps(result, ensure_ascii=False, allow_nan=False), key))
+            finally:
+                self.transaction.reset(token)
+
     def storage_preview(self):
         with self.file_lock, self.connect() as db:
             referenced = {row[0] for row in db.execute("SELECT DISTINCT data_file FROM snapshots")}
+            referenced.update(row[0] for row in db.execute("SELECT DISTINCT data_file FROM report_history"))
             files = [p for p in self.root.glob('*.npz') if re.fullmatch(r'[0-9a-f]{64}\.npz', p.name)
                      and not p.is_symlink() and p.is_file() and p.resolve().parent == self.root.resolve()]
             unused = sorted((p.name, p.stat().st_size, p.stat().st_mtime_ns) for p in files if p.name not in referenced)

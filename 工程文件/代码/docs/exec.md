@@ -186,8 +186,18 @@ API：`POST /api/diagnostics/{analyze,inject,demo,reveal,verify,adopt}`，共同
 
 启动方式不变，依赖已固定在 requirements-repro.txt（ReportLab 5.0.1、Pillow 12.3.0、charset-normalizer 3.5.2）；测试依赖 pypdf 6.12.2。运行 `python scripts/test_pdf_report.py`，14 项验收结果覆盖写入 logs/pdf-report/latest.log。页面操作和 HTTP 接口见 [pdf-report.md](pdf-report.md)。
 
-config/report.json 全部字段：version=1.0 为报告版式契约；plot_points=780 为图表采样显示上限；max_title=120、max_author=80、max_purpose=1200 为输入字符上限；max_pages=24 为输出页数上限；render_workers=2 为同时渲染上限；font 为随包交付的 TrueType 中文字体路径。量纲限制 20 字符，edition 仅 brief/standard。不修改实验 schema 1 或算法 0.2.0。
+config/report.json 全部字段：version=2.0 为当前报告版式契约；plot_points=780 为每图采样显示上限；max_title=120、max_author=80、max_purpose=1200 为输入字符上限；max_pages=24 为单实验输出页数上限；collection_max_pages=1208 为合并报告总页数上限；history_limit=50 为每会话保留的处理组数及报告选择上限；render_workers=2 为同时渲染上限；font 为随包交付的 TrueType 中文字体路径。量纲限制 20 字符，edition 仅 brief/standard。不修改实验 schema 1 或算法 0.2.0。历史扩展的页面选择上限为 50，修改此配置时应同时调整页面提示/选择控制。
 
 发布命令仍为 `python scripts/build_release.py`、`python scripts/verify_release.py`，在已提交干净源码上执行。新验证涵盖字体/许可证打包、14 项 PDF 验收和服务实际 PDF 下载；全部套件共 104 项，另有 540 个数值基准案例。源码、页面与 release.json 版本均为 0.3.1。
 
 报告生成、逐页 PNG 和浏览器下载验证脚本/产物保存在 debug/pdf-report/，浏览器结果在 logs/pdf-report/browser.log，独立服务在 logs/pdf-report/server.log。README v0.3.1 四张截图已从运行界面重录，PDF 示例为真实 Agent 的 8 秒、200 Hz、8 Hz、种子 42 正弦加高斯噪声实验。旧 GIF 标明 v0.3.0，静态固定展示实验保持原参数。
+
+## 历史结果合并 PDF（尚未发行）
+
+启动方式和生产依赖不变。历史写入 data/experiments.sqlite3 的独立 report_history 表，完整数组使用原 NPZ 格式；首次启动自动创建新表。升级前停止服务并备份整个 data/。当前单实验入口保持兼容，已发行的 v0.3.1 部署 ZIP 不含本次扩展。
+
+在“模板与实验 → 生成 PDF 分析报告”选择历史模式，勾选最多 50 组处理结果，可补充手动快照并选择时间顺序，再预览、下载。操作与 HTTP selection 参数见 [报告指南](pdf-report.md)。最近记录按浏览器会话保存；未留存的旧处理结果不能自动补回。
+
+运行 `python scripts/test_report_history.py`，15 项验收覆盖留存/重启、重复请求、回滚、会话隔离、盲测、清理、全组图表和 PDF 导航，日志覆盖写入 logs/report-history/latest.log。结合原有套件共 119 项；verify_release.py 已加入此验收，部署冒烟与重启检查增加 history/缩略图/选择 PDF。
+
+本次独立浏览器测试结果在 logs/report-history/browser.log，390 像素手机和桌面选择、50 组下载、快照补充及淘汰提示均通过。最大输入测试在 logs/report-history/maximum-input.json：50 组、每组 200000 点，事实整理约 4.3 秒、排版约 2.9 秒，实际耗时随机器和诊断内容变化。debug/report-history/ 存放独立测试数据、脚本、截图与逐页 PDF 渲染。未调用外部模型。

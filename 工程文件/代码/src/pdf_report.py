@@ -1,4 +1,4 @@
-"""Read-only, evidence-based Chinese reports from one frozen experiment."""
+"""Read-only, evidence-based Chinese reports from frozen experiments."""
 from pathlib import Path
 from html import escape
 from datetime import datetime, timezone
@@ -92,6 +92,18 @@ def _stats(y, clean):
     return result, spectrum
 
 
+def source_kind(bundle):
+    source = str(bundle.source)
+    generated = f'{bundle.config.waveform}+{bundle.config.noise_model}'
+    if source.startswith('simulat') or source in (generated, 'realtime_stream/' + generated):
+        return 'simulation'
+    if 'microphone' in source:
+        return 'microphone'
+    if source == 'diagnostic_challenge':
+        return 'diagnostic_challenge'
+    return 'external'
+
+
 def build(state, preferences=None):
     """Whitelist report data; never copy chat, credentials or server paths."""
     opts = options(preferences)
@@ -182,10 +194,11 @@ def build(state, preferences=None):
     digest = hashlib.sha256()
     for array in [b.time, y] + ([clean] if clean is not None else []) + ([processed] if processed is not None else []):
         digest.update(np.asarray(array, dtype='<f8').tobytes())
-    source = str(b.source)
-    simulated = source.startswith(('simulat', 'simulation'))
+    source = source_kind(b)
+    simulated = source == 'simulation'
     facts = {'options': opts, 'report_version': CONFIG['version'], 'app_version': VERSION, 'algorithm_version': ALGORITHM_VERSION,
-             'source': '仿真信号' if simulated else ('麦克风采样' if 'microphone' in source else '导入或外部采样'),
+             'source': {'simulation':'仿真信号', 'microphone':'麦克风采样',
+                        'diagnostic_challenge':'故障注入实验', 'external':'导入或外部采样'}[source],
              'sample_count': len(y), 'sample_rate': fs, 'duration_seconds': len(y)/fs,
              'observed_span_seconds': float(relative[-1]), 'has_reference': clean is not None, 'uniform': bool(uniform),
              'method': method_name, 'parameters': parameters(current.parameters) if current else {}, 'goal': GOALS.get(state.comparison_goal, '保留波形'),
@@ -198,6 +211,15 @@ def build(state, preferences=None):
 
 
 def preview(facts):
+    if 'groups' in facts:
+        return {'token': facts['token'], 'options': facts['options'],
+                'summary': [f"已选 {len(facts['groups'])} 组结果；每组独立展示采样、处理指标与图表。",
+                            '不同采样条件下的结果不直接排名。目录可跳转到对应结果。'],
+                'sections': ['报告概览与汇总', '可跳转目录'] +
+                            [group_title(i,g) for i,g in enumerate(facts['groups'],1)],
+                'limitations': ['指标来自各组全部采样；曲线按组保留极值并限制显示点数。',
+                                '无干净参考的组不计算真实 SNR/RMSE；盲测存档须为已揭晓的结果。'],
+                'group_count': len(facts['groups']), 'app_version': VERSION}
     sections = ['实验概览', '波形与处理结果']
     if 'spectrum' in facts['plots']: sections.append('频域与随机过程特征')
     if facts['options']['edition'] == 'standard':
@@ -272,12 +294,12 @@ def render(facts):
         from .tasks import TaskBusy
         raise TaskBusy('报告生成繁忙，请稍后重试。')
     try:
-        return _render(facts)
+        return _render_collection(facts) if 'groups' in facts else _render(facts)
     finally:
         RENDER_LIMIT.release()
 
 
-def _render(f):
+def _render(f, story_only=False, group_heading=None):
     _font(); opts=f['options']; output=io.BytesIO(); W,H=A4
     styles={key:ParagraphStyle(key,fontName=FONT,fontSize=size,leading=leading,textColor=colors.HexColor(color),spaceAfter=space,alignment=TA_LEFT,wordWrap='CJK')
             for key,size,leading,color,space in [('title',23,32,INK,16),('h1',16,24,INK,14),('h2',12,19,PURPLE,9),('body',10.2,17,INK,9),('small',8,12,MUTED,7)]}
@@ -294,7 +316,7 @@ def _render(f):
         if key not in f['plots']:return
         labels=['原始观测','当前处理'] if len(f['plots'][key]['ys'])>1 else ['当前处理' if f['after'] else '原始观测']
         story.append(KeepTogether([para(title,'h2'),Chart(f['plots'][key],labels,height)]));story.append(Spacer(1,8))
-    def page(title):story.extend([PageBreak(),para(title,'h1')])
+    def page(title):story.extend([PageBreak(),para((group_heading.split(' · ')[0]+' · ' if group_heading else '')+title,'h1')])
     stamp=datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
     def decoration(c,doc):
         if doc.page>CONFIG['max_pages']:raise ValueError('报告超过页数上限，请缩短说明或参数。')
@@ -302,13 +324,16 @@ def _render(f):
         c.setFont(FONT,8);c.setFillColor(colors.HexColor(MUTED));c.drawString(52,H-29,'谛听 / SIGNAL ANALYSIS');c.drawRightString(W-52,H-29,'v'+VERSION)
         c.drawString(52,26,'实验 '+f['input_result_sha256'][:12]);c.drawRightString(W-52,26,'第 '+str(doc.page)+' 页')
         c.restoreState()
-    add('信号处理与分析','small')
-    cover=Table([[para(opts['title'],'title'),Image(str(ROOT/'web/ocean-whale.webp'),width=96,height=64)]],colWidths=[380,111])
-    cover.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(0,0),(-1,-1),0),('RIGHTPADDING',(0,0),(-1,-1),0)]))
-    story.append(cover);story.append(Spacer(1,12));add(('作者：'+opts['author']+'   ' if opts['author'] else '')+'生成时间：'+stamp,'small')
+    if group_heading:
+        heading=para(group_heading,'h1');story.append(heading)
+    else:
+        add('信号处理与分析','small')
+        cover=Table([[para(opts['title'],'title'),Image(str(ROOT/'web/ocean-whale.webp'),width=96,height=64)]],colWidths=[380,111])
+        cover.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(0,0),(-1,-1),0),('RIGHTPADDING',(0,0),(-1,-1),0)]))
+        story.append(cover);story.append(Spacer(1,12));add(('作者：'+opts['author']+'   ' if opts['author'] else '')+'生成时间：'+stamp,'small')
     add('实验概览','h2')
     table([['数据来源','点数','采样率','采样时长'],[f['source'],f'{f["sample_count"]:,}',fmt(f['sample_rate'],'Hz'),fmt(f['duration_seconds'],'s')]])
-    if opts['purpose']:add('分析目的','h2');add(opts['purpose'])
+    if opts['purpose'] and not group_heading:add('分析目的','h2');add(opts['purpose'])
     add('主要发现','h2')
     for text in f['summary']:add(text)
     add('当前方法：'+f['method']+'。比较目标：'+f['goal']+'。')
@@ -347,13 +372,95 @@ def _render(f):
         page('结论与复现信息')
         for text in f['summary']:add(text)
         add('后续建议','h2')
-        add('保存当前实验快照并导出完整实验 ZIP，可保留本次采样和参数。比较其他方案时固定输入与目标，结合波形、频谱和参考误差评估取舍。')
+        add(('建议为后续实验及时保存快照并导出完整实验 ZIP，保留采样和参数。' if group_heading else
+             '保存当前实验快照并导出完整实验 ZIP，可保留本次采样和参数。') +
+            '比较其他方案时固定输入与目标，结合波形、频谱和参考误差评估取舍。')
         if not f['has_reference']:add('如需评估真实恢复误差，建议补充同步的干净参考或已知标定数据。')
         table([['项目','记录'],['应用 / 算法 / 报告版式',f'{VERSION} / {ALGORITHM_VERSION} / {CONFIG["version"]}'],['绘图与计算',f'图表最多 {CONFIG["plot_points"]} 点；指标使用全部 {f["sample_count"]} 点'],['数据与结果 SHA-256',f['input_result_sha256']],['预览内容标识',f['token']]], [150,341])
         add('采样与处理参数','h2')
         for group in [f['configuration'],f['parameters']]:
             for key,value in group.items():add(f'{key}：{value}','small')
         add('相同参数、种子与运行环境可以复现仿真；导入完整实验包可保留已有采样。报告不包含模型 Key、聊天历史或服务器文件路径。','small')
+    if story_only:return story
     doc=SimpleDocTemplate(output,pagesize=A4,leftMargin=52,rightMargin=52,topMargin=58,bottomMargin=52,title=_text(opts['title']),author=_text(opts['author']),pageCompression=1)
     doc.build(story,onFirstPage=decoration,onLaterPages=decoration)
+    return output.getvalue()
+
+
+def group_title(index, group):
+    metadata = group['metadata']
+    date = datetime.fromtimestamp(metadata['created'], timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+    return f"第 {index} 组 · {metadata['name']} · {date}"
+
+
+def build_collection(groups, preferences):
+    if not 1 <= len(groups) <= CONFIG['history_limit']:
+        raise ValueError('报告只能包含 1 至 50 组结果。')
+    facts = {'options': options(preferences), 'groups': groups, 'report_version': CONFIG['version']}
+    facts['token'] = hashlib.sha256(json.dumps(facts, ensure_ascii=False, sort_keys=True,
+                                              allow_nan=False).encode()).hexdigest()
+    return facts
+
+
+def _render_collection(facts):
+    """One font subset and continuous page numbers across all selected results."""
+    from reportlab.platypus.tableofcontents import TableOfContents
+    _font()
+    opts = facts['options']; groups = facts['groups']; output = io.BytesIO(); W,H = A4
+    body = ParagraphStyle('collection-body', fontName=FONT, fontSize=10.2, leading=17,
+                          textColor=colors.HexColor(INK), wordWrap='CJK', spaceAfter=10)
+    title = ParagraphStyle('collection-title', parent=body, fontSize=23, leading=32, spaceAfter=18)
+    h1 = ParagraphStyle('collection-h1', parent=body, fontSize=16, leading=24, spaceAfter=14, keepWithNext=True)
+    small = ParagraphStyle('collection-small', parent=body, fontSize=8, leading=12, textColor=colors.HexColor(MUTED))
+    def p(text, style=body):
+        return Paragraph(escape(_text(text)).replace('\n','<br/>'), style)
+    cover = Table([[p(opts['title'],title),Image(str(ROOT/'web/ocean-whale.webp'),width=96,height=64)]],
+                  colWidths=[380,111])
+    cover.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(0,0),(-1,-1),0)]))
+    story = [p('多组信号处理与分析',small),cover,Spacer(1,12)]
+    if opts['author']:story.append(p('作者：'+opts['author']))
+    if opts['purpose']:story.extend([p('分析目的',h1),p(opts['purpose'])])
+    story += [p('报告概览',h1),p(f'本报告汇集 {len(groups)} 组处理结果，按所选顺序组织。'
+              '每组保留独立的采样条件、指标、图表与复现信息，不将不同输入的指标直接排名。'),
+              p('海蓝曲线表示原始观测，紫色曲线表示处理结果。无干净参考的组不计算真实 SNR/RMSE；'
+                '更平滑或幅值更小不一定代表恢复了真实信号。')]
+    rows = [['组', '记录时间 / UTC', '处理方法', '点数', '主频 / Hz', '参考 RMSE']]
+    for i,g in enumerate(groups,1):
+        f = g['facts'];m=g['metadata']
+        date=datetime.fromtimestamp(m['created'],timezone.utc).strftime('%m-%d %H:%M')
+        rows.append([str(i),date,f['method'],f"{f['sample_count']:,}",fmt(f['main_frequency_hz']),
+                     fmt(f['after']['rmse']) if f['after'] else '尚未处理'])
+    table=Table([[p(cell,small) for cell in row] for row in rows],colWidths=[30,88,118,60,90,105],repeatRows=1)
+    table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#eaf0fa')),
+                    ('VALIGN',(0,0),(-1,-1),'TOP'),('LINEBELOW',(0,0),(-1,-1),.4,colors.HexColor('#dce5ee')),
+                    ('TOPPADDING',(0,0),(-1,-1),7),('BOTTOMPADDING',(0,0),(-1,-1),7)]))
+    story += [table,PageBreak(),p('目录',h1)]
+    toc=TableOfContents()
+    toc.levelStyles=[ParagraphStyle('contents',parent=body,fontSize=10,leading=17,leftIndent=0,
+                                   firstLineIndent=0,rightIndent=35,spaceBefore=6,spaceAfter=3)]
+    story.append(toc)
+    for i,g in enumerate(groups,1):
+        title_text=group_title(i,g)
+        part=_render(g['facts'],story_only=True,group_heading=title_text)
+        part[0].report_group=(i,title_text)
+        story.extend([PageBreak(),*part])
+    class CollectionDocument(SimpleDocTemplate):
+        def afterFlowable(self, flowable):
+            if hasattr(flowable,'report_group'):
+                index,text=flowable.report_group;key=f'group-{index}'
+                self.canv.bookmarkPage(key)
+                self.canv.addOutlineEntry(_text(text),key,0,False)
+                self.notify('TOCEntry',(0,escape(_text(text)),self.page,key))
+    def decoration(canvas,doc):
+        if doc.page>CONFIG['collection_max_pages']:
+            raise ValueError('多组报告超过页数上限，请缩短说明或减少组数。')
+        canvas.saveState();canvas.setStrokeColor(colors.HexColor('#d9e5f0'))
+        canvas.line(52,H-38,W-52,H-38);canvas.line(52,39,W-52,39)
+        canvas.setFont(FONT,8);canvas.setFillColor(colors.HexColor(MUTED))
+        canvas.drawString(52,H-29,'谛听 / MULTI-RESULT ANALYSIS');canvas.drawRightString(W-52,H-29,'v'+VERSION)
+        canvas.drawString(52,26,f"{len(groups)} 组结果 · "+facts['token'][:12]);canvas.drawRightString(W-52,26,f'第 {doc.page} 页')
+        canvas.restoreState()
+    doc=CollectionDocument(output,pagesize=A4,leftMargin=52,rightMargin=52,topMargin=58,bottomMargin=52,
+                           title=_text(opts['title']),author=_text(opts['author']),pageCompression=1)
+    doc.multiBuild(story,onFirstPage=decoration,onLaterPages=decoration)
     return output.getvalue()
