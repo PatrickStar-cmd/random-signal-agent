@@ -63,15 +63,15 @@ table {width:100%;border-collapse:collapse} th,td {padding:12px;text-align:left;
       <h1>谛听 · 随机信号智能体</h1><p>从一条波形开始，探索噪声、规律与细节里的异常。</p>
       <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent#readme">开始使用</a> · 固定实验结果预览</p></div>
       <img src="images/ocean-whale.webp" alt="" width="1536" height="1024" decoding="async"></header>
-  <main><section id="pdf-report-preview"><h2>把实验整理成一份清晰的 PDF</h2><p>v0.3.2 支持当前实验或最近 50 次处理结果的中文简版/标准版报告：统一封面、汇总表、可跳转目录、逐组矢量图表、指标与复现信息。运行后端后，在“模板与实验 → PDF 分析报告”选择历史、预览并下载。</p><p><a href="report-example.pdf">查看真实实验的示例 PDF</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.2">下载 v0.3.2</a></p><a href="images/pdf-report-v031.png"><img class="preview-image" src="images/pdf-report-v031.png" alt="PDF 分析报告的摘要预览与下载" loading="lazy"></a></section><section id="ocean-preview"><h2>一个轻松探索信号的小实验室</h2>
+  <main><section id="pdf-report-preview"><h2>把实验整理成一份清晰的 PDF</h2><p>v0.3.3 支持当前实验或最近 50 次处理结果的中文简版/标准版报告：统一封面、汇总表、可跳转目录、逐组矢量图表、指标与复现信息。运行后端后，在“模板与实验 → PDF 分析报告”选择历史、预览并下载。</p><p><a href="report-example.pdf">查看真实实验的示例 PDF</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.3">下载 v0.3.3</a></p><a href="images/pdf-report-v031.png"><img class="preview-image" src="images/pdf-report-v031.png" alt="PDF 分析报告的摘要预览与下载" loading="lazy"></a></section><section id="ocean-preview"><h2>一个轻松探索信号的小实验室</h2>
         <p>海蓝与薰衣草紫渐变、AI 立体鲸鱼插画与六个功能分区：工作区、模板与实验、数据导入、对比与报告、诊断实验室、模型与设置。切换分区时保留当前输入。</p>
-        <a href="images/ocean-ui.png"><img class="preview-image" src="images/ocean-ui.png" alt="可爱海洋工作区，包含对话、波形频谱和分析工具箱" loading="lazy"></a>
-        <p>海洋界面与模型 API 配置已包含在 <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.2">v0.3.2 部署包</a>中；交互实验需要启动 Python 服务。</p></section>
-<section><h2>v0.3.2 · 信号诊断实验室</h2><p>时频定位、六类故障盲测、证据与可验证处理。此页为静态预览；交互实验需启动 Python 服务。</p><p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.2">下载 v0.3.2</a> · <a href="diagnostics-v026.html">查看完整诊断报告示例</a></p><img src="images/diagnostics-v030.png" alt="v0.3.2 海洋界面时频图与联动波形" style="max-width:100%;height:auto"></section><section>
+        <a href="images/ocean-ui-v033.png"><img class="preview-image" src="images/ocean-ui-v033.png" alt="可爱海洋工作区，包含对话、波形频谱和分析工具箱" loading="lazy"></a>
+        <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.3">下载 v0.3.3</a>，启动 Python 服务，体验完整工作区与模型 API 配置。</p></section>
+<section><h2>v0.3.3 · 信号诊断实验室</h2><p>时频定位、六类故障盲测、证据与可验证处理。此页为静态预览；交互实验需启动 Python 服务。</p><p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.3">下载 v0.3.3</a> · <a href="diagnostics-v026.html">查看完整诊断报告示例</a></p><img src="images/diagnostics-v033.png" alt="v0.3.3 海洋界面时频图与联动波形" style="max-width:100%;height:auto"></section><section>
       <h2>固定种子实验 · 静态演示</h2>
-      <p>本页由项目 Python 工具链生成，展示真实计算结果，无需登录或配置外部模型。</p>
+      <p>固定种子生成的信号、处理结果与分析指标。</p>
       <p>种子 42 · 200 Hz · 8 秒 · 1600 点 · 8 Hz 主频 · random_process + mixed。图中曲线共享纵轴；完整数据见下方下载。</p>
-      <p>这是固定样本结果页。对话、上传分析、麦克风和自动调参需要在本地启动 Python 后端。</p>
+      <p>启动 Python 服务后，即可使用对话、上传分析、麦克风和自动调参。</p>
       <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent#从零复现">查看源码与本地运行步骤</a> ·
       <a href="data/sample.csv" download>下载可上传的两列 CSV</a> ·
       <a href="data/reference.csv" download>下载含干净参考的完整 CSV</a> ·
@@ -100,8 +100,8 @@ table {width:100%;border-collapse:collapse} th,td {padding:12px;text-align:left;
 </svg></div>
     </section>
 <section><h2>六种预处理方法对比</h2>
-      <p>同一输入、固定默认参数（窗口 7 点）。这是离线比较，Web Agent 自动搜索参数后的结果可能不同。</p>
-      <p>原始 SNR：2.859 dB。SNR 以仿真干净信号为参考，只反映本次样本；上传数据没有参考时不计算真实 SNR。</p>
+      <p>同一输入、固定默认参数（窗口 7 点）的离线比较。</p>
+      <p>原始 SNR：2.859 dB，以本次仿真的干净信号为参考。</p>
       <table><thead><tr><th>方法</th><th>处理后 SNR</th><th>相对原始提升</th></tr></thead><tbody><tr><td>鲁棒滑动平均</td><td>4.781 dB</td><td>+1.922 dB</td></tr><tr><td>中值滤波</td><td>4.583 dB</td><td>+1.724 dB</td></tr><tr><td>指数平滑</td><td>1.829 dB</td><td>-1.030 dB</td></tr><tr><td>FFT 低通</td><td>4.154 dB</td><td>+1.295 dB</td></tr><tr><td>混合增强</td><td>4.672 dB</td><td>+1.813 dB</td></tr><tr><td>卡尔曼滤波</td><td>2.144 dB</td><td>-0.714 dB</td></tr></tbody></table>
     </section>
     <section>

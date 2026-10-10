@@ -18,6 +18,7 @@ from src.agents import RandomSignalOrchestrator
 from src.preprocessing import PREPROCESS_METHODS, PreprocessConfig, preprocess_signal
 from src.signal_processing import SignalConfig, generate_random_signal, estimate_snr
 from src.visualization import render_demo_html
+from src.workbench import VERSION
 
 
 def decorate_preview(page):
@@ -32,11 +33,11 @@ def decorate_preview(page):
     if 'id="ocean-preview"' not in page:
         page = page.replace('<main>', '''<main><section id="ocean-preview"><h2>一个轻松探索信号的小实验室</h2>
         <p>海蓝与薰衣草紫渐变、AI 立体鲸鱼插画与六个功能分区：工作区、模板与实验、数据导入、对比与报告、诊断实验室、模型与设置。切换分区时保留当前输入。</p>
-        <a href="images/ocean-ui.png"><img class="preview-image" src="images/ocean-ui.png" alt="可爱海洋工作区，包含对话、波形频谱和分析工具箱" loading="lazy"></a>
-        <p>海洋界面与模型 API 配置已包含在 <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.2">v0.3.2 部署包</a>中；交互实验需要启动 Python 服务。</p></section>''', 1)
+        <a href="images/ocean-ui-v033.png"><img class="preview-image" src="images/ocean-ui-v033.png" alt="可爱海洋工作区，包含对话、波形频谱和分析工具箱" loading="lazy"></a>
+        <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.2">下载 v0.3.2</a>，启动 Python 服务，体验完整工作区与模型 API 配置。</p></section>''', 1)
     if 'id="pdf-report-preview"' not in page:
         page = page.replace('<main>', '<main>' + '<section id="pdf-report-preview"><h2>把实验整理成一份清晰的 PDF</h2><p>v0.3.2 支持当前实验或最近 50 次处理结果的中文简版/标准版报告：统一封面、汇总表、可跳转目录、逐组矢量图表、指标与复现信息。运行后端后，在“模板与实验 → PDF 分析报告”选择历史、预览并下载。</p><p><a href="report-example.pdf">查看真实实验的示例 PDF</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.2">下载 v0.3.2</a></p><a href="images/pdf-report-v031.png"><img class="preview-image" src="images/pdf-report-v031.png" alt="PDF 分析报告的摘要预览与下载" loading="lazy"></a></section>', 1)
-    return page
+    return page.replace('v0.3.2', f'v{VERSION}')
 
 
 def main():
@@ -75,17 +76,17 @@ def main():
                    f'<td>{item["snr_db"] - raw_snr:+.3f} dB</td></tr>' for item in comparison)
     introduction = f'''<section>
       <h2>固定种子实验 · 静态演示</h2>
-      <p>本页由项目 Python 工具链生成，展示真实计算结果，无需登录或配置外部模型。</p>
+      <p>固定种子生成的信号、处理结果与分析指标。</p>
       <p>种子 {bundle.config.seed} · {bundle.config.sample_rate:g} Hz · {bundle.config.duration:g} 秒 · {bundle.config.sample_count} 点 · {bundle.config.base_frequency:g} Hz 主频 · {html.escape(bundle.config.waveform)} + {html.escape(bundle.config.noise_model)}。图中曲线共享纵轴；完整数据见下方下载。</p>
-      <p>这是固定样本结果页。对话、上传分析、麦克风和自动调参需要在本地启动 Python 后端。</p>
+      <p>启动 Python 服务后，即可使用对话、上传分析、麦克风和自动调参。</p>
       <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent#从零复现">查看源码与本地运行步骤</a> ·
       <a href="data/sample.csv" download>下载可上传的两列 CSV</a> ·
       <a href="data/reference.csv" download>下载含干净参考的完整 CSV</a> ·
       <a href="data/result.json">查看参数与完整指标 JSON</a></p>
     </section>'''
     comparison_section = f'''<section><h2>六种预处理方法对比</h2>
-      <p>同一输入、固定默认参数（窗口 7 点）。这是离线比较，Web Agent 自动搜索参数后的结果可能不同。</p>
-      <p>原始 SNR：{raw_snr:.3f} dB。SNR 以仿真干净信号为参考，只反映本次样本；上传数据没有参考时不计算真实 SNR。</p>
+      <p>同一输入、固定默认参数（窗口 7 点）的离线比较。</p>
+      <p>原始 SNR：{raw_snr:.3f} dB，以本次仿真的干净信号为参考。</p>
       <table><thead><tr><th>方法</th><th>处理后 SNR</th><th>相对原始提升</th></tr></thead><tbody>{rows}</tbody></table>
     </section>'''
     page = page.replace("<main>", "<main>" + introduction, 1)

@@ -1,5 +1,5 @@
 {
-  "version": "0.3.2",
+  "version": "0.3.3",
   "name": "random-signal-agent",
   "runtime_path": "工程文件/代码",
   "python": "3.12–3.14"

@@ -43,7 +43,7 @@
     const p=report.parameters;selected=null;$('dgSource').value=p.source;$('dgWindow').value=p.window;$('dgOverlap').value=p.overlap;$('dgStart').value=p.start;$('dgEnd').value=p.end;
     $('dgResolution').textContent=`${report.sample_count} 点 · 有效窗长 ${p.effective_window} 点 / ${report.window_seconds.toFixed(4)} s · 频率间隔 ${report.frequency_resolution_hz.toFixed(3)} Hz · 帧步长 ${report.hop_seconds.toFixed(4)} s。两端浅色区域受零填充影响；长信号图像做最大值聚合。`;
     heat();wave('dgWave',report.waveform.time,[{values:report.waveform.observed,color:'#168494'}]);
-    $('dgEvents').innerHTML=report.events.length?report.events.map(e=>`<article class="dg-card"><h3>${esc(e.label)}</h3><p>${e.start.toFixed(3)}–${e.end.toFixed(3)} s</p><p>证据：${esc(JSON.stringify(e.evidence))}</p><p>${esc(e.alternatives)}</p><button data-select="${e.id}">定位波形</button>${e.kind!=='frequency_shift'?`<button data-verify="${e.id}">运行验证实验</button>`:''}</article>`).join(''):'<p>未检测到显著特征；这不代表不存在故障。</p>';
+    $('dgEvents').innerHTML=report.events.length?report.events.map(e=>`<article class="dg-card"><h3>${esc(e.label)}</h3><p>${e.start.toFixed(3)}–${e.end.toFixed(3)} s</p><p>证据：${esc(JSON.stringify(e.evidence))}</p><p>${esc(e.alternatives)}</p><button data-select="${e.id}">定位波形</button>${e.kind!=='frequency_shift'?`<button data-verify="${e.id}">运行验证实验</button>`:''}</article>`).join(''):'<p>本次区间未检测到显著特征。</p>';
     if(report.truncated_events)$('dgEvents').insertAdjacentHTML('beforeend','<p>事件已达 64 条上限，请缩小区间进一步检查。</p>');
     document.querySelectorAll('[data-select]').forEach(b=>b.onclick=()=>select(report.events.find(e=>e.id===b.dataset.select)));
     document.querySelectorAll('[data-verify]').forEach(b=>b.onclick=()=>action('verify',{event_id:b.dataset.verify,token:report.token}));

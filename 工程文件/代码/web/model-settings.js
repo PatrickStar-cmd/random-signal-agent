@@ -33,14 +33,14 @@
     $('modelChoice').innerHTML='<option value="">选择可用模型</option>'+data.models.map(id=>`<option value="${escapeHtml(id)}">${escapeHtml(id)}</option>`).join('');
     if(data.models.includes($('modelId').value))$('modelChoice').value=$('modelId').value;
     else if(data.models.length){$('modelChoice').value=data.models[0];$('modelId').value=data.models[0]}
-    tell(`已读取 ${data.models.length} 个模型${data.truncated?'（列表已截断）':''}。列表可能包含非对话模型，请测试后使用。`);
+    tell(`已读取 ${data.models.length} 个模型${data.truncated?'（列表已截断）':''}。选择对话模型后，点击“测试并应用”。`);
   });
   async function save(test){
     if(!$('modelForm').reportValidity())return;
     const draft=configuration();await action(async()=>{
       if(test){tell('正在测试所选模型…');await api('test',draft)}
       tell('正在应用配置…');const data=await api('save',draft);show(data.settings);
-      tell((test?'文本对话测试通过，':'已应用，尚未验证连接；')+'当前会话已使用 '+data.settings.model+'。'+(data.settings.remember?'重启后保留。':'服务重启后需重新配置。'));
+      tell((test?'连接测试通过，':'配置已应用，')+'当前会话使用 '+data.settings.model+'。'+(data.settings.remember?'已记住配置。':'本次服务运行期间有效。'));
     });
   }
   $('modelForm').onsubmit=e=>{e.preventDefault();save(true)};$('modelSave').onclick=()=>save(false);

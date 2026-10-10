@@ -101,7 +101,7 @@
   });
   $("wbSave").onclick = () => action(async () => {
     const data = await api('/api/experiments/save', payload({name:$("wbName").value}));
-    await refreshList(data.id); status("已保存独立快照；后续操作不会覆盖它");
+    await refreshList(data.id); status("实验快照已保存");
   });
   $("wbOpen").onclick = () => action(async () => {
     const {id, name} = selectedExperiment();

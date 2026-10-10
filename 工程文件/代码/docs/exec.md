@@ -31,6 +31,12 @@ python scripts/test_regressions.py
 
 直接运行 `server.py` 不自动加载 `.env` 或 `config/server.env`，只读取已有进程环境。需要配置文件时使用启动脚本。脚本的 `python` 来自 PATH，先激活虚拟环境；Windows 如受执行策略限制，也可直接使用 `.venv/Scripts/python.exe` 启动服务器。
 
+### 模块框线与精简文案
+
+启动服务后刷新浏览器，依次查看六个导航分区。外层面板及内部功能卡片采用 2 px 框线；在“模板与实验 → PDF 分析报告”生成预览后，展开“数据说明”查看参考与分析条件。模型配置中，保存方式和连接测试计费信息位于“记住配置”下方。
+
+2026-10-10 本地验收使用独立服务数据，实际完成生成、保存、对比、诊断和报告下载。临时脚本与桌面/手机截图位于 `debug/ui-frames/`；`logs/ui-frames/browser.log` 记录分区、屏幕宽度、操作结果和脚本错误列表，`server.log`、`server-error.log` 记录测试服务输出，每次覆盖。
+
 ## 配置参数
 
 复制 `config/server.env.example` 为 `config/server.env` 并填写。Shell 配置值有空格时需正确引用，建议 URL、模型名和密钥均不含空格；不要把说明文字填成实际值。
@@ -203,3 +209,7 @@ config/report.json 全部字段：version=2.0 为当前报告版式契约；plot
 验收自动创建 debug/report-history/ 及说明文件，可在部署 ZIP 的全新环境运行，不依赖已有调试目录。提交源码后运行 `python scripts/build_release.py`、`python scripts/verify_release.py`；产物与覆盖日志位置保持原发布约定。
 
 本次独立浏览器测试结果在 logs/report-history/browser.log，390 像素手机和桌面选择、50 组下载、快照补充及淘汰提示均通过。最大输入测试在 logs/report-history/maximum-input.json：50 组、每组 200000 点，事实整理约 4.3 秒、排版约 2.9 秒，实际耗时随机器和诊断内容变化。debug/report-history/ 存放独立测试数据、脚本、截图与逐页 PDF 渲染。未调用外部模型。
+
+## v0.3.3 界面维护版本
+
+启动命令与依赖保持一致，刷新页面加载 2 px 框线与精简文案。应用、页面和 config/release.json 版本均为 0.3.3。发行包通过 scripts/build_release.py 从已提交源码生成，scripts/verify_release.py 在新虚拟环境安装、执行全部验收并真实启动；日志覆盖 logs/release/latest.log 与 server.log，产物位于 outputs/release/。

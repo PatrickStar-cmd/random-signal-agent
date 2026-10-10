@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.3.3 · 2026-10-10
+
+- Use consistent 2 px blue-lilac borders across all six views, including chart frames, report selections, diagnosis cards, API settings, tasks and storage.
+- Shorten repeated and defensive UI explanations. Keep result-specific reference/score information, validation errors, deletion confirmations and API persistence/billing details at their relevant controls.
+- Collapse PDF preview data notes by default; preserve the full report and recent-50-result export workflow.
+- Refresh bilingual README screenshots and GitHub Pages styles/copy. Keep the static-preview generator aligned with current wording and release links.
+- Existing runtime dependencies, experiment schema 1 and algorithm 0.2.0 stay unchanged.
+
+加粗模块框线、精简界面说明，报告数据说明按需展开；同步截图与静态演示。由 v0.3.2 升级时保留 data/，替换源码并重启服务，刷新浏览器。
+
+
 ## v0.3.2 · 2026-10-09
 
 - Select 1–50 recent processing results, with waveform thumbnails, chronological ordering and saved snapshot supplements, for one Chinese PDF report.

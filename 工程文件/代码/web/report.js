@@ -24,7 +24,7 @@
         const detail=e.locked?'盲测未揭晓时的存档':kind==='history'?`${e.sample_count.toLocaleString()} 点 · ${e.sample_rate} Hz`:'已保存实验快照';
         const url=`/api/reports/plot/${kind}/${encodeURIComponent(e.id)}?session_id=${encodeURIComponent(sessionId)}`;
         return `<label class="report-result"><input type="checkbox" data-report-entry="${k}" ${selected.has(key(e))?'checked':''} ${e.locked||busy?'disabled':''}><span><strong>${escapeHtml(e.name)}</strong><small>${date}</small><small>${escapeHtml(detail)}</small></span>${e.locked?'':`<img loading="lazy" src="${url}" alt="原始观测与处理结果波形缩略图">`}</label>`;
-      }).join(''):`<p class="wb-hint">${kind==='history'?'暂无处理存档。完成一次处理后会自动出现在这里，升级前未保存的结果无法补回。':'暂无已保存实验。'}</p>`;
+      }).join(''):`<p class="wb-hint">${kind==='history'?'完成一次信号处理后，结果会自动出现在这里。':'暂无已保存实验。'}</p>`;
     }
     syncButtons();
   }
@@ -62,8 +62,8 @@
   $('reportForm').onsubmit=event=>{event.preventDefault();action(async()=>{
     const started=revision;token=null;status('正在整理所选结果与分析结论…');const data=await(await request('preview')).json();
     if(started!==revision){status('实验或选择已变化，请重新预览报告。');return}token=data.token;
-    $('reportSummary').innerHTML='<h3>'+escapeHtml(data.options.title)+'</h3>'+data.summary.map(t=>'<p>'+escapeHtml(t)+'</p>').join('')+'<h4>报告章节</h4><ol>'+data.sections.map(t=>'<li>'+escapeHtml(t)+'</li>').join('')+'</ol><h4>数据与解释边界</h4><ul>'+data.limitations.map(t=>'<li>'+escapeHtml(t)+'</li>').join('')+'</ul>';
-    $('reportSummary').hidden=false;status('预览完成。下载会核对所选结果，多组标准报告可能较长。');
+    $('reportSummary').innerHTML='<h3>'+escapeHtml(data.options.title)+'</h3>'+data.summary.map(t=>'<p>'+escapeHtml(t)+'</p>').join('')+'<h4>报告章节</h4><ol>'+data.sections.map(t=>'<li>'+escapeHtml(t)+'</li>').join('')+'</ol>'+(data.limitations.length?'<details><summary>数据说明</summary><ul>'+data.limitations.map(t=>'<li>'+escapeHtml(t)+'</li>').join('')+'</ul></details>':'');
+    $('reportSummary').hidden=false;status('预览完成，可以下载 PDF 报告。');
   })};
   $('reportDownload').onclick=()=>action(async()=>{
     status(`正在排版 ${historical()?selected.size:1} 组结果的 PDF，请稍候…`);const response=await request('pdf');const blob=await response.blob();
