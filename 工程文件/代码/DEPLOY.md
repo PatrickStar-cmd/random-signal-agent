@@ -2,11 +2,11 @@
 
 本项目不包含任何固定公网 IP、云服务器账号、API Key 或私有路径。复现时请把下列占位信息替换为自己的环境。
 
-v0.3.3 使用 Python 3.12–3.14 和 FastAPI/Uvicorn，已移除 `cgi`。按单进程部署，不要启动多个 Uvicorn worker：会话锁和任务队列属于同一个进程。本服务面向受控课程实验环境，已有输入及并发上限；公网访问仍需反向代理身份认证。
+v0.3.4 使用 Python 3.12–3.14 和 FastAPI/Uvicorn，已移除 `cgi`。按单进程部署，不要启动多个 Uvicorn worker：会话锁和任务队列属于同一个进程。本服务面向受控课程实验环境，已有输入及并发上限；公网访问仍需反向代理身份认证。
 
 ## 本地运行
 
-下载 v0.3.3 Release 的 `random-signal-agent-v0.3.3-deploy.zip` 并解压后进入 `工程文件/代码`。发布包保留完整目录结构；`server.py` 位于该子目录，不在解压包根目录。
+下载 v0.3.4 Release 的 `random-signal-agent-v0.3.4-deploy.zip` 并解压后进入 `工程文件/代码`。发布包保留完整目录结构；`server.py` 位于该子目录，不在解压包根目录。
 
 Windows（使用 Python 3.12）：
 
@@ -129,7 +129,7 @@ python scripts/smoke_deployment.py --base-url http://127.0.0.1:8000
 发布包的 SHA-256 校验文件为 `SHA256SUMS.txt`。Windows 可以执行：
 
 ```powershell
-Get-FileHash .\random-signal-agent-v0.3.3-deploy.zip -Algorithm SHA256
+Get-FileHash .\random-signal-agent-v0.3.4-deploy.zip -Algorithm SHA256
 ```
 
 Linux 执行 `sha256sum -c SHA256SUMS.txt`。发布包中的 `RELEASE.json` 记录版本和源码提交。
@@ -142,7 +142,7 @@ curl http://127.0.0.1:8000/api/health
 
 返回中的 `llm.configured` 只表示配置项齐全且已启用，不验证密钥有效性、联网或模型兼容性；即使为 `false`，本地规则工具链仍可运行。
 
-## v0.3.3 数据和迁移
+## v0.3.4 数据和迁移
 
 `data/experiments.sqlite3` 保存实验清单、完整状态元数据和任务结果，旁边的内容寻址 `.npz` 文件保存全量采样。Compose 将 `./data` 挂载到 `/app/data`；更新镜像或重启容器会保留这些文件。备份应在停止服务后复制整个 `data/`，还需 `uploads/` 与 `outputs/` 才能保留原上传文件及音频附件。不要只复制 SQLite 文件。
 
@@ -160,7 +160,7 @@ curl http://127.0.0.1:8000/api/health
 
 实验列表可按名称搜索；填写名称后选择快照并重命名，删除需要页面确认。删除只移除命名快照记录，不清空当前工作区，也不立即回收可能被其他快照引用的 NPZ 文件，因此不保证释放磁盘空间。仍不支持账号认证或多进程服务。
 
-### v0.3.3 任务与存储管理
+### v0.3.4 任务与存储管理
 
 首次启动自动为 tasks 表添加 operation 列，用于任务名称；保留已有结果。回退到 v0.2.1 或 v0.2.0 时需恢复升级前的整个 data/ 备份，不能直接复用迁移后的数据库。快照 schema 1 / algorithm 0.2.0 保持不变，旧 ZIP 可直接导入。
 
@@ -173,11 +173,11 @@ config/workbench.json 新增 idle_session_seconds，默认 900 秒；维护线�
 新增功能检查：python scripts/test_studio.py，日志 logs/studio/latest.log。部署冒烟还覆盖选列导入、实验对比报告、任务列表/取消接口及存储预览；不会在已有服务上自动清理全局数据。
 
 
-## 模型配置向导（v0.3.3）
+## 模型配置向导（v0.3.4）
 
 可在页面中完成当前会话的模型配置，无需修改环境变量或重启。操作、Key 保存位置和配置优先级见 [模型配置指南](docs/model-api-setup.md)。现有环境变量保持服务默认值；没有会话配置时仍生效。此向导支持 Chat Completions，不会把 Key 放入实验 ZIP。
 
-## v0.3.3 PDF 报告
+## v0.3.4 PDF 报告
 
 支持单实验及最近 50 次处理结果合并的中文 PDF，操作见 [pdf-report.md](docs/pdf-report.md)。从 v0.3.0 升级须重新安装 requirements-repro.txt；Docker 重新构建即可。ReportLab/Pillow/charset-normalizer 与随包 OFL 中文字体支持离线渲染；字体为 assets/fonts/NotoSansSC-Regular.ttf，许可证为 OFL.txt，禁止在部署时遗漏。
 
@@ -187,4 +187,4 @@ config/workbench.json 新增 idle_session_seconds，默认 900 秒；维护线�
 最近 50 组历史按浏览器会话保留完整观测与处理数组，重启后可选；旧手动快照可补充至报告。升级前未保存的处理结果不能补回。存储清理保护历史和快照的全部引用，淘汰或删除所选记录后需重新选择、预览。
 
 
-v0.3.3 更新模块边框与界面文案。由 v0.3.2 升级时保留现有 data/，替换源码并重启或重建 Docker，再刷新浏览器；生产依赖、schema 1 / algorithm 0.2.0 不变。
+v0.3.4 增加丰富海洋渐变、4 px 外框与 2 px 内框、华文中宋与 Times New Roman 字体、加粗时钟及 Agent 回复分段。由 v0.3.3 升级时保留现有 data/，替换源码并重启或重建 Docker，再刷新浏览器；生产依赖、schema 1 / algorithm 0.2.0 不变。

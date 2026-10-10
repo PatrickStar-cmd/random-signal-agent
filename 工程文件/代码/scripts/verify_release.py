@@ -55,6 +55,7 @@ def main():
         assert (code / 'web/background.jpg').is_file()
         assert manifest['version'] == json.loads((code / 'config/release.json').read_text(encoding='utf-8'))['version']
         assert (code / 'web/ocean-whale.webp').is_file()
+        assert (code / 'web/ocean-waves.svg').is_file()
         assert (code / 'config/model-providers.json').is_file()
         assert (code / 'assets/fonts/NotoSansSC-Regular.ttf').stat().st_size > 1000000
         assert (code / 'assets/fonts/OFL.txt').is_file()

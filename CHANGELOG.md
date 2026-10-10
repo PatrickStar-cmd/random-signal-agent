@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.3.4 · 2026-10-10
+
+- Add cyan, lavender and coral-pink gradients, local SVG waves and subtle bubbles throughout the ocean interface.
+- Use 4 px outer frames and 2 px inner cards across all six views and the static showcase.
+- Use STZhongsong for Chinese text and Times New Roman for Latin text and numbers, including Canvas labels, with local serif fallbacks.
+- Enlarge and bold the live clock; place the local-computing badge below it.
+- Structure complete Agent method comparisons into conclusions, recommendations, measured metrics and next steps. Preserve every method and parameter in expandable details, historical measurements, Markdown fallback and HTML escaping.
+- Refresh bilingual documentation, screenshots, deployment assets and release checks. Runtime dependencies, experiment schema 1 and algorithm 0.2.0 remain unchanged.
+
+丰富海洋渐变、加粗分层框线、调整中英文字体与时钟，改善 Agent 回复排版。由 v0.3.3 升级时保留 data/，替换源码并重启服务，再刷新页面。
+
+
 ## v0.3.3 · 2026-10-10
 
 - Use consistent 2 px blue-lilac borders across all six views, including chart frames, report selections, diagnosis cards, API settings, tasks and storage.

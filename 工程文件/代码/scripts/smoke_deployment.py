@@ -34,7 +34,7 @@ def check(base_url):
     assert b'<html' in request('/').lower()
     release = json.loads((ROOT / 'config/release.json').read_text(encoding='utf-8'))
     assert health['version'] == release['version'], 'Running application version differs from this package'
-    for asset in ('ocean-whale.webp', 'ocean.css', 'ocean.js', 'model-settings.css', 'model-settings.js', 'report.js'):
+    for asset in ('ocean-whale.webp', 'ocean-waves.svg', 'ocean.css', 'ocean.js', 'app.js', 'diagnostics.js', 'model-settings.css', 'model-settings.js', 'report.js'):
         delivered = request('/' + asset)
         assert delivered == (ROOT / 'web' / asset).read_bytes(), f'Missing or stale packaged asset: {asset}'
     artwork = request('/ocean-whale.webp')
