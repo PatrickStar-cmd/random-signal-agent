@@ -2,9 +2,17 @@
 
 ## 模块框线与界面说明
 
-`web/ocean.css` 用 `--module-border: 2px` 统一模块边框宽度，外层 `--module-line` 与内层 `--card-line` 区分层级。规则只作用于面板、卡片和图框，不改变 Canvas 曲线或输入控件的线宽；设置区域和报告选择卡片沿用现有 DOM 与事件。仓库根目录 `docs/showcase.css` 对静态演示采用相同边框参数。
+`web/ocean.css` 用 `--module-border: 4px` 设置外层面板、导航边框，`--card-border: 2px` 设置内部卡片。外层 `--module-line` 与内层 `--card-line` 区分颜色层级。规则只作用于面板、卡片和图框，不改变 Canvas 曲线或输入控件的线宽；设置区域和报告选择卡片沿用现有 DOM 与事件。仓库根目录 `docs/showcase.css` 对静态演示采用相同边框参数。
 
 页面文案精简集中在 HTML 和前端状态消息，数据校验和计算规则不变。PDF 预览通过原生 `details` 展开“数据说明”，后端返回的说明与 PDF 内容保持完整。当前数据的参考类型、评分条件以及模型 Key 保存与调用费用信息仍在相应操作处展示。界面验收日志为 `logs/ui-frames/browser.log`，服务输出为同目录 `server.log` 和 `server-error.log`；调试产物说明见 `debug/ui-frames/note.md`。
+
+## 渐变、字体与回复排版
+
+CSS 将青蓝、蓝紫、珊瑚粉线性渐变与局部径向光晕叠加，本地 `ocean-waves.svg` 提供半透明波纹，装饰不接收鼠标事件。`--ui-font` 先选 Times New Roman 的拉丁字符，再由 STZhongsong 提供中文，未安装时依次使用后备衬线字体。Canvas 绘制通过 `chartFont()` 与 `chartSurface()` 共用字体栈和图表背景色；不会改动曲线数据。日期时间由既有本地时钟每秒更新，CSS 将标识排在时钟下方。
+
+`renderAssistantReply()` 仅识别已有的完整方法比较格式，从当前这条消息解析推荐方法和指标，并转义后展示标签/数值布局。全部原始回复放在原生 `details` 中；无法识别或尚未完成的文本继续进入原有 Markdown 渲染器。它不从当前工作区读取旧消息的指标，也不改变模型提示、信号计算、评分或 PDF 输出。重新渲染时按消息索引保留详情展开状态。
+
+验收日志：`logs/ocean-visual/browser.log`，服务日志：同目录 `server.log`、`server-error.log`。调试说明、截图与隔离数据：`debug/ocean-visual/`。
 
 ## 从对话到工具
 

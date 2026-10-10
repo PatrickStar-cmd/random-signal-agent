@@ -1,3 +1,11 @@
+function chartFont(size = 13) {
+  return `${size}px "Times New Roman", "STZhongsong", "华文中宋", "Noto Serif CJK SC", "SimSun", serif`;
+}
+
+function chartSurface(canvas) {
+  return getComputedStyle(canvas).getPropertyValue('--chart-surface').trim() || '#f1f7ff';
+}
+
 function createSessionId() {
       if (window.crypto?.randomUUID) {
         return window.crypto.randomUUID();
@@ -884,10 +892,34 @@ function createSessionId() {
     }
 
     function renderMessages() {
-      $("messages").innerHTML = state.messages.map(item =>
-        `<div class="message ${item.role}">${renderMarkdown(item.text)}</div>`
+      const expanded = new Set(Array.from($("messages").querySelectorAll('[data-reply-details][open]'), node => node.dataset.replyDetails));
+      $("messages").innerHTML = state.messages.map((item, index) =>
+        `<div class="message ${item.role === 'user' ? 'user' : 'assistant'}">${item.role === 'assistant' ? '<div class="message-label">🐳 谛听</div>' + renderAssistantReply(item.text, index, expanded.has(String(index))) : renderMarkdown(item.text)}</div>`
       ).join("");
       $("messages").scrollTop = $("messages").scrollHeight;
+    }
+
+    // Format complete comparison replies from their own text, never from the
+    // current workspace: older messages must keep their original measurements.
+    function renderAssistantReply(text, index, expanded = false) {
+      const raw = String(text || '');
+      if (!/^已完成(?:多种预处理方法比较| Agent 自主预处理寻优)/.test(raw)) return renderMarkdown(raw);
+      const recommended = raw.match(/^推荐方法：(.+?)。?$/m)?.[1].replace(/。$/, '');
+      const lines = raw.split(/\r?\n/).filter(line => line.startsWith('- '));
+      const rows = lines.map(line => line.match(/^- (.+?)：SNR=(.+?)，谱熵=(.+?)，主频=(.+?)，得分=(.+?)，最优参数：(.+)$/));
+      if (!rows.length || rows.some(row => !row)) return renderMarkdown(raw);
+      const best = rows.find(row => row[1] === recommended);
+      if (!best) return renderMarkdown(raw);
+      const metrics = [['处理后 SNR', best[2]], ['主频', best[4]], ['谱熵', best[3]], ['综合评分', best[5]]];
+      for (const parameter of best[6].split('，')) {
+        const pair = parameter.match(/^([^=]+)=(.+)$/);
+        if (pair) metrics.push([pair[1], pair[2]]);
+      }
+      const metricHtml = metrics.map(([label, value]) => `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd>`).join('');
+      return `<section class="reply-section"><h3>分析结论</h3><p>已完成 ${rows.length} 种预处理方法的比较。</p></section>
+        <section class="reply-section"><h3>推荐方法</h3><strong class="reply-method">${escapeHtml(recommended)}</strong><dl class="reply-metrics">${metricHtml}</dl></section>
+        <section class="reply-section"><h3>下一步</h3><p>查看波形与频谱，或在“模板与实验”保存当前结果为快照。</p></section>
+        <details class="reply-details" data-reply-details="${index}" ${expanded ? 'open' : ''}><summary>查看全部方法与参数</summary>${renderMarkdown(raw)}</details>`;
     }
 
     async function sendMessage(text) {
@@ -2021,10 +2053,10 @@ function createSessionId() {
       setChartToolsVisible(canvas.id, false);
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#fbfcff";
+      ctx.fillStyle = chartSurface(canvas);
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = "#647490";
-      ctx.font = "16px Microsoft YaHei, Segoe UI, Arial";
+      ctx.font = chartFont(16);
       ctx.fillText(text, 38, 42);
     }
 
@@ -2121,7 +2153,7 @@ function createSessionId() {
         plotBottom
       };
       ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = "#fbfcff";
+      ctx.fillStyle = chartSurface(canvas);
       ctx.fillRect(0, 0, width, height);
       const xTicks = axisTicks(viewMin, viewMax, Math.max(3, Math.floor(plotWidth / 120)));
       const yTicks = axisTicks(yMin, yMax, Math.max(3, Math.floor(plotHeight / 56)));
@@ -2150,7 +2182,7 @@ function createSessionId() {
       ctx.lineTo(plotLeft, plotBottom);
       ctx.stroke();
       ctx.fillStyle = "#647490";
-      ctx.font = "11px Microsoft YaHei, Segoe UI, Arial";
+      ctx.font = chartFont(11);
       ctx.textBaseline = "middle";
       ctx.textAlign = "right";
       yTicks.forEach(value => {
@@ -2175,7 +2207,7 @@ function createSessionId() {
         ctx.fillText(formatTick(value, viewMax - viewMin), x, plotBottom + 9);
       });
       ctx.fillStyle = "#536887";
-      ctx.font = "12px Microsoft YaHei, Segoe UI, Arial";
+      ctx.font = chartFont(12);
       if (options.xUnit) {
         ctx.textAlign = "right";
         ctx.textBaseline = "top";
@@ -2187,14 +2219,14 @@ function createSessionId() {
         ctx.fillText(options.yUnit, plotLeft - 58, plotTop + 4);
       }
       ctx.fillStyle = "#263858";
-      ctx.font = "14px Microsoft YaHei, Segoe UI, Arial";
+      ctx.font = chartFont(14);
       ctx.textAlign = "left";
       ctx.textBaseline = "alphabetic";
       ctx.fillText(title, padLeft, 24);
       if (options.zoomable) {
         const zoomText = `${chartZoomLevel(canvas.id).toFixed(1)}x`;
         ctx.fillStyle = "#647490";
-        ctx.font = "12px Microsoft YaHei, Segoe UI, Arial";
+        ctx.font = chartFont(12);
         ctx.fillText(`滚轮缩放，拖拽平移 · ${zoomText}`, padLeft, Math.max(40, plotTop - 8));
       }
       series.forEach((item, idx) => {
@@ -2242,7 +2274,7 @@ function createSessionId() {
         ctx.fillStyle = item.color;
         ctx.fillRect(legendX, legendY, 18, 4);
         ctx.fillStyle = "#536887";
-        ctx.font = "12px Microsoft YaHei, Segoe UI, Arial";
+        ctx.font = chartFont(12);
         ctx.fillText(item.name, legendX + 24, legendY + 6);
       });
       setChartToolsVisible(canvas.id, Boolean(options.zoomable));
@@ -2250,7 +2282,7 @@ function createSessionId() {
     }
 
     function layoutLegend(ctx, series, width, pad, options = {}) {
-      ctx.font = "12px Microsoft YaHei, Segoe UI, Arial";
+      ctx.font = chartFont(12);
       const maxLegendWidth = Math.max(110, Math.min(190, Math.floor((width - pad * 2) / 2)));
       const rowHeight = 26;
       const startY = 46;

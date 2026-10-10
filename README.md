@@ -59,9 +59,11 @@
 
 ## 🎬 界面展示
 
-v0.3.3 的海洋界面将信号工作区、模板与实验、导入数据、对比与报告、诊断实验室、模型与设置分为六个入口。切换分区时保留当前输入与实验状态。模块采用清晰的 2 px 蓝紫色框线，页面说明更简洁。
+当前源码的海洋界面使用青蓝、薰衣草紫与珊瑚粉渐变，外层 4 px、内层 2 px 框线；中文优先使用华文中宋，英文与数字使用 Times New Roman。日期时间放大加粗，Agent 方法比较按结论、推荐指标与后续操作分段。六个功能分区切换时保留当前输入与实验状态。
 
-![v0.3.3 海洋工作区：Agent 分析、波形与频谱](docs/images/ocean-ui-v033.png)
+以下工作区截图来自当前源码；这次视觉更新尚未发行，v0.3.3 部署包仍保留此前界面。
+
+![当前源码海洋工作区：Agent 分析、波形与频谱](docs/images/ocean-ui-current.png)
 
 <details>
 <summary><strong>查看模板、诊断与 API 配置</strong></summary>
@@ -369,9 +371,11 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 
 ## 🎬 Interface
 
-The v0.3.3 ocean interface has six views: workspace, templates, data import, comparison, diagnostics and settings. Switching views preserves inputs and experiment state. Clear 2 px blue-lilac module borders and concise labels make the workspace easier to scan.
+The current source uses cyan, lavender and coral-pink gradients, 4 px outer borders and 2 px inner borders. Chinese text uses STZhongsong when installed; Latin text and numbers use Times New Roman. A larger, bold clock sits above the local-computing badge. Agent method comparisons separate conclusions, recommended metrics and next steps. Switching between the six views preserves inputs and experiment state.
 
-![v0.3.3 ocean workspace: Agent analysis, waveform and spectrum](docs/images/ocean-ui-v033.png)
+The workspace capture below shows the current source. This visual update is unreleased; the v0.3.3 deployment ZIP retains the previous interface.
+
+![Current-source ocean workspace: Agent analysis, waveform and spectrum](docs/images/ocean-ui-current.png)
 
 <details>
 <summary><strong>Explore templates, diagnostics and API setup</strong></summary>

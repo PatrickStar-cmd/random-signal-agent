@@ -21,7 +21,7 @@
     }catch(e){status(e.message,true)}finally{busy=false;document.querySelectorAll('#diagnosticPanel button').forEach(b=>b.disabled=false)}
   }
   function options(){const o={source:$('dgSource').value,window:+$('dgWindow').value,overlap:+$('dgOverlap').value,start:+$('dgStart').value};if($('dgEnd').value!=='')o.end=+$('dgEnd').value;return o}
-  function canvas(id){const c=$(id);c.width=Math.max(280,Math.round(c.getBoundingClientRect().width));c.height=id==='dgHeat'?260:180;const ctx=c.getContext('2d');ctx.fillStyle='#fbfcff';ctx.fillRect(0,0,c.width,c.height);ctx.font='13px system-ui';return [c,ctx]}
+  function canvas(id){const c=$(id);c.width=Math.max(280,Math.round(c.getBoundingClientRect().width));c.height=id==='dgHeat'?260:180;const ctx=c.getContext('2d');ctx.fillStyle=chartSurface(c);ctx.fillRect(0,0,c.width,c.height);ctx.font=chartFont(13);return [c,ctx]}
   const left=55,right=18,top=12,bottom=30;
   function wave(id,t,series,range){
     const [c,x]=canvas(id);if(!t?.length)return;const w=c.width-left-right,h=c.height-top-bottom;

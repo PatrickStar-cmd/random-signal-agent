@@ -1,7 +1,8 @@
 /* Static result preview shares the application's ocean palette. */
-:root { --module-border: 2px; --module-line: #adbedc; --card-line: #c4d0e6; }
+:root { --module-border: 4px; --card-border: 2px; --module-line: #7970d6; --card-line: #9aafe7; --ui-font: "Times New Roman", "STZhongsong", "华文中宋", "Noto Serif CJK SC", "Songti SC", "SimSun", serif; }
 * { box-sizing: border-box; }
-body { color: #263858; background: radial-gradient(ellipse at 2% 18%, #cdeff080, transparent 42%), radial-gradient(ellipse at 96% 4%, #d9cff6b3, transparent 45%), radial-gradient(ellipse at 90% 85%, #f6dce580, transparent 40%), linear-gradient(155deg, #f0fbfc 0%, #f2f3ff 48%, #fff5f8 100%); background-attachment: fixed; font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif; }
+body { min-height: 100vh; }
+body { color: #243457; background: url("images/ocean-waves.svg") center top / 100% 100vh no-repeat, radial-gradient(ellipse at 2% 12%, #80deea, transparent 54%), radial-gradient(ellipse at 98% 3%, #b79ae8, transparent 55%), radial-gradient(ellipse at 96% 90%, #edacce, transparent 58%), linear-gradient(140deg, #8bdfef 0%, #91b5ff 46%, #c9b1ee 76%, #efbcda 100%); background-attachment: fixed; font-family: var(--ui-font); }
 header { position: relative; isolation: isolate; overflow: hidden; display: flex; justify-content: space-between; align-items: center; gap: 20px; max-width: 1120px; margin: 24px auto 0; padding: 30px; background: radial-gradient(ellipse at 80% 20%, #ffffff8c, transparent 45%), linear-gradient(115deg, #dff4f8 0%, #e7edff 38%, #eee2fa 72%, #fbe4ee 100%); color: #263858; border: 1px solid #d3def3; border-radius: 24px; box-shadow: inset 0 1px 0 #ffffffbf; }
 header::before { content: ""; position: absolute; width: 290px; height: 290px; border: 1px solid #ffffff80; border-radius: 50%; right: 22px; top: -88px; z-index: -1; box-shadow: 0 0 0 30px #ffffff26, 0 0 0 65px #ffffff14; pointer-events: none; }
 header h1 { font-size: clamp(23px, 3vw, 30px); margin: 10px 0; }
@@ -16,6 +17,13 @@ img { display: block; max-width: 100%; height: auto; border-radius: 14px; }.prev
 svg { border: var(--module-border) solid var(--card-line); border-radius: 14px; }
 pre { background: #f4f6fc; color: #405777; border: var(--module-border) solid var(--card-line); border-radius: 14px; }
 header { border: var(--module-border) solid var(--module-line); }
+header { background: url("images/ocean-waves.svg") center / cover no-repeat, linear-gradient(115deg, #9ae9f2, #b1cfff 40%, #d7b7f2 74%, #fac6e5); }
+header p { color: #3b527b; }
+section { background: linear-gradient(145deg, #e6f4ff, #ede5fa 75%, #f7e4f2); }
+.metric, svg, .preview-image, pre { border-width: var(--card-border); }
+.metric { background: #e4edff; }
+svg { background: #f1f7ff; }
+pre, code { font-family: var(--ui-font); background: #eaf2ff; }
 summary { cursor: pointer; color: #5266b8; }.table-scroll { overflow-x: auto; }
 :is(a, summary):focus-visible { outline: 3px solid #788add; outline-offset: 4px; }
 @media(max-width: 1150px) { header { margin: 16px 24px 0; } }

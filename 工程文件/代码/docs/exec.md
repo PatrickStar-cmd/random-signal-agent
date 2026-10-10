@@ -213,3 +213,9 @@ config/report.json 全部字段：version=2.0 为当前报告版式契约；plot
 ## v0.3.3 界面维护版本
 
 启动命令与依赖保持一致，刷新页面加载 2 px 框线与精简文案。应用、页面和 config/release.json 版本均为 0.3.3。发行包通过 scripts/build_release.py 从已提交源码生成，scripts/verify_release.py 在新虚拟环境安装、执行全部验收并真实启动；日志覆盖 logs/release/latest.log 与 server.log，产物位于 outputs/release/。
+
+## 当前源码的海洋渐变界面（未发行）
+
+启动命令不变，运行 `scripts/start_server.ps1` 或 `bash scripts/start_server.sh` 后刷新页面。中文优先华文中宋，英文和数字使用 Times New Roman；字体依赖访问者电脑，缺少时自动回退。通过工作区对话“比较所有预处理方法”查看推荐指标，展开“查看全部方法与参数”查看完整结果。右上时间每秒刷新。
+
+本次独立验证说明、脚本与截图位于 `debug/ocean-visual/`；最新浏览器结果为 `logs/ocean-visual/browser.log`，服务输出为同目录 `server.log` 和 `server-error.log`。生产服务运行方式、配置参数和日志位置均保持原有约定。

@@ -32,9 +32,9 @@ def decorate_preview(page):
     page = re.sub(r'<header>.*?</header>', lambda _: header, page, count=1, flags=re.S)
     if 'id="ocean-preview"' not in page:
         page = page.replace('<main>', '''<main><section id="ocean-preview"><h2>一个轻松探索信号的小实验室</h2>
-        <p>海蓝与薰衣草紫渐变、AI 立体鲸鱼插画与六个功能分区：工作区、模板与实验、数据导入、对比与报告、诊断实验室、模型与设置。切换分区时保留当前输入。</p>
-        <a href="images/ocean-ui-v033.png"><img class="preview-image" src="images/ocean-ui-v033.png" alt="可爱海洋工作区，包含对话、波形频谱和分析工具箱" loading="lazy"></a>
-        <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.2">下载 v0.3.2</a>，启动 Python 服务，体验完整工作区与模型 API 配置。</p></section>''', 1)
+        <p>当前源码采用青蓝、薰衣草紫与珊瑚粉渐变、华文中宋与 Times New Roman、清晰的双层框线，以及六个功能分区：工作区、模板与实验、数据导入、对比与报告、诊断实验室、模型与设置。切换分区时保留当前输入。</p>
+        <a href="images/ocean-ui-current.png"><img class="preview-image" src="images/ocean-ui-current.png" alt="可爱海洋工作区，包含对话、波形频谱和分析工具箱" loading="lazy"></a>
+        <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.2">下载 v0.3.2</a>；运行仓库当前源码可体验上述界面更新，尚未发行新版本。</p></section>''', 1)
     if 'id="pdf-report-preview"' not in page:
         page = page.replace('<main>', '<main>' + '<section id="pdf-report-preview"><h2>把实验整理成一份清晰的 PDF</h2><p>v0.3.2 支持当前实验或最近 50 次处理结果的中文简版/标准版报告：统一封面、汇总表、可跳转目录、逐组矢量图表、指标与复现信息。运行后端后，在“模板与实验 → PDF 分析报告”选择历史、预览并下载。</p><p><a href="report-example.pdf">查看真实实验的示例 PDF</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.2">下载 v0.3.2</a></p><a href="images/pdf-report-v031.png"><img class="preview-image" src="images/pdf-report-v031.png" alt="PDF 分析报告的摘要预览与下载" loading="lazy"></a></section>', 1)
     return page.replace('v0.3.2', f'v{VERSION}')
@@ -96,6 +96,7 @@ def main():
     page = page.replace("</pre>\n    </section>", "</pre></details>\n    </section>")
     (pages / "images").mkdir(exist_ok=True)
     shutil.copyfile(ROOT / "web/ocean-whale.webp", pages / "images/ocean-whale.webp")
+    shutil.copyfile(ROOT / "web/ocean-waves.svg", pages / "images/ocean-waves.svg")
     (pages / "index.html").write_text(decorate_preview(page), encoding="utf-8")
     (pages / ".nojekyll").touch()
     log = ROOT / "logs/showcase/latest.log"
