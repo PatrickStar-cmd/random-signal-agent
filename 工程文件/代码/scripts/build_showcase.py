@@ -49,6 +49,12 @@ def decorate_preview(page):
         <p>在 Python 后端中 Build、Run，查看波形、频谱、眼图、时钟跟踪或 LMS/NLMS/RLS 均衡收敛。自动同步假设已知帧粗起点，自适应均衡使用实际发送的公共前导。</p>
         <a href="images/communications-recovery.png"><img class="preview-image" src="images/communications-recovery.png" alt="自适应 DFE 的训练前导、均衡后误差与收敛曲线" loading="lazy"></a>
         <p><a href="images/communications-analog.png">模拟调制截图</a> · <a href="images/communications-baseband.png">基带与眼图截图</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.1">下载 v0.4.1</a></p></section>''', 1)
+    if 'id="block-studio-preview"' not in page:
+        page = page.replace('<main>', ''''<main><section id="block-studio-preview"><h2>v0.4.2 · 积木编程视图更新</h2>
+        <p>六类表情积木工坊、紧凑拼接链路、完整参数面板，以及独立信宿观察与结果分析。选中积木高亮，未选中积木采用 3 px 框线；同步、均衡及高级参数分组展开。</p>
+        <p>全部 29 个示例、原生拖放/排序、撤销重做、Build/Run、草稿和工程/完整结果导出继续可用。下面是新版实际运行截图。</p>
+        <a href="images/communications-studio.png"><img class="preview-image" src="images/communications-studio.png" alt="海洋风格积木工坊、紧凑链路、信宿观察和完整参数面板" loading="lazy"></a>
+        <p><a href="images/communications-studio-recovery.png">查看均衡参数与收敛图</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.2">下载 v0.4.2</a></p></section>''', 1)
     page = page.replace('「通信原理积木编程」已包含通信实验室。', '「传输环节模块补充」包含完整通信实验室。')
     return page.replace('v0.4.0', f'v{VERSION}')
 

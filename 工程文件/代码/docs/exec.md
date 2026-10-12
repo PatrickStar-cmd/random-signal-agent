@@ -281,3 +281,11 @@ v0.3.4 发行：运行 `python scripts/build_release.py` 从已提交源码生�
 沿用现有启动脚本、环境配置及 API，重启源码服务并刷新页面。选择三个“同步”或四个“均衡”新示例，Build、Run；在基带/PAM 接收器中选择同步模式、均衡结构及 LMS/NLMS/RLS。自适应模式须在发送器配置足量“公共训练前导”；关闭“训练后按判决继续自适应”可冻结系数。全部新增参数、范围、默认值和实验步骤见 [同步与均衡指南](receiver-recovery.md)。`src/receiver_recovery.py` 由 `baseband.py` 调用，无需单独启动或新增依赖。
 
 当前通信 49 项、回归 25 项、复现 5 项通过，运行命令保持上文不变。启动服务后执行 `python scripts/smoke_deployment.py --base-url http://127.0.0.1:8000` 验证 HTTP 全流程，额外检查 7 个同步/均衡示例。日志覆盖写入 `logs/communications/latest.log` 与 `logs/deployment/latest.log`；本次算法观测、22 个旧示例对照、浏览器、文档和隔离服务日志位于 `logs/communications-recovery/`。临时课件页图、脚本及数据位于 `debug/communications-recovery/`，不参与部署；页面截图见指南。新默认字段规范化省略，原工程 schema 1 与 Build token 保持兼容。以上功能随 v0.4.1 发布 ZIP 交付。
+
+### v0.4.2 积木编程区
+
+沿用启动脚本和 config/communications.json，无新增参数或依赖。重启后刷新浏览器，选择通信实验室：点击链路积木，在右侧编辑参数；同步/均衡及高级参数可展开。先 🔨 Build 再 ▶️ Run，下方查看指标和分析图，工具栏导入/导出工程。原 schema 1 草稿和 JSON 可继续读取。
+
+数值验证：`python scripts/test_communications.py`（49 项）；前端语法：`node --check web/communications.js`。本轮真实浏览器覆盖 29 个示例、完整导出、参数、拖放和九种屏宽；记录为 logs/communications-studio/browser.log、browser-presets.json、tests.log，隔离服务日志为同目录 server.log/server-error.log。调试目的与隔离数据位于 debug/communications-studio/，均不进入部署包。
+
+发布仍执行 `python scripts/build_release.py` 和 `python scripts/verify_release.py`，从已提交源码产生 outputs/release/random-signal-agent-v0.4.2-deploy.zip、SHA256SUMS.txt 与平台验证 JSON。六组平台/Python 及 Docker CI 汇总到发布 verification.json；日志覆盖 logs/release/，临时发布材料在 debug/release-v042/。

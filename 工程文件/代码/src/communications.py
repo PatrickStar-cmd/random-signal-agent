@@ -70,7 +70,7 @@ block('awgn', '高斯白噪声', 'channel', 'Es/N0 参考发送端单位符号�
 block('analog_awgn', '模拟白噪声', 'channel', '模拟链路专用；按发送复包络整帧实测功率设置每采样点 SNR，前置衰减会降低接收 SNR。', snr_db=number('发送端采样 SNR / dB', 20, -10, 60))
 block('attenuation', '信道衰减', 'channel', '正 dB 表示衰减；作用于经过该积木的整个信号。', db=number('衰减 / dB', 3, 0, 60))
 block('phase_shift', '相位偏移', 'channel', '旋转复基带信号的相位。', degrees=number('相位偏移 / °', 30, -180, 180))
-block('dropout', '符号丢失', 'channel', '随机将部分符号归零；不是传输比特的删除。', probability=number('丢失概率', .03, 0, 1))
+block('dropout', '符号丢失', 'channel', '随机将部分符号归零。', probability=number('丢失概率', .03, 0, 1))
 block('repeat_decode', '重复码译码', 'rx_converter', '按奇数次重复分组，多数判决还原。', factor=field('重复次数', 3, 'select', choices=[3, 5, 7]))
 block('hamming_decode', 'Hamming (7,4) 译码', 'rx_converter', '综合征定位并翻转一位；多位错误可能误纠正。')
 block('conv_decode', 'Viterbi 译码', 'rx_converter', '对 (7,5)₈ 卷积码进行完整帧硬判决 Viterbi 译码。')
@@ -88,7 +88,7 @@ for scheme, label in baseband.LINE_CODES.items():
              'diff':'1 翻转，0 保持；接收端作相邻电平比较。','ami':'传号正负交替，0 为零；可选择 RZ。','manchester':'1→(+1,−1)，0→(−1,+1)。',
              'miller':'1 在位中间翻转，连续 0 在位边界翻转。','cmi':'0→(−1,+1)，1 交替使用(+1,+1)/(−1,−1)。','hdb3':'连续 n+1 个零替换为 0…0V 或 B…0V，接收端识别违例还原。'}[scheme]
     block('line_'+scheme+'_encode', label+' 编码', 'tx_converter', rules+' 输出线路电平，须接基带波形形成器。', **params)
-    block('line_'+scheme+'_decode', label+' 译码', 'rx_converter', '对基带判决电平逆变换，初态/参数须与编码器一致；不是纠错码。', **params)
+    block('line_'+scheme+'_decode', label+' 译码', 'rx_converter', '对基带判决电平逆变换，初态与参数须与编码器一致。', **params)
 for kind, label in [('baseband','基带波形形成'),('pam','多电平 PAM')]:
     transmit = {'amplitude':number('电平幅度 / A',1,.1,8),'sps':field('每码元采样点',8,'select',choices=[4,8,16,32]),
                 'pulse':field('发送脉冲',0,'select',choices=list(range(6)),choice_labels=dict(enumerate(baseband.PULSE_NAMES))),
@@ -96,7 +96,7 @@ for kind, label in [('baseband','基带波形形成'),('pam','多电平 PAM')]:
                 'training_symbols':number('公共训练前导 / 码元',0,0,2048,True)}
     if kind == 'pam':
         transmit.update(order=field('PAM 阶数 M',4,'select',choices=[2,4,8,16,256]),gray=field('Gray 电平标记',True,'boolean'))
-    block('mod_'+kind,label,'modulator','把'+('线路电平' if kind=='baseband' else '比特分组映射为多电平并')+'形成多采样点实基带波形；不是射频载波调制。',**transmit)
+    block('mod_'+kind,label,'modulator','把'+('线路电平' if kind=='baseband' else '比特分组映射为多电平并')+'形成多采样点实基带波形。',**transmit)
     block('demod_'+kind,'基带抽样判决' if kind=='baseband' else '多电平 PAM 接收','demodulator','接收滤波、自动符号同步、抽样及线性/判决反馈均衡；支持公共前导训练，帧起点粗定位已知。',
           compensate=field('已知衰减补偿',True,'boolean'),filter=field('接收滤波',1,'select',choices=[0,1,2],choice_labels={0:'直接抽样',1:'匹配滤波',2:'理想低通'}),
           cutoff_hz=number('接收低通截止 / Hz',1000,.01,1600000),sample_offset=number('抽样偏移 / 码元',0,-.49,.49),

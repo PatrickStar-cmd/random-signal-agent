@@ -17,7 +17,7 @@ Diting turns Random Signals coursework into reproducible experiments. Generate a
 
 Built for the Random Signals course at **UESTC**. The local toolchain works without a model API key; an optional Chat Completions-compatible service adds model-assisted dialogue.
 
-[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.4.1](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.1) · [📘 Installation guide](RELEASE.md)
+[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.4.2](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.2) · [📘 Installation guide](RELEASE.md)
 
 ## 🧭 Explore
 
@@ -36,9 +36,9 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 | Capability | What you can do |
 | --- | --- |
 | 🐳 Ocean UI | Layered ocean/lilac gradients and AI-generated 3D whale art for desktop, tablet and mobile. |
-| 📡 Communication lab (v0.4.1) | Six block categories and 29 presets: analog modulation, line codes, sampled channels, timing recovery and adaptive equalization, with waveform, spectrum, eye and convergence views. |
+| 📡 Communication lab (v0.4.2) | Six block categories and 29 presets: analog modulation, line codes, sampled channels, timing recovery and adaptive equalization, with waveform, spectrum, eye and convergence views. |
 | 🔑 Model API setup | Choose a provider/model, enter a key and test/apply in the UI; optional per-session persistence. |
-| 📄 PDF analysis reports (v0.4.1) | Preview and export Chinese brief/standard reports with vector plots, measured metrics, optional diagnosis and reproduction details. |
+| 📄 PDF analysis reports (v0.4.2) | Preview and export Chinese brief/standard reports with vector plots, measured metrics, optional diagnosis and reproduction details. |
 | 🩺 Diagnostic laboratory | Linked STFT and event timeline, six seeded fault types, blind challenge evaluation, and reversible evidence-based processing trials. |
 | 💾 Experiment workbench | Create from templates, save, reopen, duplicate, search, rename or delete snapshots, and resume after a restart. |
 | 📥 Data import wizard | Preview CSV/TXT, select time and signal columns, convert time units and locate invalid rows. |
@@ -59,9 +59,9 @@ Assemble sources → transmit converters → modulators → channels → demodul
 
 ![Communication lab: block pipeline, sink output and constellation](docs/images/communications-lab.png)
 
-**Included in v0.4.1: transmission module additions.** Choose one of 29 presets, Build and Run, then inspect the sink, spectrum, eye, clock or convergence plot. Export project JSON, full sink CSV and result JSON without a model key. Timing recovery assumes a known coarse frame boundary; adaptive equalizers train on an actual transmitted public preamble. See the [lab guide](工程文件/代码/docs/communications-lab.md), [analog modulation](工程文件/代码/docs/analog-modulation.md), [line codes and channels](工程文件/代码/docs/baseband-coding.md), and [recovery algorithms](工程文件/代码/docs/receiver-recovery.md).
+**v0.4.2 refreshes the block programming view with an ocean palette, compact connected blocks and a selected-block parameter inspector.** Choose one of 29 presets, Build and Run, then inspect the sink, spectrum, eye, clock or convergence plot. Export project JSON, full sink CSV and result JSON without a model key. Timing recovery assumes a known coarse frame boundary; adaptive equalizers train on an actual transmitted public preamble. See the [lab guide](工程文件/代码/docs/communications-lab.md), [analog modulation](工程文件/代码/docs/analog-modulation.md), [line codes and channels](工程文件/代码/docs/baseband-coding.md), and [recovery algorithms](工程文件/代码/docs/receiver-recovery.md).
 
-![v0.4.1 adaptive DFE convergence](docs/images/communications-recovery.png)
+![v0.4.2 ocean block studio and parameter inspector](docs/images/communications-studio.png)
 
 <a id="en-interface"></a>
 
@@ -115,11 +115,11 @@ Reports currently use Chinese. Standard reports include waveform metrics, FFT, W
 
 ## 🚀 Quick start
 
-Use **Python 3.12–3.14** or **Docker Compose v2**. v0.4.1 uses FastAPI; deployment checks cover Python 3.12–3.14 on Windows and Linux, plus Docker on Linux.
+Use **Python 3.12–3.14** or **Docker Compose v2**. v0.4.2 uses FastAPI; deployment checks cover Python 3.12–3.14 on Windows and Linux, plus Docker on Linux.
 
 ### 1. Get the project
 
-Download the v0.4.1 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.4.1/random-signal-agent-v0.4.1-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
+Download the v0.4.2 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.4.2/random-signal-agent-v0.4.2-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
 
 Or clone the repository:
 
@@ -293,7 +293,7 @@ The check covers the application version, ocean assets, model settings API, Agen
 | --- | --- |
 | Why does the online preview not run new experiments? | GitHub Pages serves the saved showcase. Start the backend locally or deploy it with Docker for interactive use. |
 | Do I need an API key? | The local signal tools do not require one. Model-assisted dialogue is optional. |
-| Which Python versions work? | v0.4.1 supports Python 3.12, 3.13 and 3.14. |
+| Which Python versions work? | v0.4.2 supports Python 3.12, 3.13 and 3.14. |
 | Why can I not activate the virtual environment on Windows? | The quick-start commands call `.venv\Scripts\python.exe` directly and do not require activation. |
 | Why is the microphone unavailable? | Open the app on localhost or HTTPS and allow microphone access in the browser. |
 | Why does my uploaded signal have no SNR value? | Reference-based SNR requires a clean signal. Uploaded samples and microphone audio do not provide that reference. |

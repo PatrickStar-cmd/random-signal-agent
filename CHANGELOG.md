@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## v0.4.2 · 积木编程视图更新 · 2026-10-12
+
+- 采用统一海洋配色、4 px 外框、六类表情积木工坊和 3 px 未选中积木边框；Build / Run 增加表情。
+- 编程区使用紧凑拼接积木、参数摘要和选中高亮，完整参数移到独立面板；符号同步、均衡和高级参数分组展开。
+- 保留全部模块与 29 个示例、拖放/排序、撤销重做、Build/Run、草稿恢复、工程 JSON 和完整 CSV/结果 JSON；保留波形、频谱、眼图、时钟及收敛分析。
+- 参数变化使旧 Build 失效，未选中或折叠的非法参数自动定位；工程替换确认支持键盘取消，去除页面中的防御性描述。
+- 更新真实截图、双语文档、静态预览和部署 ZIP。依赖、通信工程 schema 1、已有数据与数值算法保持兼容。
+
+Upgrade from v0.4.1 by retaining data/, replacing source and restarting the service or rebuilding Docker, then refreshing the browser. No new runtime dependencies or migration are needed.
+
 ## v0.4.1 · 传输环节模块补充 · 2026-10-12
 
 补充第三、四章传输环节：细分发/收转换器与调制/解调器，新增模拟调制、线路编译码、实基带信道、符号同步和固定/自适应均衡。提供 29 个示例、波形/频谱/眼图/时钟/收敛观测，保留旧工程与实验数据兼容性。由 v0.4.0 升级时保留 data/、替换源码并重启服务或重建 Docker，再刷新页面；无新增生产依赖。

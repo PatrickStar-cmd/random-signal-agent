@@ -20,7 +20,7 @@
 
 项目面向 **UESTC 随机信号课程**。本地工具链无需模型 API Key 即可运行，也可接入兼容 Chat Completions 的服务，增强对话能力。
 
-[🌐 实验预览](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 下载 v0.4.1](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.1) · [📘 安装指南](RELEASE.md)
+[🌐 实验预览](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 下载 v0.4.2](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.2) · [📘 安装指南](RELEASE.md)
 
 ## 🧭 快速导航
 
@@ -39,9 +39,9 @@
 | 功能 | 可以完成的实验 |
 | --- | --- |
 | 🐳 可爱海洋界面 | 海蓝/薰衣草紫渐变、AI 立体鲸鱼插画，桌面/平板/手机自适应。 |
-| 📡 通信实验室（v0.4.1） | 六类积木、29 个示例；模拟调制、线路码、基带信道、自动同步与自适应均衡，观察波形、频谱、眼图和收敛。 |
-| 🔑 模型 API 配置 | 在页面选择服务与模型、填写 Key、测试并应用；可按会话记住配置。已包含在 v0.4.1 部署包中。 |
-| 📄 PDF 分析报告（v0.4.1） | 填写标题、作者与目的，预览后导出中文简版或标准版，包含矢量图表、真实指标和复现信息。 |
+| 📡 通信实验室（v0.4.2） | 六类积木、29 个示例；模拟调制、线路码、基带信道、自动同步与自适应均衡，观察波形、频谱、眼图和收敛。 |
+| 🔑 模型 API 配置 | 在页面选择服务与模型、填写 Key、测试并应用；可按会话记住配置。已包含在 v0.4.2 部署包中。 |
+| 📄 PDF 分析报告（v0.4.2） | 填写标题、作者与目的，预览后导出中文简版或标准版，包含矢量图表、真实指标和复现信息。 |
 | 🩺 信号诊断实验室 | STFT 时频图联动异常区间，六类可复现故障注入、盲测揭晓评分，以及保留原始观测的验证实验。 |
 | 💾 实验工作台 | 用模板创建实验，保存、恢复、复制、搜索、重命名或删除快照；服务重启后继续工作。 |
 | 📥 数据导入向导 | 预览 CSV/TXT，自选时间列与信号列，转换时间单位并定位错误行。 |
@@ -62,9 +62,9 @@
 
 ![通信实验室：左侧积木链路，右侧信宿与星座](docs/images/communications-lab.png)
 
-**v0.4.1「传输环节模块补充」已包含这些功能。** 启动后选择 29 个示例之一，Build、Run，观察信宿、频谱、眼图、时钟或收敛曲线；工程 JSON、完整信宿 CSV 和结果 JSON 可下载，无需模型 Key。自动同步仍需已知帧粗起点，自适应均衡使用实际发送的公共前导。详见 [通信指南](工程文件/代码/docs/communications-lab.md)、[模拟调制](工程文件/代码/docs/analog-modulation.md)、[线路码与信道](工程文件/代码/docs/baseband-coding.md)、[同步与均衡](工程文件/代码/docs/receiver-recovery.md)。
+**v0.4.2「积木编程视图更新」采用海洋风格的积木工坊、紧凑拼接链路和选中参数面板。** 启动后选择 29 个示例之一，Build、Run，观察信宿、频谱、眼图、时钟或收敛曲线；工程 JSON、完整信宿 CSV 和结果 JSON 可下载，无需模型 Key。自动同步仍需已知帧粗起点，自适应均衡使用实际发送的公共前导。详见 [通信指南](工程文件/代码/docs/communications-lab.md)、[模拟调制](工程文件/代码/docs/analog-modulation.md)、[线路码与信道](工程文件/代码/docs/baseband-coding.md)、[同步与均衡](工程文件/代码/docs/receiver-recovery.md)。
 
-![v0.4.1 自适应 DFE 均衡与收敛](docs/images/communications-recovery.png)
+![v0.4.2 积木编程区与参数面板](docs/images/communications-studio.png)
 
 <a id="zh-interface"></a>
 
@@ -118,11 +118,11 @@ Agent 采集与分析 → 保存实验快照 → 查看故障诊断 → 打开�
 
 ## 🚀 快速开始
 
-使用 **Python 3.12–3.14** 或 **Docker Compose v2**。v0.4.1 使用 FastAPI 后端；部署检查覆盖 Windows、Linux 的 Python 3.12–3.14 和 Linux Docker。
+使用 **Python 3.12–3.14** 或 **Docker Compose v2**。v0.4.2 使用 FastAPI 后端；部署检查覆盖 Windows、Linux 的 Python 3.12–3.14 和 Linux Docker。
 
 ### 1. 获取项目
 
-下载并解压 v0.4.1 的[部署 ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.4.1/random-signal-agent-v0.4.1-deploy.zip)，在解压目录中的 `工程文件/代码` 打开终端。
+下载并解压 v0.4.2 的[部署 ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.4.2/random-signal-agent-v0.4.2-deploy.zip)，在解压目录中的 `工程文件/代码` 打开终端。
 
 也可以克隆仓库：
 
@@ -292,7 +292,7 @@ Docker Compose 读取代码目录下的 `.env`。Docker 参数、HTTPS 部署与
 | --- | --- |
 | 为什么在线预览不能运行新实验？ | GitHub Pages 提供已保存的展示内容。运行本地后端或使用 Docker 部署，即可交互实验。 |
 | 必须配置 API Key 吗？ | 本地信号工具无需密钥；模型辅助对话属于可选功能。 |
-| 支持哪些 Python 版本？ | v0.4.1 支持 Python 3.12、3.13、3.14。 |
+| 支持哪些 Python 版本？ | v0.4.2 支持 Python 3.12、3.13、3.14。 |
 | Windows 无法激活虚拟环境怎么办？ | 快速开始命令直接调用 `.venv\Scripts\python.exe`，无需激活。 |
 | 麦克风无法使用怎么办？ | 通过 localhost 或 HTTPS 访问应用，并在浏览器中允许麦克风权限。 |
 | 为什么上传信号没有 SNR 数值？ | 基于参考信号的 SNR 需要干净信号；上传样本与麦克风音频不包含该参考。 |
@@ -344,7 +344,7 @@ Diting turns Random Signals coursework into reproducible experiments. Generate a
 
 Built for the Random Signals course at **UESTC**. The local toolchain works without a model API key; an optional Chat Completions-compatible service adds model-assisted dialogue.
 
-[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.4.1](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.1) · [📘 Installation guide](RELEASE.md)
+[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.4.2](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.2) · [📘 Installation guide](RELEASE.md)
 
 ## 🧭 Explore
 
@@ -363,9 +363,9 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 | Capability | What you can do |
 | --- | --- |
 | 🐳 Ocean UI | Layered ocean/lilac gradients and AI-generated 3D whale art for desktop, tablet and mobile. |
-| 📡 Communication lab (v0.4.1) | Six block categories and 29 presets: analog modulation, line codes, sampled channels, timing recovery and adaptive equalization, with waveform, spectrum, eye and convergence views. |
+| 📡 Communication lab (v0.4.2) | Six block categories and 29 presets: analog modulation, line codes, sampled channels, timing recovery and adaptive equalization, with waveform, spectrum, eye and convergence views. |
 | 🔑 Model API setup | Choose a provider/model, enter a key and test/apply in the UI; optional per-session persistence. |
-| 📄 PDF analysis reports (v0.4.1) | Preview and export Chinese brief/standard reports with vector plots, measured metrics, optional diagnosis and reproduction details. |
+| 📄 PDF analysis reports (v0.4.2) | Preview and export Chinese brief/standard reports with vector plots, measured metrics, optional diagnosis and reproduction details. |
 | 🩺 Diagnostic laboratory | Linked STFT and event timeline, six seeded fault types, blind challenge evaluation, and reversible evidence-based processing trials. |
 | 💾 Experiment workbench | Create from templates, save, reopen, duplicate, search, rename or delete snapshots, and resume after a restart. |
 | 📥 Data import wizard | Preview CSV/TXT, select time and signal columns, convert time units and locate invalid rows. |
@@ -386,9 +386,9 @@ Assemble sources → transmit converters → modulators → channels → demodul
 
 ![Communication lab: block pipeline, sink output and constellation](docs/images/communications-lab.png)
 
-**Included in v0.4.1: transmission module additions.** Choose one of 29 presets, Build and Run, then inspect the sink, spectrum, eye, clock or convergence plot. Export project JSON, full sink CSV and result JSON without a model key. Timing recovery assumes a known coarse frame boundary; adaptive equalizers train on an actual transmitted public preamble. See the [lab guide](工程文件/代码/docs/communications-lab.md), [analog modulation](工程文件/代码/docs/analog-modulation.md), [line codes and channels](工程文件/代码/docs/baseband-coding.md), and [recovery algorithms](工程文件/代码/docs/receiver-recovery.md).
+**v0.4.2 refreshes the block programming view with an ocean palette, compact connected blocks and a selected-block parameter inspector.** Choose one of 29 presets, Build and Run, then inspect the sink, spectrum, eye, clock or convergence plot. Export project JSON, full sink CSV and result JSON without a model key. Timing recovery assumes a known coarse frame boundary; adaptive equalizers train on an actual transmitted public preamble. See the [lab guide](工程文件/代码/docs/communications-lab.md), [analog modulation](工程文件/代码/docs/analog-modulation.md), [line codes and channels](工程文件/代码/docs/baseband-coding.md), and [recovery algorithms](工程文件/代码/docs/receiver-recovery.md).
 
-![v0.4.1 adaptive DFE convergence](docs/images/communications-recovery.png)
+![v0.4.2 ocean block studio and parameter inspector](docs/images/communications-studio.png)
 
 <a id="en-interface"></a>
 
@@ -442,11 +442,11 @@ Reports currently use Chinese. Standard reports include waveform metrics, FFT, W
 
 ## 🚀 Quick start
 
-Use **Python 3.12–3.14** or **Docker Compose v2**. v0.4.1 uses FastAPI; deployment checks cover Python 3.12–3.14 on Windows and Linux, plus Docker on Linux.
+Use **Python 3.12–3.14** or **Docker Compose v2**. v0.4.2 uses FastAPI; deployment checks cover Python 3.12–3.14 on Windows and Linux, plus Docker on Linux.
 
 ### 1. Get the project
 
-Download the v0.4.1 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.4.1/random-signal-agent-v0.4.1-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
+Download the v0.4.2 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.4.2/random-signal-agent-v0.4.2-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
 
 Or clone the repository:
 
@@ -620,7 +620,7 @@ The check covers the application version, ocean assets, model settings API, Agen
 | --- | --- |
 | Why does the online preview not run new experiments? | GitHub Pages serves the saved showcase. Start the backend locally or deploy it with Docker for interactive use. |
 | Do I need an API key? | The local signal tools do not require one. Model-assisted dialogue is optional. |
-| Which Python versions work? | v0.4.1 supports Python 3.12, 3.13 and 3.14. |
+| Which Python versions work? | v0.4.2 supports Python 3.12, 3.13 and 3.14. |
 | Why can I not activate the virtual environment on Windows? | The quick-start commands call `.venv\Scripts\python.exe` directly and do not require activation. |
 | Why is the microphone unavailable? | Open the app on localhost or HTTPS and allow microphone access in the browser. |
 | Why does my uploaded signal have no SNR value? | Reference-based SNR requires a clean signal. Uploaded samples and microphone audio do not provide that reference. |

@@ -1,10 +1,10 @@
-# v0.4.1 · Installation and deployment
+# v0.4.2 · Installation and deployment
 
-**v0.4.1 · 传输环节模块补充 / Transmission module additions** includes the accumulated analog modulation, line coding, sampled baseband channels, symbol timing recovery and fixed/adaptive equalizers. The lab has six block categories and 29 presets. Application, deployment metadata and UI versions are 0.4.1; production dependencies, experiment schema 1 and preprocessing algorithm 0.2.0 remain compatible.
+**v0.4.2 · 积木编程视图更新 / Block programming view update** adds an ocean-themed block palette, compact connected blocks, a selected-block parameter inspector and a dedicated analysis area. It retains analog modulation, line coding, sampled baseband channels, timing recovery and fixed/adaptive equalizers. The lab has six block categories and 29 presets. Application, deployment metadata and UI versions are 0.4.2; production dependencies, experiment schema 1 and preprocessing algorithm 0.2.0 remain compatible.
 
-Download `random-signal-agent-v0.4.1-deploy.zip` from the [v0.4.1 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.1) and extract it; the archive contains source, Web assets, configuration, documentation and example data. Use **Python 3.12–3.14** or **Docker**. The [previous v0.1.0 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.1.0) remains available and requires Python 3.12.
+Download `random-signal-agent-v0.4.2-deploy.zip` from the [v0.4.2 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.2) and extract it; the archive contains source, Web assets, configuration, documentation and example data. Use **Python 3.12–3.14** or **Docker**. The [previous v0.1.0 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.1.0) remains available and requires Python 3.12.
 
-Open a terminal in `random-signal-agent/工程文件/代码` (or `random-signal-agent-v0.4.1/工程文件/代码` in a deployment archive).
+Open a terminal in `random-signal-agent/工程文件/代码` (or `random-signal-agent-v0.4.2/工程文件/代码` in a deployment archive).
 
 ## Windows
 
@@ -47,7 +47,7 @@ The check covers health, Web assets, Agent mode, streaming responses, CSV upload
 
 ## 中文说明
 
-下载 v0.4.1 部署包并解压，进入 `工程文件/代码` 后按上方命令启动。支持 Python 3.12–3.14，依赖版本在 `requirements-repro.txt` 固定。也可使用 Docker Compose；默认地址为 <http://127.0.0.1:8000>。实验可导出 ZIP，升级前停止服务并备份整个 `data/` 目录。
+下载 v0.4.2 部署包并解压，进入 `工程文件/代码` 后按上方命令启动。支持 Python 3.12–3.14，依赖版本在 `requirements-repro.txt` 固定。也可使用 Docker Compose；默认地址为 <http://127.0.0.1:8000>。实验可导出 ZIP，升级前停止服务并备份整个 `data/` 目录。
 
 完整应用包含对话、分析、上传及音频处理，不需要外部模型密钥即可使用本地工具链。服务器部署、模型配置与日志查看见[部署说明](工程文件/代码/DEPLOY.md)。
 
@@ -75,9 +75,9 @@ Keys are held in server memory by default. Opting into **记住配置** stores t
 
 The package includes the seven-view ocean interface, transparent AI-generated whale artwork, responsive charts and all local styles/scripts. GitHub Pages is a static preview; API configuration and interactive experiments require the Python backend.
 
-打开“模型与设置 → 模型 API 配置”，选择服务、输入自己的 Key、读取模型列表并“测试并应用”，无需重启。默认只在服务内存保存；勾选“记住配置”后会将 Key 明文写入 `data/model-settings.sqlite3`，需保护该文件及数据备份。可随时切回本地模式或清除配置。v0.4.1 部署包已包含海洋界面及所有图片资源；GitHub Pages 仍为静态预览。
+打开“模型与设置 → 模型 API 配置”，选择服务、输入自己的 Key、读取模型列表并“测试并应用”，无需重启。默认只在服务内存保存；勾选“记住配置”后会将 Key 明文写入 `data/model-settings.sqlite3`，需保护该文件及数据备份。可随时切回本地模式或清除配置。v0.4.2 部署包已包含海洋界面及所有图片资源；GitHub Pages 仍为静态预览。
 
-## PDF analysis reports (v0.4.1)
+## PDF analysis reports (v0.4.2)
 
 In **模板与实验 → PDF 分析报告**, enter report details, choose brief/standard, preview the summary, then download. Reports currently use Chinese and include measured results, vector plots and reproduction information; existing comparison and diagnosis sections appear when available. No model key is required. Blind experiments must be revealed first; true SNR/RMSE need a clean reference.
 
@@ -113,7 +113,7 @@ From v0.3.3, stop the service, back up and retain data/, replace the source, res
 
 v0.3.4 提供更丰富的海洋渐变、双层框线、华文中宋与 Times New Roman 字体、加粗时钟及更清晰的 Agent 回复。由 v0.3.3 升级时保留 data/，替换源码并重启服务或重建 Docker，再刷新浏览器。
 
-## v0.4.1 · 通信原理积木编程
+## v0.4.2 · 通信原理积木编程
 
 Open **通信实验室** or <http://127.0.0.1:8000/#communicationsPanel>. Drag blocks into a source → transmitter → channel → receiver → sink chain. Click **Build** to validate/apply the configuration, then **Run** to display the sink output. Before a successful run the receiver shows TV snow. Try the digital, analog + PCM and text presets first.
 
@@ -121,7 +121,7 @@ The deployment ZIP includes all blocks, styles, configuration and numerical test
 
 由 v0.3.4 升级：停止服务并备份、保留 `data/`（以及需要的 uploads/outputs/），替换源码，重新安装固定依赖或重建 Docker，重启后刷新浏览器。无需数据迁移，已有快照和报告历史保留。进入“通信实验室”，先 Build 再 Run；通信工程通过独立 JSON/CSV 保存。
 
-## v0.4.1 · 传输环节模块补充
+## 既有传输环节模块
 
 - 发转换器、调制器、解调器和收转换器独立分类，保留原数字通信链路。
 - AM、DSB-SC、SSB、VSB、FM、PM 模拟调制/解调；十对线路编译码、2–256-PAM 与六种成形脉冲。
@@ -134,3 +134,9 @@ From v0.4.0, stop the service, retain the existing data/ and needed uploads/outp
 自动符号同步假设已知帧粗起点与名义码元率，DFE 判错可能传播。自适应均衡使用发送公共前导和接收判决，收敛依赖训练、步长与信道条件。有限帧仿真不代表射频硬件或未知帧同步。指南：[模拟调制](工程文件/代码/docs/analog-modulation.md)、[线路码与信道](工程文件/代码/docs/baseband-coding.md)、[同步与均衡](工程文件/代码/docs/receiver-recovery.md)。
 
 发布验证从已提交源码创建可复现 ZIP，再在全新虚拟环境安装固定依赖、执行完整测试、540 个数值基准及真实启动/HTTP 冒烟。GitHub CI 另覆盖 Windows/Linux Python 3.12–3.14 和 Linux Docker 重启持久化。`verification.json` 随发布包记录实际完成的检查、提交和部署包摘要；`SHA256SUMS.txt` 用于核验下载。
+
+## v0.4.2 · 积木编程视图更新
+
+六类表情分类、3 px 未选中积木边框、紧凑拼接链路、独立信宿观察与参数面板，完整指标及分析图集中在下方。点击积木编辑全部参数，同步和均衡参数分组展开。原生拖放、排序、撤销重做、29 个示例、Build/Run、草稿及 JSON/CSV 导出保留。替换/清空确认框支持键盘取消，隐藏参数错误自动定位。
+
+从 v0.4.1 升级：停止服务，保留 data/ 和需要的 uploads/outputs/，替换源码并重启或重建 Docker，再刷新浏览器；没有新增依赖或数据迁移。

@@ -3,8 +3,10 @@
   'use strict';
   const root=document.querySelector('[data-view="communications"]'), byId=id=>document.getElementById(id), esc=escapeHtml;
   const storageKey='rs_communication_draft_v1', categories={source:'信源',tx_converter:'发转换器',modulator:'调制器',channel:'信道',demodulator:'解调器',rx_converter:'收转换器'};
+  const categoryEmoji={source:'🎲',tx_converter:'🔀',modulator:'📡',channel:'🌊',demodulator:'🎛️',rx_converter:'🔄',sink:'📺'};
   let catalog=null,definitions={},program=null,compiled=null,result=null,category='source',busy=false,revision=0;
-  let undo=[],redo=[],drag=null,plot='constellation',snowTimer=0;
+  let undo=[],redo=[],drag=null,plot='constellation',snowTimer=0,selectedId=null;
+  const inspectorState=new Map();
   const clone=value=>JSON.parse(JSON.stringify(value));
   const empty=()=>({schema:catalog.schema,...clone(catalog.defaults),blocks:[{id:'sink',kind:'sink',params:{}}]});
   const uid=()=>`comm-${createSessionId()}`;
@@ -22,8 +24,12 @@
     revision++;compiled=null;result=null;persist();buttons();showResult();status(message);
   }
   function checkpoint(){undo.push(clone(program));if(undo.length>30)undo.shift();redo=[]}
+  function confirmReplace(message){
+    const dialog=byId('cmReplaceDialog');dialog.returnValue='cancel';byId('cmReplaceMessage').textContent=message;
+    return new Promise(resolve=>{dialog.addEventListener('close',()=>resolve(dialog.returnValue==='replace'),{once:true});dialog.showModal()});
+  }
   function change(fn,message){if(busy||!catalog)return;checkpoint();fn();invalidate(message);renderProgram()}
-  function setProgram(next,message){change(()=>{program=clone(next)},message)}
+  function setProgram(next,message){change(()=>{program=clone(next);selectedId=program.blocks[0]?.id},message)}
   function history(direction){if(busy)return;const from=direction==='undo'?undo:redo,to=direction==='undo'?redo:undo;if(!from.length)return;to.push(clone(program));program=from.pop();invalidate('已'+(direction==='undo'?'撤销':'重做')+'，重新 Build 后即可运行。');renderProgram()}
   async function api(action,payload){
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),60000);
@@ -33,31 +39,74 @@
     }catch(error){if(error.name==='AbortError')throw Error('请求超时，请重新尝试。');throw error}finally{clearTimeout(timer)}
   }
   function palette(){
-    byId('cmCategories').innerHTML=Object.entries(categories).map(([key,label])=>`<button type="button" data-cm-filter="${key}" aria-pressed="${key===category}">${label}</button>`).join('');
+    byId('cmCategories').innerHTML=Object.entries(categories).map(([key,label])=>`<button type="button" data-cm-filter="${key}" data-cm-category="${key}" aria-pressed="${key===category}"><span aria-hidden="true">${categoryEmoji[key]}</span>${label}</button>`).join('');
+    byId('cmCategoryName').textContent=`${categoryEmoji[category]} ${categories[category]}`;
+    byId('cmCategoryCount').textContent=`${catalog.blocks.filter(b=>b.category===category).length} 个模块`;
     byId('cmPalette').innerHTML=catalog.blocks.filter(b=>b.category===category).map(b=>`<button type="button" class="cm-palette-block" draggable="true" data-cm-kind="${b.kind}" data-cm-category="${b.category}" aria-label="添加 ${esc(b.label)}"><span class="cm-add-symbol" aria-hidden="true">＋</span><strong>${esc(b.label)}</strong><small>${esc(b.description)}</small></button>`).join('');
   }
-  function parameterHTML(b){
-    return Object.entries(definitions[b.kind].params).map(([key,spec])=>{
-      const val=Object.hasOwn(b.params,key)?b.params[key]:spec.default,data=`data-block-id="${b.id}" data-param="${key}"`,id=`cm-${b.id}-${key}`,label=esc(spec.label);
+  function parameterHTML(b,entries=Object.entries(definitions[b.kind].params)){
+    return entries.map(([key,spec])=>{
+      const val=Object.hasOwn(b.params,key)?b.params[key]:spec.default,data=`data-block-id="${esc(b.id)}" data-param="${key}"`,id=esc(`cm-${b.id}-${key}`),label=esc(spec.label);
       if(spec.type==='boolean')return `<label class="cm-boolean" for="${id}"><input id="${id}" ${data} type="checkbox" ${val?'checked':''}>${label}</label>`;
       if(spec.type==='select')return `<label for="${id}">${label}<select id="${id}" ${data}>${spec.choices.map(v=>`<option value="${v}" ${v===val?'selected':''}>${esc(String(spec.choice_labels?.[v]??v))}</option>`).join('')}</select></label>`;
       if(spec.type==='text')return `<label class="cm-wide" for="${id}">${label}<textarea id="${id}" ${data} maxlength="${spec.max_length}" required>${esc(val)}</textarea></label>`;
       return `<label for="${id}">${label}<input id="${id}" ${data} type="number" min="${spec.min}" max="${spec.max}" step="${spec.type==='integer'?'1':'any'}" value="${val??''}" required></label>`;
     }).join('');
   }
+  function summaryHTML(b){
+    const def=definitions[b.kind],preferred=b.kind.startsWith('demod_')&&Object.hasOwn(def.params,'equalizer')?['equalizer','adaptive_algorithm']:b.kind==='mod_baseband'?['pulse','sps']:b.kind==='mod_pam'?['order','pulse']:Object.keys(def.params).slice(0,2);
+    return preferred.map(key=>{const spec=def.params[key],value=Object.hasOwn(b.params,key)?b.params[key]:spec.default;
+      const label=spec.type==='boolean'?(value?'开启':'关闭'):spec.type==='select'?(spec.choice_labels?.[value]??value):value;
+      const text=label===null||label===''?'待填写':String(label);
+      return `<span class="cm-slot" title="${esc(spec.label+': '+text)}">${esc(text.length>22?text.slice(0,22)+'…':text)}</span>`;
+    }).join('');
+  }
+  function renderInspector(){
+    const pane=byId('cmInspector');
+    if(pane.dataset.blockId)inspectorState.set(pane.dataset.blockId,[...pane.querySelectorAll('details[open]')].map(d=>d.dataset.group));
+    const b=program.blocks.find(item=>item.id===selectedId),def=definitions[b.kind],entries=Object.entries(def.params);
+    pane.dataset.blockId=b.id;
+    const sections=b.kind.startsWith('demod_')&&Object.hasOwn(def.params,'equalizer')?[
+      ['基础参数',entries.filter(([k])=>['compensate','filter','cutoff_hz','sample_offset'].includes(k))],
+      ['🕒 符号同步',entries.filter(([k])=>['timing_mode','loop_bandwidth','gate_spacing'].includes(k))],
+      ['🎛️ 均衡设置',entries.filter(([k])=>['equalizer','adaptive_algorithm','step_size'].includes(k))],
+      ['高级参数',entries.filter(([k])=>!['compensate','filter','cutoff_hz','sample_offset','timing_mode','loop_bandwidth','gate_spacing','equalizer','adaptive_algorithm','step_size'].includes(k))]
+    ]:[['基础参数',entries.slice(0,4)],['高级参数',entries.slice(4)]];
+    const opened=inspectorState.get(b.id);
+    pane.innerHTML=`<div class="cm-selected-block" data-cm-category="${def.category}"><strong>${categoryEmoji[def.category]} ${esc(def.label)}</strong><small>${categories[def.category]||'输出观察'}</small></div><p class="cm-inspector-description">${esc(def.description)}</p>`+sections.filter(([,items])=>items.length).map(([name,items],i)=>i?`<details data-group="${name}" ${opened?opened.includes(name)?'open':'':(name==='🎛️ 均衡设置'&&b.params.equalizer||name==='🕒 符号同步'&&b.params.timing_mode)?'open':''}><summary>${name}</summary><div class="cm-fields">${parameterHTML(b,items)}</div></details>`:`<div class="cm-fields">${parameterHTML(b,items)}</div>`).join('');
+  }
+  function selectBlock(id){
+    if(!program.blocks.some(b=>b.id===id))return;selectedId=id;
+    byId('cmProgram').querySelectorAll('[data-cm-select]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.cmSelect===id)));
+    byId('cmProgram').querySelectorAll('[data-cm-id]').forEach(card=>card.classList.toggle('cm-selected',card.dataset.cmId===id));renderInspector();
+  }
+  function validateFields(){
+    const global=root.querySelector('[data-global]:invalid');
+    if(global){global.closest('details').open=true;global.reportValidity();return false}
+    for(const b of program.blocks){
+      const fields=document.createElement('div');fields.innerHTML=parameterHTML(b);const invalid=fields.querySelector(':invalid');
+      if(invalid){selectBlock(b.id);const input=byId(invalid.id);input.closest('details')?.setAttribute('open','');status(`${definitions[b.kind].label}：请检查${definitions[b.kind].params[invalid.dataset.param].label}。`,true);input.reportValidity();return false}
+    }
+    return true;
+  }
   function renderProgram(){
     if(!program)return;
     for(const input of root.querySelectorAll('[data-global]'))input.value=program[input.dataset.global]??'';
     byId('cmBlockCount').textContent=`${program.blocks.length} 块积木`;
-    byId('cmProgram').innerHTML=(program.blocks.length===1?'<div class="cm-empty"><span aria-hidden="true">🧩</span>信宿已就位。<br>从左侧拖入一个信源，<br>再连接编码、调制和接收端。</div>':'')+program.blocks.map((b,i)=>{
+    if(!program.blocks.some(b=>b.id===selectedId))selectedId=program.blocks[0].id;
+    const preset=Object.values(catalog.presets).find(p=>JSON.stringify(p.program)===JSON.stringify(program));
+    byId('cmProjectName').textContent=preset?.label||'我的通信工程';
+    byId('cmClockSummary').textContent=`Rs = ${program.symbol_rate} Baud · 种子 ${program.seed}`;
+    byId('cmProgram').innerHTML=(program.blocks.length===1?'<div class="cm-empty"><span aria-hidden="true">🧩</span>从积木工坊添加信源，<br>开始搭建通信链路。</div>':'<div class="cm-start">🚩 当实验开始</div>')+program.blocks.map((b,i)=>{
       const def=definitions[b.kind];
-      if(b.kind==='sink')return `<article class="cm-block cm-sink" data-cm-category="sink" data-cm-id="${b.id}" data-cm-index="${i}"><div class="cm-block-head"><strong>📺 信宿</strong></div><p class="cm-block-description">译码后的输出 → 右侧观察窗口</p></article>`;
-      return `<article class="cm-block" data-cm-category="${def.category}" data-cm-id="${b.id}" data-cm-index="${i}"><div class="cm-block-head"><button type="button" class="cm-handle" draggable="true" data-cm-move="${b.id}" aria-label="拖动 ${esc(def.label)}" title="拖动改变链路顺序">⠿</button><strong>${esc(def.label)}</strong><button type="button" data-cm-up="${b.id}" aria-label="上移 ${esc(def.label)}" ${i===0?'disabled':''}>↑</button><button type="button" data-cm-down="${b.id}" aria-label="下移 ${esc(def.label)}" ${i===program.blocks.length-2?'disabled':''}>↓</button><button type="button" class="cm-remove" data-cm-remove="${b.id}" aria-label="移除 ${esc(def.label)}">×</button></div><p class="cm-block-description">${esc(def.description)}</p>${Object.keys(def.params).length?`<div class="cm-fields">${parameterHTML(b)}</div>`:''}</article>`;
-    }).join('');buttons();
+      const id=esc(b.id),select=`<button type="button" class="cm-block-select" data-cm-select="${id}" aria-pressed="${b.id===selectedId}" aria-label="编辑 ${esc(def.label)} 参数"><strong>${b.kind==='sink'?'📺 ':''}${esc(def.label)}</strong><span class="cm-slots">${summaryHTML(b)}</span></button>`;
+      if(b.kind==='sink')return `<article class="cm-block cm-sink ${b.id===selectedId?'cm-selected':''}" data-cm-category="sink" data-cm-id="${id}" data-cm-index="${i}">${select}</article>`;
+      return `<article class="cm-block ${b.id===selectedId?'cm-selected':''}" data-cm-category="${def.category}" data-cm-id="${id}" data-cm-index="${i}"><div class="cm-block-head"><button type="button" class="cm-handle" draggable="true" data-cm-move="${id}" aria-label="拖动 ${esc(def.label)}" title="拖动改变链路顺序">⠿</button>${select}<span class="cm-block-controls"><button type="button" data-cm-up="${id}" aria-label="上移 ${esc(def.label)}" ${i===0?'disabled':''}>↑</button><button type="button" data-cm-down="${id}" aria-label="下移 ${esc(def.label)}" ${i===program.blocks.length-2?'disabled':''}>↓</button><button type="button" class="cm-remove" data-cm-remove="${id}" aria-label="移除 ${esc(def.label)}">×</button></span></div></article>`;
+    }).join('');renderInspector();buttons();
   }
   function add(kind,index=program.blocks.length-1){
     if(program.blocks.length>=catalog.limits.max_blocks){status(`最多放置 ${catalog.limits.max_blocks} 个积木，请移除不需要的模块。`,true);return}
-    change(()=>{program.blocks.splice(Math.max(0,Math.min(index,program.blocks.length-1)),0,{id:uid(),kind,params:Object.fromEntries(Object.entries(definitions[kind].params).map(([k,v])=>[k,v.default]))})});
+    change(()=>{selectedId=uid();program.blocks.splice(Math.max(0,Math.min(index,program.blocks.length-1)),0,{id:selectedId,kind,params:Object.fromEntries(Object.entries(definitions[kind].params).map(([k,v])=>[k,v.default]))})});
   }
   function move(id,index){
     const from=program.blocks.findIndex(b=>b.id===id);if(from<0||program.blocks[from].kind==='sink')return;
@@ -67,6 +116,7 @@
   root.addEventListener('click',event=>{
     const el=event.target.closest('button');if(!el||busy||!catalog)return;
     if(el.dataset.cmFilter){category=el.dataset.cmFilter;palette();return}
+    if(el.dataset.cmSelect){selectBlock(el.dataset.cmSelect);return}
     if(el.dataset.cmKind){add(el.dataset.cmKind);return}
     if(el.dataset.cmRemove){change(()=>{program.blocks=program.blocks.filter(b=>b.id!==el.dataset.cmRemove)});return}
     if(el.dataset.cmUp){const i=program.blocks.findIndex(b=>b.id===el.dataset.cmUp);move(el.dataset.cmUp,i-1);return}
@@ -82,6 +132,9 @@
       b.params[el.dataset.param]=spec.type==='boolean'?el.checked:spec.type==='text'?el.value:el.value===''?null:Number(el.value);
     }
     invalidate();
+    byId('cmProjectName').textContent='我的通信工程';
+    byId('cmClockSummary').textContent=`Rs = ${program.symbol_rate} Baud · 种子 ${program.seed}`;
+    if(el.dataset.param){const b=program.blocks.find(b=>b.id===el.dataset.blockId),card=[...byId('cmProgram').querySelectorAll('[data-cm-id]')].find(card=>card.dataset.cmId===b.id);card.querySelector('.cm-slots').innerHTML=summaryHTML(b);}
   });
   root.addEventListener('dragstart',event=>{
     const item=event.target.closest('[data-cm-kind],[data-cm-move]');if(busy||!item){event.preventDefault();return}
@@ -90,7 +143,7 @@
   });
   const clearDrag=()=>{byId('cmProgram').classList.remove('cm-drag-over');byId('cmProgram').querySelectorAll('.cm-drop-before,.cm-drop-after').forEach(e=>e.classList.remove('cm-drop-before','cm-drop-after'))};
   byId('cmProgram').addEventListener('dragover',event=>{
-    if(!drag||busy)return;event.preventDefault();clearDrag();byId('cmProgram').classList.add('cm-drag-over');
+    if(!drag||busy)return;event.preventDefault();event.dataTransfer.dropEffect=drag.id?'move':'copy';clearDrag();byId('cmProgram').classList.add('cm-drag-over');
     const card=event.target.closest('[data-cm-index]');if(card)card.classList.add(card.classList.contains('cm-sink')||event.clientY<card.getBoundingClientRect().top+card.getBoundingClientRect().height/2?'cm-drop-before':'cm-drop-after');
   });
   byId('cmProgram').addEventListener('drop',event=>{
@@ -100,14 +153,15 @@
   });
   root.addEventListener('dragend',()=>{drag=null;clearDrag()});
   byId('cmUndo').onclick=()=>history('undo');byId('cmRedo').onclick=()=>history('redo');
-  byId('cmPreset').onchange=event=>{
+  byId('cmLocate').onclick=()=>{const card=[...byId('cmProgram').querySelectorAll('[data-cm-id]')].find(card=>card.dataset.cmId===selectedId);card?.scrollIntoView({block:'nearest',inline:'nearest',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});};
+  byId('cmPreset').onchange=async event=>{
     const preset=catalog.presets[event.target.value];if(!preset)return;
-    if(program.blocks.length>1&&!confirm('用示例替换当前链路？可通过“撤销”恢复。')){event.target.value='';return}
+    if(program.blocks.length>1&&!await confirmReplace('用示例替换当前链路？可通过“撤销”恢复。')){event.target.value='';return}
     setProgram(preset.program,'示例已载入，点击 Build 构建，再 Run 观察结果。');
   };
-  byId('cmReset').onclick=()=>{if(program.blocks.length>1&&!confirm('清空当前链路？信宿将保留，可通过“撤销”恢复。'))return;setProgram(empty(),'信宿已就位，从积木箱添加信源。');byId('cmPreset').value=''};
+  byId('cmReset').onclick=async()=>{if(program.blocks.length>1&&!await confirmReplace('清空当前链路？信宿将保留，可通过“撤销”恢复。'))return;byId('cmPreset').value='';setProgram(empty(),'信宿已就位，从积木箱添加信源。')};
   byId('cmForm').onsubmit=async event=>{
-    event.preventDefault();if(busy||!catalog||!byId('cmForm').reportValidity())return;
+    event.preventDefault();if(busy||!catalog||!validateFields())return;
     busy=true;compiled=null;result=null;showResult();buttons();status('Build：正在检查信号类型、参数与收发配对…');
     try{compiled=await api('build',{program:clone(program)});program=compiled.program;persist();renderProgram();showTrace();status(`Build 完成：${compiled.summary}。点击 Run 开始传输。`)}
     catch(error){compiled=null;status(error.message,true)}finally{busy=false;buttons()}
@@ -128,7 +182,7 @@
       if(file.size>256*1024)throw Error('工程文件须小于 256 KiB。');
       const checked=await api('validate',{program:JSON.parse(await file.text())});
       const sinks=checked.program.blocks.filter(b=>b.kind==='sink');if(sinks.length!==1||checked.program.blocks.at(-1).kind!=='sink')throw Error('工程须保留一个位于末端的信宿。');
-      if(program.blocks.length===1||confirm('用导入的工程替换当前链路？可通过“撤销”恢复。'))imported=checked.program;
+      if(program.blocks.length===1||await confirmReplace('用导入的工程替换当前链路？可通过“撤销”恢复。'))imported=checked.program;
       else status('已取消导入。');
     }catch(error){status(error.message,true)}finally{busy=false;buttons()}
     if(imported)setProgram(imported,'工程已导入；点击 Build 校验链路，再 Run。');
@@ -152,7 +206,7 @@
       byId('cmDetails').textContent=`线路码/PAM：${b.scheme}；${b.symbol_rate} 码元/s × ${b.sps} 点/码元 = ${b.sample_rate} Hz。${b.pulse}；线路电平/编码位数 ${m.line_expansion.toFixed(3)}；线路违例 ${m.line_violations}。均衡前电平 RMSE ${m.before_equalizer_rmse.toPrecision(4)}，均衡后 ${m.level_rmse.toPrecision(4)}。前向抽头 [${b.equalizer_coefficients.map(v=>v.toPrecision(4)).join(', ')}]。${r?` 公共前导 ${r.training_symbols} / 完整帧 ${r.frame_symbols} 码元，数据占比 ${(100*r.payload_efficiency).toFixed(1)}%。`:''}${t?` ${t.method}：时钟分量${t.clock_informative?'已提取':'不足'}；初相 ${t.initial_phase.toFixed(4)}T，末相 ${t.final_phase.toFixed(4)}T；频率估计 ${t.frequency_ppm.toFixed(1)} ppm；末段相位抖动 ${t.phase_jitter.toPrecision(3)}T。`:''}${e?` ${e.method} / ${e.algorithm}；反馈抽头 [${e.feedback_coefficients.map(v=>v.toPrecision(4)).join(', ')}]；系数更新 ${e.updates} 次。${e.training_final_mse===null?'':` 训练 MSE ${e.training_initial_mse.toPrecision(4)} → ${e.training_final_mse.toPrecision(4)}。`}`:''}${result.sink.kind==='analog'?'信宿 RMSE 包含 PCM 量化误差。':''}`;return;
     }
     if(result.transport==='analog'){
-      byId('cmDetails').textContent=`${result.analog.family} · ${result.analog.scheme}；模拟采样率 ${result.analog.sample_rate} Hz，模拟符号率参数不参与此链路。最大全段绝对误差 ${m.max_abs_error.toPrecision(4)}；发送复包络功率 ${m.transmit_power.toPrecision(4)}；相位参考样本 ${result.analog.pilot_samples} 个。`+(m.overmodulated_samples?` AM 过调制样本 ${m.overmodulated_samples} 个。`:'');return;
+      byId('cmDetails').textContent=`${result.analog.family} · ${result.analog.scheme}；模拟采样率 ${result.analog.sample_rate} Hz。最大全段绝对误差 ${m.max_abs_error.toPrecision(4)}；发送复包络功率 ${m.transmit_power.toPrecision(4)}；相位参考样本 ${result.analog.pilot_samples} 个。`+(m.overmodulated_samples?` AM 过调制样本 ${m.overmodulated_samples} 个。`:'');return;
     }
     byId('cmDetails').textContent=`解调后 / 译码前 BER：${m.coded_bit_errors} / ${m.coded_bit_count}；符号错误：${m.symbol_errors} / ${m.symbol_count}；判决前 EVM：${m.evm_percent.toPrecision(4)}%。有效码率含填充与终止位。`+(result.sink.kind==='analog'?` PCM 饱和样本：${m.clipped_samples}；译码后 BER 以源 PCM 比特为参考，RMSE 以原始模拟信源为参考。`:'')+(m.hamming_syndromes?` Hamming 非零综合征码字：${m.hamming_syndromes}（多位错误可能误纠正）。`:'');
   }
@@ -226,12 +280,12 @@
     if(result.baseband&&plot==='timing'){
       const t=result.baseband.recovery.timing,values=t.phases,low=Math.min(...values),high=Math.max(...values),margin=Math.max(.03,(high-low)*.08),end=Math.max(1,values.length-1);
       const axis=axes(view,low-margin,high+margin,end,'帧内码元 / 相位 T');axis.xEnd=end;line(view,values,axis,'#8058b6');
-      byId('cmAnalysisCaption').textContent=`${t.method} · 接收样本估计的时钟相位 / T；末段频率 ${t.frequency_ppm.toFixed(1)} ppm。曲线包含公共前导，不读取信道定时参数。`;return;
+      byId('cmAnalysisCaption').textContent=`${t.method} · 接收样本估计的时钟相位 / T；末段频率 ${t.frequency_ppm.toFixed(1)} ppm。曲线包含公共前导。`;return;
     }
     if(result.baseband&&plot==='convergence'){
       const e=result.baseband.recovery.equalizer,trace=e.error_trace,values=trace.map(v=>10*Math.log10(Math.max(v.mse,1e-12))),low=Math.min(-40,...values),high=Math.max(0,...values),end=Math.max(1,trace.at(-1).symbol);
       const axis=axes(view,low,high,end,'帧内码元 / MSE dB');axis.xEnd=end;line(view,values,axis,'#248c79');
-      byId('cmAnalysisCaption').textContent=`${e.method} / ${e.algorithm} · 32 码元滑动误差均方；前 ${e.training_symbols} 码元为公共训练，之后是判决误差，不能视为真实误码率。`;return;
+      byId('cmAnalysisCaption').textContent=`${e.method} / ${e.algorithm} · 32 码元滑动误差均方（MSE）；前 ${e.training_symbols} 码元为训练误差，之后为判决误差。`;return;
     }
     if(result.baseband&&plot==='eye'){
       const eye=result.baseband.eye,all=eye.traces.flat(),low=Math.min(-.1,...all),high=Math.max(.1,...all),margin=(high-low)*.08;
