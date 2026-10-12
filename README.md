@@ -14,11 +14,11 @@
 
 <div align="justify">
 
-**通过对话完成信号仿真、滤波与分析。**
+**💬 对话分析随机信号，🧩 积木搭建通信链路。**
 
-谛听将随机信号课程中的实验串联成可复现的分析流程：生成带噪信号、比较滤波方法、查看时频特征，并在同一个 Web 界面中追踪工具调用。
+谛听将随机信号与通信原理实验放进同一个海洋风格工作区：生成带噪信号、比较滤波方法、分析时频特征，也能用积木连接编码、调制、信道与接收模块，观察完整收发过程。
 
-项目面向 **UESTC 随机信号课程**。本地工具链无需模型 API Key 即可运行，也可接入兼容 Chat Completions 的服务，增强对话能力。
+🎓 面向 **UESTC 随机信号与通信原理课程**，支持本地计算、固定种子复现，以及可选的模型辅助对话。
 
 [🌐 实验预览](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 下载 v0.4.2](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.2) · [📘 安装指南](RELEASE.md)
 
@@ -27,6 +27,7 @@
 | 开始使用 | 了解项目 |
 | --- | --- |
 | [✨ 核心功能](#zh-features) | [🏗️ 工作流程](#zh-workflow) |
+| [📡 通信实验室](#zh-communications) | [📘 通信指南](工程文件/代码/docs/communications-lab.md) |
 | [🎬 界面展示](#zh-interface) | [⚙️ 配置说明](#zh-configuration) |
 | [🚀 快速开始](#zh-quick-start) | [📊 实验结果](#zh-results) |
 | [🧪 第一个实验](#zh-first-experiment) | [🔧 常见问题](#zh-troubleshooting) |
@@ -56,15 +57,30 @@
 | 🤖 Agent 模式 | 自动比较方法与参数，查看工具调用轨迹和控制建议。 |
 | 🎙️ 多种输入 | 分析仿真信号、CSV/TXT 样本或浏览器麦克风音频，下载处理后的音频。 |
 
-## 📡 新增通信原理仿真实验室
+<a id="zh-communications"></a>
 
-像搭积木一样配置“信源 → 发转换器 → 调制器 → 信道 → 解调器 → 收转换器 → 信宿”。保留 PCM/纠错码、BPSK/QPSK/16-QAM，补充 AM、DSB-SC、SSB、VSB、FM、PM，十对线路编译码、2–256-PAM、六种成形脉冲及带限/ISI/定时信道。支持非线性时钟提取、早迟门/Gardner PI、ZF/MMSE/DFE，以及 LMS/NLMS/RLS 自适应线性/DFE。Build 检查链路，Run 展示真实接收结果。
+## 📡 通信原理实验室 · 用积木搭建收发链路
 
-![通信实验室：左侧积木链路，右侧信宿与星座](docs/images/communications-lab.png)
+拖入积木、编辑参数，点击 **🔨 Build** 检查链路，再用 **▶️ Run** 观察传输结果。六类积木覆盖发送、信道与接收环节，提供 **72 个模块 + 固定信宿、29 个实验示例**。
 
-**v0.4.2「积木编程视图更新」采用海洋风格的积木工坊、紧凑拼接链路和选中参数面板。** 启动后选择 29 个示例之一，Build、Run，观察信宿、频谱、眼图、时钟或收敛曲线；工程 JSON、完整信宿 CSV 和结果 JSON 可下载，无需模型 Key。自动同步仍需已知帧粗起点，自适应均衡使用实际发送的公共前导。详见 [通信指南](工程文件/代码/docs/communications-lab.md)、[模拟调制](工程文件/代码/docs/analog-modulation.md)、[线路码与信道](工程文件/代码/docs/baseband-coding.md)、[同步与均衡](工程文件/代码/docs/receiver-recovery.md)。
+**🎲 信源 → 🔀 发转换器 → 📡 调制器 → 🌊 信道 → 🎛️ 解调器 → 🔄 收转换器 → 📺 信宿**
 
-![v0.4.2 积木编程区与参数面板](docs/images/communications-studio.png)
+| 模块 | 包含的技术 |
+| --- | --- |
+| 🎲 信源 | 随机/自定义比特、UTF-8 文本、正弦、方波和高斯随机信号；数字信源拼接、模拟信源叠加。 |
+| 🔀 发转换器 | PCM 均匀量化、重复码、Hamming (7,4)、卷积码与块交织；单/双极性 NRZ/RZ、差分 NRZI、AMI、Manchester、Miller、CMI、HDB3/HDBn 线路编码。 |
+| 📡 调制器 | 数字 BPSK/QPSK/16-QAM；线性 AM/DSB-SC/SSB/VSB；非线性 FM/PM；2/4/8/16/256-PAM 与矩形、三角、高斯、截断 sinc、RC、RRC 六种脉冲成形。 |
+| 🌊 信道 | 理想传输、白噪声与带限 AWGN、衰减、相位偏移、符号丢失；低通/带通、交流耦合、FIR 码间干扰（ISI）、定时偏移和采样时钟漂移。 |
+| 🎛️ 解调器 | 星座硬判决、包络/相干检波及 FM/PM 解调；直接/低通/匹配接收；非线性时钟提取、早迟门/Gardner PI 同步；ZF/MMSE/DFE 和 LMS/NLMS/RLS 自适应线性/判决反馈均衡。 |
+| 🔄 收转换器 | 对应线路译码、解交织、重复码多数判决、Hamming 纠错、硬判决 Viterbi 卷积译码和 PCM 样本还原。 |
+| 📺 信宿 | 显示接收比特、文本与模拟波形，支持叠加原始信源、标记错误位和浏览完整接收序列。 |
+
+- 🧩 **搭建与编辑**：海洋风格积木工坊、紧凑拼接链路、独立参数面板；拖放/排序、撤销重做、草稿恢复及工程 JSON 导入导出。
+- 📈 **观察与保存**：BER、EVM、RMSE、有效码率，波形、频谱、星座、眼图、时钟跟踪和均衡收敛；下载完整信宿 CSV 与结果 JSON。
+
+![🧩 通信实验室：积木工坊、收发链路、信宿观察与参数面板](docs/images/communications-studio.png)
+
+📚 [通信指南](工程文件/代码/docs/communications-lab.md) · [模拟调制](工程文件/代码/docs/analog-modulation.md) · [线路码与信道](工程文件/代码/docs/baseband-coding.md) · [同步与均衡](工程文件/代码/docs/receiver-recovery.md)
 
 <a id="zh-interface"></a>
 
@@ -338,11 +354,11 @@ Docker Compose 读取代码目录下的 `.env`。Docker 参数、HTTPS 部署与
 
 <div align="left">
 
-**Signal simulation, filtering, and analysis — through conversation.**
+**💬 Analyze random signals through conversation. 🧩 Build communication pipelines with blocks.**
 
-Diting turns Random Signals coursework into reproducible experiments. Generate a noisy signal, compare filters, inspect its time and frequency features, and follow each tool call in one Web interface.
+Diting brings Random Signals and Communication Principles experiments into one ocean-themed workspace. Generate noisy signals, compare filters and inspect time-frequency features, or connect coding, modulation, channel and receiver blocks to explore an end-to-end transmission.
 
-Built for the Random Signals course at **UESTC**. The local toolchain works without a model API key; an optional Chat Completions-compatible service adds model-assisted dialogue.
+🎓 Built for **UESTC Random Signals and Communication Principles coursework**, with local computation, seeded reproduction and optional model-assisted dialogue.
 
 [🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.4.2](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.2) · [📘 Installation guide](RELEASE.md)
 
@@ -351,6 +367,7 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 | Get started | Learn more |
 | --- | --- |
 | [✨ Features](#en-features) | [🏗️ How it works](#en-workflow) |
+| [📡 Communication lab](#en-communications) | [📘 Lab guide](工程文件/代码/docs/communications-lab.md) |
 | [🎬 Interface](#en-interface) | [⚙️ Configuration](#en-configuration) |
 | [🚀 Quick start](#en-quick-start) | [📊 Example results](#en-results) |
 | [🧪 First experiment](#en-first-experiment) | [🔧 Troubleshooting](#en-troubleshooting) |
@@ -380,15 +397,30 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 | 🤖 Agent mode | Compare methods and parameters automatically, inspect tool traces, and review recommendations. |
 | 🎙️ Multiple inputs | Analyze simulated signals, CSV/TXT samples, or browser microphone audio; download processed audio. |
 
-## 📡 New: communication-principles lab
+<a id="en-communications"></a>
 
-Assemble sources → transmit converters → modulators → channels → demodulators → receive converters → sink. Keep PCM/FEC and BPSK/QPSK/16-QAM, and add AM, DSB-SC, SSB, VSB, FM, PM, ten line-code pairs, 2–256-PAM, six pulse shapes and sampled band-limited/ISI/timing channels. Nonlinear clock acquisition, early/late and Gardner PI loops, ZF/MMSE/DFE and LMS/NLMS/RLS linear or feedback equalizers extend the receiver. **Build** validates the pipeline; **Run** displays the measured output.
+## 📡 Communication-principles lab · Build a transmitter and receiver with blocks
 
-![Communication lab: block pipeline, sink output and constellation](docs/images/communications-lab.png)
+Drag in blocks, edit their parameters, click **🔨 Build** to check the pipeline, then **▶️ Run** to inspect the transmission. Six block categories provide **72 modules + a fixed sink and 29 presets**.
 
-**v0.4.2 refreshes the block programming view with an ocean palette, compact connected blocks and a selected-block parameter inspector.** Choose one of 29 presets, Build and Run, then inspect the sink, spectrum, eye, clock or convergence plot. Export project JSON, full sink CSV and result JSON without a model key. Timing recovery assumes a known coarse frame boundary; adaptive equalizers train on an actual transmitted public preamble. See the [lab guide](工程文件/代码/docs/communications-lab.md), [analog modulation](工程文件/代码/docs/analog-modulation.md), [line codes and channels](工程文件/代码/docs/baseband-coding.md), and [recovery algorithms](工程文件/代码/docs/receiver-recovery.md).
+**🎲 Sources → 🔀 Transmit converters → 📡 Modulators → 🌊 Channels → 🎛️ Demodulators → 🔄 Receive converters → 📺 Sink**
 
-![v0.4.2 ocean block studio and parameter inspector](docs/images/communications-studio.png)
+| Module | Included techniques |
+| --- | --- |
+| 🎲 Sources | Random/custom bits, UTF-8 text, sine, square and Gaussian signals; concatenate digital sources or superpose analog sources. |
+| 🔀 Transmit converters | Uniform PCM quantization, repetition, Hamming (7,4), convolutional coding and block interleaving; unipolar/polar NRZ/RZ, differential NRZI, AMI, Manchester, Miller, CMI and HDB3/HDBn line coding. |
+| 📡 Modulators | Digital BPSK/QPSK/16-QAM; linear AM/DSB-SC/SSB/VSB; nonlinear FM/PM; 2/4/8/16/256-PAM and rectangular, triangular, Gaussian, truncated sinc, RC and RRC pulse shaping. |
+| 🌊 Channels | Ideal transmission, white noise and band-limited AWGN, attenuation, phase shifts and symbol erasures; low-pass/band-pass, AC coupling, FIR intersymbol interference (ISI), timing offsets and sample-clock drift. |
+| 🎛️ Demodulators | Constellation hard decisions, envelope/coherent detection and FM/PM recovery; direct/low-pass/matched reception; nonlinear clock extraction, early/late and Gardner PI timing loops; ZF/MMSE/DFE and LMS/NLMS/RLS adaptive linear or decision-feedback equalization. |
+| 🔄 Receive converters | Paired line decoding, deinterleaving, repetition majority decisions, Hamming correction, hard-decision Viterbi convolutional decoding and PCM sample reconstruction. |
+| 📺 Sink | Received bits, text and analog waveforms, with source overlays, bit-error markers and full-sequence browsing. |
+
+- 🧩 **Build and edit:** an ocean-themed palette, compact connected blocks and a parameter inspector; drag/drop, reordering, undo/redo, draft recovery and project JSON import/export.
+- 📈 **Inspect and save:** BER, EVM, RMSE, coding rate, waveforms, spectra, constellations, eyes, clock tracking and equalizer convergence; export full sink CSV and result JSON.
+
+![🧩 Communication lab: palette, pipeline, sink and parameter inspector](docs/images/communications-studio.png)
+
+📚 [Lab guide](工程文件/代码/docs/communications-lab.md) · [Analog modulation](工程文件/代码/docs/analog-modulation.md) · [Line codes and channels](工程文件/代码/docs/baseband-coding.md) · [Timing and equalization](工程文件/代码/docs/receiver-recovery.md)
 
 <a id="en-interface"></a>
 

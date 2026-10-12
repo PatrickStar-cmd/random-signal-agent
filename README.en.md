@@ -11,11 +11,11 @@
 
 [简体中文 / English](README.md)
 
-**Signal simulation, filtering, and analysis — through conversation.**
+**💬 Analyze random signals through conversation. 🧩 Build communication pipelines with blocks.**
 
-Diting turns Random Signals coursework into reproducible experiments. Generate a noisy signal, compare filters, inspect its time and frequency features, and follow each tool call in one Web interface.
+Diting brings Random Signals and Communication Principles experiments into one ocean-themed workspace. Generate noisy signals, compare filters and inspect time-frequency features, or connect coding, modulation, channel and receiver blocks to explore an end-to-end transmission.
 
-Built for the Random Signals course at **UESTC**. The local toolchain works without a model API key; an optional Chat Completions-compatible service adds model-assisted dialogue.
+🎓 Built for **UESTC Random Signals and Communication Principles coursework**, with local computation, seeded reproduction and optional model-assisted dialogue.
 
 [🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.4.2](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.2) · [📘 Installation guide](RELEASE.md)
 
@@ -24,6 +24,7 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 | Get started | Learn more |
 | --- | --- |
 | [✨ Features](#en-features) | [🏗️ How it works](#en-workflow) |
+| [📡 Communication lab](#en-communications) | [📘 Lab guide](工程文件/代码/docs/communications-lab.md) |
 | [🎬 Interface](#en-interface) | [⚙️ Configuration](#en-configuration) |
 | [🚀 Quick start](#en-quick-start) | [📊 Example results](#en-results) |
 | [🧪 First experiment](#en-first-experiment) | [🔧 Troubleshooting](#en-troubleshooting) |
@@ -53,15 +54,30 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 | 🤖 Agent mode | Compare methods and parameters automatically, inspect tool traces, and review recommendations. |
 | 🎙️ Multiple inputs | Analyze simulated signals, CSV/TXT samples, or browser microphone audio; download processed audio. |
 
-## 📡 New: communication-principles lab
+<a id="en-communications"></a>
 
-Assemble sources → transmit converters → modulators → channels → demodulators → receive converters → sink. Keep PCM/FEC and BPSK/QPSK/16-QAM, and add AM, DSB-SC, SSB, VSB, FM, PM, ten line-code pairs, 2–256-PAM, six pulse shapes and sampled band-limited/ISI/timing channels. Nonlinear clock acquisition, early/late and Gardner PI loops, ZF/MMSE/DFE and LMS/NLMS/RLS linear or feedback equalizers extend the receiver. **Build** validates the pipeline; **Run** displays the measured output.
+## 📡 Communication-principles lab · Build a transmitter and receiver with blocks
 
-![Communication lab: block pipeline, sink output and constellation](docs/images/communications-lab.png)
+Drag in blocks, edit their parameters, click **🔨 Build** to check the pipeline, then **▶️ Run** to inspect the transmission. Six block categories provide **72 modules + a fixed sink and 29 presets**.
 
-**v0.4.2 refreshes the block programming view with an ocean palette, compact connected blocks and a selected-block parameter inspector.** Choose one of 29 presets, Build and Run, then inspect the sink, spectrum, eye, clock or convergence plot. Export project JSON, full sink CSV and result JSON without a model key. Timing recovery assumes a known coarse frame boundary; adaptive equalizers train on an actual transmitted public preamble. See the [lab guide](工程文件/代码/docs/communications-lab.md), [analog modulation](工程文件/代码/docs/analog-modulation.md), [line codes and channels](工程文件/代码/docs/baseband-coding.md), and [recovery algorithms](工程文件/代码/docs/receiver-recovery.md).
+**🎲 Sources → 🔀 Transmit converters → 📡 Modulators → 🌊 Channels → 🎛️ Demodulators → 🔄 Receive converters → 📺 Sink**
 
-![v0.4.2 ocean block studio and parameter inspector](docs/images/communications-studio.png)
+| Module | Included techniques |
+| --- | --- |
+| 🎲 Sources | Random/custom bits, UTF-8 text, sine, square and Gaussian signals; concatenate digital sources or superpose analog sources. |
+| 🔀 Transmit converters | Uniform PCM quantization, repetition, Hamming (7,4), convolutional coding and block interleaving; unipolar/polar NRZ/RZ, differential NRZI, AMI, Manchester, Miller, CMI and HDB3/HDBn line coding. |
+| 📡 Modulators | Digital BPSK/QPSK/16-QAM; linear AM/DSB-SC/SSB/VSB; nonlinear FM/PM; 2/4/8/16/256-PAM and rectangular, triangular, Gaussian, truncated sinc, RC and RRC pulse shaping. |
+| 🌊 Channels | Ideal transmission, white noise and band-limited AWGN, attenuation, phase shifts and symbol erasures; low-pass/band-pass, AC coupling, FIR intersymbol interference (ISI), timing offsets and sample-clock drift. |
+| 🎛️ Demodulators | Constellation hard decisions, envelope/coherent detection and FM/PM recovery; direct/low-pass/matched reception; nonlinear clock extraction, early/late and Gardner PI timing loops; ZF/MMSE/DFE and LMS/NLMS/RLS adaptive linear or decision-feedback equalization. |
+| 🔄 Receive converters | Paired line decoding, deinterleaving, repetition majority decisions, Hamming correction, hard-decision Viterbi convolutional decoding and PCM sample reconstruction. |
+| 📺 Sink | Received bits, text and analog waveforms, with source overlays, bit-error markers and full-sequence browsing. |
+
+- 🧩 **Build and edit:** an ocean-themed palette, compact connected blocks and a parameter inspector; drag/drop, reordering, undo/redo, draft recovery and project JSON import/export.
+- 📈 **Inspect and save:** BER, EVM, RMSE, coding rate, waveforms, spectra, constellations, eyes, clock tracking and equalizer convergence; export full sink CSV and result JSON.
+
+![🧩 Communication lab: palette, pipeline, sink and parameter inspector](docs/images/communications-studio.png)
+
+📚 [Lab guide](工程文件/代码/docs/communications-lab.md) · [Analog modulation](工程文件/代码/docs/analog-modulation.md) · [Line codes and channels](工程文件/代码/docs/baseband-coding.md) · [Timing and equalization](工程文件/代码/docs/receiver-recovery.md)
 
 <a id="en-interface"></a>
 
