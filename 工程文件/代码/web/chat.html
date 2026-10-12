@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="diagnostics.css">
   <link rel="stylesheet" href="model-settings.css">
   <link rel="stylesheet" href="ocean.css">
+  <link rel="stylesheet" href="communications.css">
 </head>
 <body>
   <a class="skip-link" href="#layoutRoot">跳到工作区</a>
@@ -23,6 +24,7 @@
     <a href="#dataPanel" data-view-link="data"><span class="nav-emoji" aria-hidden="true">📥</span><span>导入数据</span></a>
     <a href="#comparisonPanel" data-view-link="comparison"><span class="nav-emoji" aria-hidden="true">📊</span><span>对比与报告</span></a>
     <a href="#diagnosticPanel" data-view-link="diagnostics"><span class="nav-emoji" aria-hidden="true">🔎</span><span>诊断实验室</span></a>
+    <a href="#communicationsPanel" data-view-link="communications"><span class="nav-emoji" aria-hidden="true">📡</span><span>通信实验室</span></a>
     <a href="#modelPanel" data-view-link="settings"><span class="nav-emoji" aria-hidden="true">⚙️</span><span>模型与设置</span></a>
   </nav>
 <section data-view="workspace" aria-label="信号工作区">
@@ -133,7 +135,7 @@
 </section>
 <section data-view="templates" class="tool-view" aria-label="实验从这里开始"><div class="view-heading"><div><span class="eyebrow">SIGNAL LAB / TEMPLATES</span><h2>实验从这里开始</h2><p>用可复现的模板探索信号，保存你值得回看的发现。</p></div><a href="#layoutRoot" data-view-link="workspace">查看工作区 →</a></div>
   <section id="workbenchPanel" class="workbench" aria-label="实验工作台">
-    <div class="wb-heading"><strong>2 · 处理与保存 <small>v0.3.4</small></strong><span id="wbStatus" role="status">每次操作后自动保存</span><button id="wbRecover" type="button">恢复未完成请求</button></div>
+    <div class="wb-heading"><strong>2 · 处理与保存 <small>v0.4.0</small></strong><span id="wbStatus" role="status">每次操作后自动保存</span><button id="wbRecover" type="button">恢复未完成请求</button></div>
     <details id="wbPanel" open><summary>模板与实验管理</summary>
       <form id="wbForm" class="wb-fields">
         <label>信号模板<select id="wbTemplate"><option value="sine">正弦 + 高斯噪声</option><option value="impulse">正弦 + 脉冲干扰</option><option value="ar">AR(1) 随机过程</option><option value="current">当前信号</option></select></label>
@@ -230,6 +232,34 @@
   </details></section>
 
 </section>
+<section data-view="communications" class="cm-view" aria-label="通信原理仿真实验室">
+  <div class="view-heading"><div><span class="eyebrow">OCEAN LINK / COMMUNICATIONS</span><h2>通信原理仿真实验室 📡</h2><p>把积木连成链路，看看一段信号如何抵达远方。</p></div><span class="cm-workflow">拖放积木 <b>→ Build → Run</b></span></div>
+  <div class="cm-lab" id="communicationsPanel">
+    <section class="cm-panel cm-editor" aria-label="通信链路编程区">
+      <header class="cm-panel-heading"><div><span class="cm-kicker">01 / PROGRAM</span><h3>搭建你的通信链路</h3></div><span id="cmBuildBadge" class="cm-badge">等待构建</span></header>
+      <form id="cmForm"><fieldset id="cmFields">
+        <div class="cm-toolbar"><label class="cm-preset-label">实验示例<select id="cmPreset"><option value="">从空白开始</option></select></label><button type="button" id="cmUndo" disabled title="撤销上一步">↶ 撤销</button><button type="button" id="cmRedo" disabled title="重做">↷ 重做</button><button type="button" id="cmReset">清空</button></div>
+        <details class="cm-settings"><summary>实验参数 <span>随机种子与采样 / 符号时钟</span></summary><div class="cm-fields"><label>随机种子<input id="cmSeed" data-global="seed" type="number" min="0" max="4294967294" step="1" value="42" required></label><label>模拟采样率 / Hz<input id="cmSampleRate" data-global="sample_rate" type="number" min="16" max="48000" step="any" value="256" required></label><label>模拟样本数<input id="cmSampleCount" data-global="sample_count" type="number" min="32" max="1024" step="1" value="256" required></label><label>传输符号率 / Baud<input id="cmSymbolRate" data-global="symbol_rate" type="number" min="1" max="100000" step="any" value="1000" required></label></div></details>
+        <div class="cm-programming"><aside class="cm-palette" aria-label="积木箱"><h4>积木箱</h4><div id="cmCategories" class="cm-categories" role="group" aria-label="积木分类"></div><p class="cm-palette-hint">拖进链路，或点 ＋ 添加。</p><div id="cmPalette"></div></aside><div class="cm-code-area"><div class="cm-chain-title"><strong>发送 → 信道 → 接收</strong><span id="cmBlockCount">1 块积木</span></div><div id="cmProgram" class="cm-program" aria-label="按顺序连接的积木链路"></div></div></div>
+        <div class="cm-build-actions"><button id="cmBuild" class="primary" type="submit">⚒ Build · 构建</button><button id="cmRun" class="primary" type="button" disabled>▶ Run · 运行</button><span id="cmStatus" role="status">先添加信源，再搭建收发链路。</span></div>
+        <div class="cm-file-actions"><button type="button" id="cmExport">导出工程 JSON</button><button type="button" id="cmImport">导入工程</button><input id="cmFile" type="file" accept=".json,application/json" hidden><span>草稿保存在当前浏览器</span></div>
+      </fieldset></form>
+    </section>
+    <section class="cm-panel cm-viewer" aria-label="信宿信号可视化区">
+      <header class="cm-panel-heading"><div><span class="cm-kicker">02 / RECEIVER</span><h3>信宿的观察窗口</h3></div><span class="cm-reception"><i id="cmSignalLed"></i><span id="cmSignalStatus">无信号</span></span></header>
+      <div class="cm-tv"><div class="cm-tv-screen"><canvas id="cmSinkCanvas" width="640" height="320" aria-label="信宿输出波形；运行前展示无信号雪花屏"></canvas><div id="cmNoSignal" class="cm-no-signal"><span>◌</span><strong>NO SIGNAL</strong><p>链路准备好后，Build，再 Run。</p></div></div><div class="cm-tv-bottom"><span>OCEAN LINK / RX</span><span class="cm-tv-dials">◉ ◉</span></div></div>
+      <div class="cm-output-tools"><span id="cmSinkCaption">信宿等待接收</span><label><input id="cmReference" type="checkbox" checked>叠加信源</label></div>
+      <label id="cmWindow" class="cm-window" hidden>浏览接收结果<input id="cmOffset" type="range" min="0" max="0" value="0" step="1" aria-label="信宿波形起始位置"></label>
+      <div id="cmLegend" class="cm-legend" hidden><span>🟢 信宿输出</span><span>🟣 原始信源</span><span>🔴 错误比特</span></div>
+      <div id="cmMetrics" class="cm-metrics" aria-live="polite"></div>
+      <div id="cmTextResult" class="cm-text-result" hidden><h4>信宿收到的文字</h4><p id="cmReceivedText"></p></div>
+      <div class="cm-analysis-tabs" role="group" aria-label="接收信号的其他视图"><button type="button" data-cm-plot="constellation" aria-pressed="true">接收星座图</button><button type="button" data-cm-plot="channel" aria-pressed="false">信道 I / Q</button></div>
+      <canvas id="cmAnalysisCanvas" width="640" height="260" aria-label="接收星座图或信道 I/Q 波形"></canvas><p id="cmAnalysisCaption" class="cm-analysis-caption">运行后显示判决前星座点与理想星座。</p>
+      <details class="cm-trace"><summary>链路检查与实验指标</summary><p id="cmModel">复基带 · 1 样本/符号 · 理想定时 · 硬判决</p><div id="cmTrace" class="cm-trace-scroll"></div><p id="cmDetails"></p></details>
+      <div class="cm-downloads"><button id="cmDownloadCSV" type="button" disabled>下载信宿 CSV</button><button id="cmDownloadResult" type="button" disabled>下载结果 JSON</button></div>
+    </section>
+  </div>
+</section>
 <section data-view="settings" class="tool-view" aria-label="按你的方式使用谛听"><div class="view-heading"><div><span class="eyebrow">SIGNAL LAB / SETTINGS</span><h2>按你的方式使用谛听</h2><p>连接对话模型，也可以一直使用本地信号工具。</p></div><a href="#layoutRoot" data-view-link="workspace">查看工作区 →</a></div>
   <section class="studio studio-grid" aria-label="数据和任务管理">
     <details id="modelPanel" class="model-panel" open><summary>模型 API 配置 <span id="modelBadge">本地工具链</span></summary>
@@ -269,5 +299,6 @@
   <script src="model-settings.js"></script>
   <script src="ocean.js"></script>
   <script src="report.js"></script>
+  <script src="communications.js"></script>
 </body>
 </html>

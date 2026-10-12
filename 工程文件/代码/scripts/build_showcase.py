@@ -32,12 +32,18 @@ def decorate_preview(page):
     page = re.sub(r'<header>.*?</header>', lambda _: header, page, count=1, flags=re.S)
     if 'id="ocean-preview"' not in page:
         page = page.replace('<main>', '''<main><section id="ocean-preview"><h2>一个轻松探索信号的小实验室</h2>
-        <p>v0.3.4 采用青蓝、薰衣草紫与珊瑚粉渐变、华文中宋与 Times New Roman、清晰的双层框线，以及六个功能分区：工作区、模板与实验、数据导入、对比与报告、诊断实验室、模型与设置。切换分区时保留当前输入。</p>
+        <p>v0.4.0 采用青蓝、薰衣草紫与珊瑚粉渐变、华文中宋与 Times New Roman、清晰的双层框线，以及七个功能分区：工作区、模板与实验、数据导入、对比与报告、诊断实验室、通信实验室、模型与设置。切换分区时保留当前输入。</p>
         <a href="images/ocean-ui-v034.png"><img class="preview-image" src="images/ocean-ui-v034.png" alt="可爱海洋工作区，包含对话、波形频谱和分析工具箱" loading="lazy"></a>
-        <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.4">下载 v0.3.4</a>，启动 Python 服务即可体验新版海洋界面。</p></section>''', 1)
+        <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.0">下载 v0.4.0</a>，启动 Python 服务即可体验新版海洋界面。</p></section>''', 1)
     if 'id="pdf-report-preview"' not in page:
-        page = page.replace('<main>', '<main>' + '<section id="pdf-report-preview"><h2>把实验整理成一份清晰的 PDF</h2><p>v0.3.4 支持当前实验或最近 50 次处理结果的中文简版/标准版报告：统一封面、汇总表、可跳转目录、逐组矢量图表、指标与复现信息。运行后端后，在“模板与实验 → PDF 分析报告”选择历史、预览并下载。</p><p><a href="report-example.pdf">查看真实实验的示例 PDF</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.4">下载 v0.3.4</a></p><a href="images/pdf-report-v031.png"><img class="preview-image" src="images/pdf-report-v031.png" alt="PDF 分析报告的摘要预览与下载" loading="lazy"></a></section>', 1)
-    return page.replace('v0.3.4', f'v{VERSION}')
+        page = page.replace('<main>', '<main>' + '<section id="pdf-report-preview"><h2>把实验整理成一份清晰的 PDF</h2><p>v0.4.0 支持当前实验或最近 50 次处理结果的中文简版/标准版报告：统一封面、汇总表、可跳转目录、逐组矢量图表、指标与复现信息。运行后端后，在“模板与实验 → PDF 分析报告”选择历史、预览并下载。</p><p><a href="report-example.pdf">查看真实实验的示例 PDF</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.0">下载 v0.4.0</a></p><a href="images/pdf-report-v031.png"><img class="preview-image" src="images/pdf-report-v031.png" alt="PDF 分析报告的摘要预览与下载" loading="lazy"></a></section>', 1)
+    if 'id="communications-preview"' not in page:
+        page = page.replace('<main>', '''<main><section id="communications-preview"><h2>📡 用积木搭建通信实验</h2>
+        <p>拖动信源、编码、调制、信道与译码积木，先 Build 再 Run，在信宿查看收到的信号、误码率和星座。支持数字通信、模拟信源 + PCM、文字传输，以及工程 JSON 和完整信宿 CSV 导出。</p>
+        <p>v0.4.0「通信原理积木编程」已包含通信实验室。交互实验需要启动 Python 后端；此处展示实际运行截图。</p>
+        <a href="images/communications-lab.png"><img class="preview-image" src="images/communications-lab.png" alt="通信实验室的积木编程区与信宿接收可视化区" loading="lazy"></a>
+        <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-lab.md">查看操作与模型说明</a> · <a href="images/communications-empty.png">查看无信号雪花屏</a></p></section>''', 1)
+    return page.replace('v0.4.0', f'v{VERSION}')
 
 
 def main():

@@ -23,7 +23,7 @@ from .dialogue_agent import ConversationState
 from .signal_processing import SignalBundle, SignalConfig, PreprocessResult
 from .limits import LIMITS
 
-VERSION = "0.3.4"
+VERSION = "0.4.0"
 # Application maintenance releases do not change the saved algorithm contract.
 ALGORITHM_VERSION = "0.2.0"
 SCHEMA = 1

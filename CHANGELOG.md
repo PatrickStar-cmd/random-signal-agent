@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.4.0 · 通信原理积木编程 · 2026-10-12
+
+- Add a Scratch-inspired communication lab with an editable block pipeline and a fixed sink, separate Build/Run steps, and default TV snow until a simulation completes.
+- Combine analog/digital sources, PCM, repetition/Hamming/convolutional coding and interleaving; BPSK/QPSK/16-QAM; AWGN, attenuation, phase rotation and symbol erasures; paired hard-decision receivers.
+- Show full-frame BER, effective coding rate, EVM and analog RMSE; inspect sink windows, decision-input constellations and pre-compensation channel I/Q. Preserve reproducible seeds, draft recovery, undo/redo, portable project JSON and full sink CSV/result JSON.
+- Validate pipeline types, pairing, bounds and compiled configuration; limit simultaneous runs and release capacity on failure. Add 14 numerical/API cases and deployment coverage, with desktop/mobile browser checks.
+- Ship bilingual documentation, actual screenshots, static preview and a verified deployment ZIP. Keep existing signal experiments, report history, dependencies, experiment schema 1 and algorithm 0.2.0 compatible.
+
+新增通信原理积木实验室，随 v0.4.0 部署包交付。由 v0.3.4 升级时保留 data/，替换源码并重启服务或重建 Docker，再刷新浏览器。
+
+
 ## v0.3.4 · 2026-10-10
 
 - Add cyan, lavender and coral-pink gradients, local SVG waves and subtle bubbles throughout the ocean interface.

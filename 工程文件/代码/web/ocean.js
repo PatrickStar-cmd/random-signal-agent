@@ -2,7 +2,7 @@
 (() => {
   const views = Array.from(document.querySelectorAll('[data-view]'));
   const links = Array.from(document.querySelectorAll('[data-view-link]'));
-  const targets = {workspace: 'layoutRoot', templates: 'workbenchPanel', data: 'dataPanel', comparison: 'comparisonPanel', diagnostics: 'diagnosticPanel', settings: 'modelPanel'};
+  const targets = {workspace: 'layoutRoot', templates: 'workbenchPanel', data: 'dataPanel', comparison: 'comparisonPanel', diagnostics: 'diagnosticPanel', communications: 'communicationsPanel', settings: 'modelPanel'};
   function show(name, focus = false) {
     if (!(name in targets)) name = 'workspace';
     const current = views.find(v => v.dataset.view === name);

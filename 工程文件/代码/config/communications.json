@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "max_blocks": 32,
+  "max_bits": 65536,
+  "max_source_bits": 8192,
+  "max_samples": 1024,
+  "plot_points": 256,
+  "scatter_points": 1000,
+  "concurrent_runs": 2,
+  "defaults": {"seed": 42, "sample_rate": 256, "sample_count": 256, "symbol_rate": 1000}
+}

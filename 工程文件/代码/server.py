@@ -8,6 +8,7 @@ import json
 import math
 import os
 import secrets
+import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 import numpy as np
@@ -24,6 +25,7 @@ from src.data_import import inspect_data
 from src import diagnostics
 from src import pdf_report
 from src import report_history
+from src import communications
 from src.model_settings import ModelSettings, CONFIG as MODEL_CONFIG
 from src.llm_client import LLMClientError
 from src.experiment_compare import compare_experiments, comparison_html, comparison_svg
@@ -116,6 +118,7 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
     app = FastAPI(title="Random Signal Agent", version=VERSION, lifespan=lifespan)
     app.add_middleware(BodyLimit)
     app.state.agent, app.state.store, app.state.engine = agent, store, engine
+    communication_slots = threading.BoundedSemaphore(communications.CONFIG['concurrent_runs'])
 
     @app.exception_handler(ValueError)
     async def bad_request(request, exc):
@@ -158,6 +161,32 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
     @app.get("/api/tasks")
     def tasks(session_id: str):
         return {"tasks": engine.list(session_key(session_id))}
+
+    @app.get('/api/communications/catalog')
+    def communication_catalog():
+        return communications.catalog()
+
+    @app.post('/api/communications/{action}')
+    async def communication_action(action: str, request: Request):
+        if action not in ('validate', 'build', 'run'):
+            raise ValueError('未知通信实验操作。')
+        if request.headers.get('content-type', '').split(';')[0] != 'application/json':
+            raise ValueError('通信实验请求须使用 JSON。')
+        payload = await body(request)
+        if set(payload) - ({'program', 'token'} if action == 'run' else {'program'}):
+            raise ValueError('通信实验请求包含未知字段。')
+        if action == 'build':
+            return await run_in_threadpool(communications.build, payload.get('program'))
+        if action == 'validate':
+            return {'program': communications.normalize(payload.get('program'), draft=True)}
+        def simulate():
+            if not communication_slots.acquire(blocking=False):
+                raise TaskBusy('通信仿真正在运行，请稍后重试。')
+            try:
+                return communications.run(payload.get('program'), payload.get('token'))
+            finally:
+                communication_slots.release()
+        return await run_in_threadpool(simulate)
 
     @app.get('/api/model/settings')
     def model_status(session_id: str):

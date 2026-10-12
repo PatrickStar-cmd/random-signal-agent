@@ -222,3 +222,34 @@ config/report.json 全部字段：version=2.0 为当前报告版式契约；plot
 
 
 v0.3.4 发行：运行 `python scripts/build_release.py` 从已提交源码生成部署 ZIP 与 SHA256SUMS.txt，运行 `python scripts/verify_release.py` 在新虚拟环境验收。日志覆盖写入 `logs/release/`，附件生成至 `outputs/release/`。升级时保留 data/，重启后刷新浏览器。
+
+## 通信实验室（v0.4.0）
+
+在 `工程文件/代码` 按现有步骤安装 `requirements-repro.txt`，运行 `scripts/start_server.ps1`（Windows）或 `bash scripts/start_server.sh`，打开 `http://127.0.0.1:8000/#communicationsPanel`。无需新增依赖或模型 Key。选择示例或拖动积木，Build 后再 Run；具体操作与 HTTP 接口见 [通信指南](communications-lab.md)。修改配置后重启服务。
+
+`config/communications.json` 的全部字段：
+
+| 字段 | 默认 | 含义 |
+| --- | --- | --- |
+| schema | 1 | 通信工程 JSON 格式版本，独立于既有实验快照 schema。 |
+| max_blocks | 32 | 单工程积木数上限，包含信源和固定信宿。 |
+| max_bits | 65536 | 任一级中间数组的长度上限，Build 在分配前检查；单位随级别为位或符号/样本。 |
+| max_source_bits | 8192 | 合并数字信源的最大比特数，也用于单随机/自定义比特信源范围。 |
+| max_samples | 1024 | 单个模拟信源及信宿的样本数上限。 |
+| plot_points | 256 | 信宿每次可视窗口和信道 I/Q 显示点数上限；信宿滑块可浏览其余数据。 |
+| scatter_points | 1000 | 星座图最多显示的前部符号数。 |
+| concurrent_runs | 2 | 同时运行许可数，超出返回 429，失败也释放许可。 |
+| defaults.seed | 42 | 默认种子；合法整数范围 0–4294967294。 |
+| defaults.sample_rate | 256 | 模拟信源采样率 Hz，范围 16–48000。 |
+| defaults.sample_count | 256 | 模拟信源样本数，32 至 max_samples。 |
+| defaults.symbol_rate | 1000 | 复基带符号率 Baud，用于信道时间轴；范围 1–100000。 |
+
+配置上限为正整数，`max_blocks` 应足够容纳完整链路，`plot_points`/`scatter_points` 不超过资源预算；`defaults` 须处于上述范围。调整资源上限时同时评估内存和响应时间。积木自身参数由 `src/communications.py` 定义，通过 catalog 接口供表单与自动化读取。
+
+执行 `python scripts/test_communications.py`，14 项验收结果覆盖写入 `logs/communications/latest.log`。已有 `scripts/verify_release.py` 已接入该套件并校验通信脚本、样式和配置文件打包；发行在已提交的干净源码构建并验证，部署 ZIP 包含通信实验室。
+
+本次独立浏览器验证脚本和截图位于 `debug/communications/`，目的见同目录 `note.md`；日志覆盖到 `logs/communications/browser.log`，隔离服务输出为 `server.log` / `server-error.log`。浏览器验证使用真实本地后端，桌面和手机截图没有输入模型 Key。部署冒烟 `python scripts/smoke_deployment.py --base-url http://127.0.0.1:8000` 新增通信 catalog/build/run 与静态资源交付检查，输出为 `logs/deployment/latest.log`，测试会创建独立测试会话。
+
+自动化界面入口：`[data-view-link="communications"]`、`#cmProgram`、`[data-cm-kind]`、`#cmBuild`、`#cmRun`；可通过浏览器输入/拖拽操作和页面截图验证。只计算时使用指南所列 HTTP 接口。工程草稿保存在访问者浏览器 `rs_communication_draft_v1`，结果不写入已有实验数据库。
+
+文档检查结果为 `logs/communications/docs.log`：README/指南本地链接、GitHub Markdown 的默认英文与中文切换、新截图加载和静态预览桌面/手机宽度均已检查。
