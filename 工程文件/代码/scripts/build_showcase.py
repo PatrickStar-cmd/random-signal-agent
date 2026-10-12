@@ -43,6 +43,13 @@ def decorate_preview(page):
         <p>v0.4.0「通信原理积木编程」已包含通信实验室。交互实验需要启动 Python 后端；此处展示实际运行截图。</p>
         <a href="images/communications-lab.png"><img class="preview-image" src="images/communications-lab.png" alt="通信实验室的积木编程区与信宿接收可视化区" loading="lazy"></a>
         <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-lab.md">查看操作与模型说明</a> · <a href="images/communications-empty.png">查看无信号雪花屏</a></p></section>''', 1)
+    if 'id="transmission-preview"' not in page:
+        page = page.replace('<main>', '''<main><section id="transmission-preview"><h2>v0.4.1 · 传输环节模块补充</h2>
+        <p>六类积木、29 个示例：AM/DSB-SC/SSB/VSB/FM/PM、十对线路编译码、2–256-PAM 与六种成形脉冲、带限/ISI/定时信道、自动符号同步及固定/自适应均衡。</p>
+        <p>在 Python 后端中 Build、Run，查看波形、频谱、眼图、时钟跟踪或 LMS/NLMS/RLS 均衡收敛。自动同步假设已知帧粗起点，自适应均衡使用实际发送的公共前导。</p>
+        <a href="images/communications-recovery.png"><img class="preview-image" src="images/communications-recovery.png" alt="自适应 DFE 的训练前导、均衡后误差与收敛曲线" loading="lazy"></a>
+        <p><a href="images/communications-analog.png">模拟调制截图</a> · <a href="images/communications-baseband.png">基带与眼图截图</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.1">下载 v0.4.1</a></p></section>''', 1)
+    page = page.replace('「通信原理积木编程」已包含通信实验室。', '「传输环节模块补充」包含完整通信实验室。')
     return page.replace('v0.4.0', f'v{VERSION}')
 
 

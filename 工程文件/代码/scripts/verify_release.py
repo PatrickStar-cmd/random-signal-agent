@@ -59,6 +59,9 @@ def main():
         assert (code / 'web/communications.js').is_file()
         assert (code / 'web/communications.css').is_file()
         assert (code / 'config/communications.json').is_file()
+        assert (code / 'src/analog_modulation.py').is_file()
+        assert (code / 'src/baseband.py').is_file()
+        assert (code / 'src/receiver_recovery.py').is_file()
         assert (code / 'config/model-providers.json').is_file()
         assert (code / 'assets/fonts/NotoSansSC-Regular.ttf').stat().st_size > 1000000
         assert (code / 'assets/fonts/OFL.txt').is_file()

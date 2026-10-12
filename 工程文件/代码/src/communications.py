@@ -1,7 +1,8 @@
-"""Typed, bounded digital communication pipelines; no user code is executed.
+"""Typed, bounded digital and analog pipelines; no user code is executed.
 
 Symbols are complex baseband samples at one sample/symbol, nominal Es=1.
 AWGN uses transmit-referred Es/N0, so attenuation actually reduces receive SNR.
+Analog modulation uses sampled complex envelopes and transmit-power-referred SNR.
 """
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ from pathlib import Path
 import re
 
 import numpy as np
+from src import analog_modulation, baseband, receiver_recovery
 
 CONFIG = json.loads((Path(__file__).resolve().parents[1] / 'config/communications.json').read_text(encoding='utf-8'))
 
@@ -34,29 +36,92 @@ block('random_bits', '随机比特', 'source', '生成 0/1 比特；多个数字
 block('bit_pattern', '自定义比特', 'source', '输入一段由 0 和 1 组成的序列。', pattern=field('比特序列', '1011001011100001', max_length=CONFIG['max_source_bits']))
 block('text', '文本信源', 'source', '将文字转换为 UTF-8 比特流。', text=field('发送文本', '你好，海洋通信实验室 🐳', max_length=256))
 for kind, label in [('sine', '正弦信号'), ('square', '方波信号')]:
-    block(kind, label, 'source', '多个模拟信源逐点相加；经 PCM 编码后进入数字链路。', amplitude=number('幅值', .7, 0, 8), frequency=number('频率 / Hz', 8, 0, 24000), phase=number('初相 / °', 0, -180, 180))
+    block(kind, label, 'source', '多个模拟信源逐点相加；可直接模拟调制，或经 PCM 进入数字链路。', amplitude=number('幅值', .7, 0, 8), frequency=number('频率 / Hz', 8, 0, 24000), phase=number('初相 / °', 0, -180, 180))
 block('gaussian', '高斯随机信号', 'source', '模拟信源的随机分量，与其他模拟信源叠加。', std=number('标准差', .15, 0, 4))
-block('pcm_encode', 'PCM 编码', 'transmit', '将模拟样本均匀量化并转换为比特；超量程样本饱和。', bits=number('量化位数', 8, 2, 12, True), full_scale=number('量程 ±', 2, .1, 32))
-block('repeat_encode', '重复码编码', 'transmit', '每个比特重复发送，接收端进行多数判决。', factor=field('重复次数', 3, 'select', choices=[3, 5, 7]))
-block('hamming_encode', 'Hamming (7,4) 编码', 'transmit', '每 4 个数据位生成 7 位码字，可纠正每码字的一个错误。')
-block('conv_encode', '卷积码编码', 'transmit', '码率 1/2、约束长度 3，生成多项式 (7,5)₈；零尾终止。')
-block('interleave', '块交织', 'transmit', '按行写入、按列读出，分散连续错误。', columns=number('交织列数', 8, 2, 64, True))
+block('pcm_encode', 'PCM 编码', 'tx_converter', '将模拟样本均匀量化并转换为比特；超量程样本饱和。', bits=number('量化位数', 8, 2, 12, True), full_scale=number('量程 ±', 2, .1, 32))
+block('repeat_encode', '重复码编码', 'tx_converter', '每个比特重复发送，接收端进行多数判决。', factor=field('重复次数', 3, 'select', choices=[3, 5, 7]))
+block('hamming_encode', 'Hamming (7,4) 编码', 'tx_converter', '每 4 个数据位生成 7 位码字，可纠正每码字的一个错误。')
+block('conv_encode', '卷积码编码', 'tx_converter', '码率 1/2、约束长度 3，生成多项式 (7,5)₈；零尾终止。')
+block('interleave', '块交织', 'tx_converter', '按行写入、按列读出，分散连续错误。', columns=number('交织列数', 8, 2, 64, True))
 for scheme, label in [('bpsk', 'BPSK'), ('qpsk', 'QPSK'), ('qam16', '16-QAM')]:
-    block('mod_' + scheme, label + ' 调制', 'transmit', '单位标称符号能量的复基带映射；QPSK / QAM 使用 Gray 映射。')
-    block('demod_' + scheme, label + ' 解调', 'receive', '最近星座点硬判决；可选择理想已知增益与相位补偿。', compensate=field('已知增益 / 相位补偿', True, 'boolean'))
+    block('mod_' + scheme, label + ' 调制', 'modulator', '单位标称符号能量的复基带映射；QPSK / QAM 使用 Gray 映射。')
+    block('demod_' + scheme, label + ' 解调', 'demodulator', '最近星座点硬判决；可选择理想已知增益与相位补偿。', compensate=field('已知增益 / 相位补偿', True, 'boolean'))
+for scheme, label in analog_modulation.LABELS.items():
+    params = {'amplitude': number('载波幅度 / A', 1, .1, 8)}
+    if scheme in ('am', 'fm', 'pm'):
+        unit = {'am': '调幅灵敏度 / 1/单位', 'fm': '频偏灵敏度 / Hz/单位', 'pm': '相偏灵敏度 / rad/单位'}[scheme]
+        params['sensitivity'] = number(unit, 16 if scheme == 'fm' else 1, .01, 24000 if scheme == 'fm' else 16)
+    if scheme in ('ssb', 'vsb'): params['upper'] = field('保留上边带（关闭为下边带）', True, 'boolean')
+    if scheme == 'ssb': params['method'] = field('生成方式', 0, 'select', choices=[0, 1], choice_labels={0: '相移法 / Hilbert', 1: '理想边带滤波法'})
+    if scheme == 'vsb': params['vestige_hz'] = number('残留边带宽度 / Hz', 4, .01, 24000)
+    description = {'am': '线性调制：保留载波，支持过调制与包络/相干检波对比。',
+                   'dsb': '线性调制：抑制载波，保留两个边带，相干解调。',
+                   'ssb': '线性调制：相移或滤波法保留一个边带，相干解调。',
+                   'vsb': '线性调制：互补滚降滤波，保留一个完整边带及另一边带的残留。',
+                   'fm': '非线性调制：瞬时频偏跟随模拟信源，调小/调大灵敏度观察窄带/宽带调频。',
+                   'pm': '非线性调制：瞬时相偏跟随模拟信源，恒包络复基带表示。'}[scheme]
+    block('mod_' + scheme, label + ' 模拟调制', 'modulator', description, **params)
+    receive = {'compensate': field('已知增益 / 相位补偿', True, 'boolean'), 'cutoff_hz': number('解调低通截止 / Hz（0 关闭）', 0, 0, 24000)}
+    if scheme == 'am': receive['method'] = field('检波方式', 0, 'select', choices=[0, 1], choice_labels={0: '包络检波', 1: '相干解调'})
+    detector = '包络或相干检波' if scheme == 'am' else '相位差鉴频' if scheme == 'fm' else '参考相位解缠' if scheme == 'pm' else '相干解调'
+    block('demod_' + scheme, label + ' 模拟解调', 'demodulator', detector + '，恢复模拟样本；增益标定使用配对调制器的配置。', **receive)
 block('ideal', '理想信道', 'channel', '原样传输，适合先验证编译和收发配对。')
 block('awgn', '高斯白噪声', 'channel', 'Es/N0 参考发送端单位符号能量；衰减会降低实际接收信噪比。', esn0_db=number('发送端 Es/N0 / dB', 12, -10, 60))
+block('analog_awgn', '模拟白噪声', 'channel', '模拟链路专用；按发送复包络整帧实测功率设置每采样点 SNR，前置衰减会降低接收 SNR。', snr_db=number('发送端采样 SNR / dB', 20, -10, 60))
 block('attenuation', '信道衰减', 'channel', '正 dB 表示衰减；作用于经过该积木的整个信号。', db=number('衰减 / dB', 3, 0, 60))
 block('phase_shift', '相位偏移', 'channel', '旋转复基带信号的相位。', degrees=number('相位偏移 / °', 30, -180, 180))
 block('dropout', '符号丢失', 'channel', '随机将部分符号归零；不是传输比特的删除。', probability=number('丢失概率', .03, 0, 1))
-block('repeat_decode', '重复码译码', 'receive', '按奇数次重复分组，多数判决还原。', factor=field('重复次数', 3, 'select', choices=[3, 5, 7]))
-block('hamming_decode', 'Hamming (7,4) 译码', 'receive', '综合征定位并翻转一位；多位错误可能误纠正。')
-block('conv_decode', 'Viterbi 译码', 'receive', '对 (7,5)₈ 卷积码进行完整帧硬判决 Viterbi 译码。')
-block('deinterleave', '解交织', 'receive', '按配对交织器的形状还原比特顺序并去除填充。', columns=number('交织列数', 8, 2, 64, True))
-block('pcm_decode', 'PCM 译码', 'receive', '还原量化样本；位数和量程须与发送端一致。', bits=number('量化位数', 8, 2, 12, True), full_scale=number('量程 ±', 2, .1, 32))
+block('repeat_decode', '重复码译码', 'rx_converter', '按奇数次重复分组，多数判决还原。', factor=field('重复次数', 3, 'select', choices=[3, 5, 7]))
+block('hamming_decode', 'Hamming (7,4) 译码', 'rx_converter', '综合征定位并翻转一位；多位错误可能误纠正。')
+block('conv_decode', 'Viterbi 译码', 'rx_converter', '对 (7,5)₈ 卷积码进行完整帧硬判决 Viterbi 译码。')
+block('deinterleave', '解交织', 'rx_converter', '按配对交织器的形状还原比特顺序并去除填充。', columns=number('交织列数', 8, 2, 64, True))
+block('pcm_decode', 'PCM 译码', 'rx_converter', '还原量化样本；位数和量程须与发送端一致。', bits=number('量化位数', 8, 2, 12, True), full_scale=number('量程 ±', 2, .1, 32))
+for scheme, label in baseband.LINE_CODES.items():
+    params = {}
+    if scheme in ('ami', 'hdb3', 'diff', 'miller', 'cmi'):
+        params['initial_positive'] = field('初始电平/首个传号为正', scheme != 'miller', 'boolean')
+    if scheme in ('ami', 'hdb3'): params['rz'] = field('使用归零 RZ 波形', scheme == 'ami', 'boolean')
+    if scheme == 'hdb3':
+        params['order'] = number('阶数 n（3 为 HDB3）', 3, 1, 8, True)
+        params['initial_parity'] = field('初始传号奇偶状态', 0, 'select', choices=[0,1], choice_labels={0:'偶数（默认初态）',1:'奇数'})
+    rules = {'nrz_unipolar':'1→+1，0→0。','nrz_polar':'1→+1，0→−1。','rz_unipolar':'1→(+1,0)，0→(0,0)。','rz_polar':'1→(+1,0)，0→(−1,0)。',
+             'diff':'1 翻转，0 保持；接收端作相邻电平比较。','ami':'传号正负交替，0 为零；可选择 RZ。','manchester':'1→(+1,−1)，0→(−1,+1)。',
+             'miller':'1 在位中间翻转，连续 0 在位边界翻转。','cmi':'0→(−1,+1)，1 交替使用(+1,+1)/(−1,−1)。','hdb3':'连续 n+1 个零替换为 0…0V 或 B…0V，接收端识别违例还原。'}[scheme]
+    block('line_'+scheme+'_encode', label+' 编码', 'tx_converter', rules+' 输出线路电平，须接基带波形形成器。', **params)
+    block('line_'+scheme+'_decode', label+' 译码', 'rx_converter', '对基带判决电平逆变换，初态/参数须与编码器一致；不是纠错码。', **params)
+for kind, label in [('baseband','基带波形形成'),('pam','多电平 PAM')]:
+    transmit = {'amplitude':number('电平幅度 / A',1,.1,8),'sps':field('每码元采样点',8,'select',choices=[4,8,16,32]),
+                'pulse':field('发送脉冲',0,'select',choices=list(range(6)),choice_labels=dict(enumerate(baseband.PULSE_NAMES))),
+                'span':field('长脉冲跨度 / 码元',8,'select',choices=[4,6,8,12,16]),'rolloff':number('RC/RRC 滚降系数 α',.35,0,1),
+                'training_symbols':number('公共训练前导 / 码元',0,0,2048,True)}
+    if kind == 'pam':
+        transmit.update(order=field('PAM 阶数 M',4,'select',choices=[2,4,8,16,256]),gray=field('Gray 电平标记',True,'boolean'))
+    block('mod_'+kind,label,'modulator','把'+('线路电平' if kind=='baseband' else '比特分组映射为多电平并')+'形成多采样点实基带波形；不是射频载波调制。',**transmit)
+    block('demod_'+kind,'基带抽样判决' if kind=='baseband' else '多电平 PAM 接收','demodulator','接收滤波、自动符号同步、抽样及线性/判决反馈均衡；支持公共前导训练，帧起点粗定位已知。',
+          compensate=field('已知衰减补偿',True,'boolean'),filter=field('接收滤波',1,'select',choices=[0,1,2],choice_labels={0:'直接抽样',1:'匹配滤波',2:'理想低通'}),
+          cutoff_hz=number('接收低通截止 / Hz',1000,.01,1600000),sample_offset=number('抽样偏移 / 码元',0,-.49,.49),
+          timing_mode=field('符号同步',0,'select',choices=[0,1,2,3],choice_labels=dict(enumerate(receiver_recovery.TIMING_NAMES))),
+          loop_bandwidth=number('归一化定时环路带宽',.01,.0001,.08),gate_spacing=number('早迟门间隔 Δ / 码元',.25,.1,.49),
+          equalizer=field('均衡结构',0,'select',choices=[0,1,2,3,4,5],choice_labels={0:'关闭',1:'课件有限阶迫零 ZF',2:'有限阶正则 MMSE',3:'已知响应 DFE',4:'自适应线性',5:'自适应 DFE'}),
+          half_taps=number('前向单侧抽头数 N',1,1,8,True),regularization=number('MMSE / DFE / RLS 正则 λ',.01,.000001,10),
+          feedback_taps=number('DFE 反馈抽头数',4,1,16,True),
+          adaptive_algorithm=field('自适应算法',1,'select',choices=[0,1,2],choice_labels=dict(enumerate(receiver_recovery.ADAPTIVE_NAMES))),
+          step_size=number('LMS / NLMS 步长 μ',.2,.00001,1.5),forgetting_factor=number('RLS 遗忘因子',.995,.95,1),
+          adapt_after_training=field('训练后按判决继续自适应',True,'boolean'))
+block('sample_awgn','基带白噪声','channel','实基带波形专用；按发送有效数据段功率设置实噪声采样 SNR，不含零保护区。',snr_db=number('发送采样 SNR / dB',20,-10,60))
+for kind,label in [('lowpass_channel','带限低通信道'),('bandlimited_awgn','带限 AWGN 信道')]:
+    params={'cutoff_hz':number('单边截止带宽 W / Hz',750,.01,1600000)}
+    if kind=='bandlimited_awgn': params['snr_db']=number('带限前发送采样 SNR / dB',20,-10,60)
+    block(kind,label,'channel','基带波形专用；理想平坦低通 C(f)，有限帧周期滤波。'+('信号和实白噪声均限带至 W。' if kind=='bandlimited_awgn' else ''),**params)
+block('bandpass_channel','带通信道','channel','实基带波形的双边带通；用于观察基带信号直接经过不匹配带通信道的失真。',center_hz=number('中心频率 / Hz',1000,.01,1600000),bandwidth_hz=number('通带总宽 / Hz',800,.01,1600000))
+block('ac_coupling','交流耦合信道','channel','一阶高通 H(f)=jf/(fc+jf)，抑制直流/低频，观察线路码基线失真。',cutoff_hz=number('高通截止 / Hz',100,.01,1600000))
+block('isi_channel','ISI 抽头信道','channel','实基带波形 FIR；逗号分隔前游/主/后游抽头，参考位置指定零延时抽头。',taps=field('抽头系数', '1,0.5',max_length=160),spacing=number('抽头间隔 / 采样点',8,1,64,True),origin=number('零延时抽头位置（从 0 起）',0,0,16,True))
+block('timing_offset','定时偏移信道','channel','线性插值产生分数码元延时；接收端可手动改变抽样偏移来观察眼图。',offset=number('延时 / 码元',.25,-.49,.49))
+block('clock_drift','采样时钟漂移','channel','实基带采样时钟偏差，插值产生随帧时间增长的定时误差；正 ppm 表示接收波形时间拉长。',ppm=number('时钟误差 / ppm',300,-500,500))
 block('sink', '信宿', 'sink', '显示接收端译码后的信号。固定在链路末端。')
 
 PAIRS = {'pcm_decode': 'pcm_encode', 'repeat_decode': 'repeat_encode', 'hamming_decode': 'hamming_encode', 'conv_decode': 'conv_encode', 'deinterleave': 'interleave'}
+PAIRS.update({'line_'+scheme+'_decode':'line_'+scheme+'_encode' for scheme in baseband.LINE_CODES})
 SOURCES = {k for k, v in BLOCKS.items() if v['category'] == 'source'}
 ENCODERS = set(PAIRS.values())
 CHANNELS = {k for k, v in BLOCKS.items() if v['category'] == 'channel'}
@@ -74,6 +139,18 @@ PRESETS = {
     'analog': {'label': '模拟信源 + PCM', 'program': preset(['sine', 'sine', 'pcm_encode', 'conv_encode', 'mod_qpsk', 'awgn', 'demod_qpsk', 'conv_decode', 'pcm_decode', 'sink'], {1: {'frequency': 24, 'amplitude': .25}, 5: {'esn0_db': 16}})},
     'text': {'label': '文字传输', 'program': preset(['text', 'repeat_encode', 'mod_bpsk', 'awgn', 'demod_bpsk', 'repeat_decode', 'sink'])}
 }
+for scheme, label in analog_modulation.LABELS.items():
+    PRESETS['analog_' + scheme] = {'label': ('非线性 · ' if scheme in ('fm', 'pm') else '线性 · ') + label,
+                                  'program': preset(['sine', 'mod_' + scheme, 'analog_awgn', 'demod_' + scheme, 'sink'])}
+PRESETS['fm_narrow'] = {'label': '非线性 · 窄带 FM', 'program': preset(['sine', 'mod_fm', 'analog_awgn', 'demod_fm', 'sink'], {1: {'sensitivity': 1}})}
+for scheme,label in baseband.LINE_CODES.items():
+    PRESETS['line_'+scheme]={'label':'线路码 · '+label,'program':preset(['bit_pattern','line_'+scheme+'_encode','mod_baseband','ideal','demod_baseband','line_'+scheme+'_decode','sink'],{0:{'pattern':'11010010000000001011'}})}
+PRESETS['pam4']={'label':'基带 · 4-PAM / RRC / 带限 AWGN','program':preset(['random_bits','mod_pam','bandlimited_awgn','demod_pam','sink'],{1:{'pulse':5}})}
+PRESETS['baseband_isi']={'label':'基带 · ISI 与迫零均衡','program':preset(['random_bits','line_nrz_polar_encode','mod_baseband','isi_channel','demod_baseband','line_nrz_polar_decode','sink'],{3:{'taps':'-0.25,1,0.3333333333333333','origin':1},4:{'equalizer':1}})}
+for mode,label in [(1,'非线性时钟提取'),(2,'早迟门自动同步'),(3,'Gardner 自动同步')]:
+    PRESETS['recovery_timing_'+str(mode)]={'label':'同步 · '+label,'program':preset(['random_bits','line_nrz_polar_encode','mod_baseband','timing_offset','clock_drift','sample_awgn','demod_baseband','line_nrz_polar_decode','sink'],{0:{'count':2048},2:{'pulse':5,'rolloff':.6,'training_symbols':256},3:{'offset':.35},4:{'ppm':0 if mode==1 else 300},5:{'snr_db':25},6:{'timing_mode':mode,'loop_bandwidth':.005}})}
+for key,label,mode,algorithm in [('fixed_dfe','已知响应 DFE',3,1),('linear_nlms','NLMS 自适应线性',4,1),('dfe_nlms','NLMS 自适应 DFE',5,1),('dfe_rls','RLS 自适应 DFE',5,2)]:
+    PRESETS['recovery_'+key]={'label':'均衡 · '+label,'program':preset(['random_bits','line_nrz_polar_encode','mod_baseband','isi_channel','sample_awgn','demod_baseband','line_nrz_polar_decode','sink'],{0:{'count':2048},2:{'training_symbols':0 if mode==3 else 1024},3:{'taps':'1,0.7' if mode==4 else '1,0.9'},4:{'snr_db':25},5:{'equalizer':mode,'adaptive_algorithm':algorithm,'half_taps':4 if mode==4 else 1}})}
 
 
 def catalog():
@@ -124,7 +201,10 @@ def normalize(raw, draft=False):
                 if type(v) is not int or v not in spec['choices']: raise ValueError(label + '不在可选范围内。')
             elif not isinstance(v, str) or not (0 if draft else 1) <= len(v) <= spec['max_length']:
                 raise ValueError(label + '长度无效。')
-            values[name] = v
+            # Omit default-valued recovery extensions to preserve existing
+            # schema-1 baseband canonical programs and Build tokens.
+            optional = receiver_recovery.TX_DEFAULT_FIELDS if kind in ('mod_baseband','mod_pam') else receiver_recovery.RX_DEFAULT_FIELDS if kind in ('demod_baseband','demod_pam') else set()
+            if name not in optional or v != spec['default']: values[name] = v
         if not draft and kind == 'bit_pattern' and not re.fullmatch('[01]+', values['pattern']): raise ValueError('自定义比特只能包含 0 和 1。')
         if not draft and kind in ('sine', 'square') and values['frequency'] >= p['sample_rate'] / 2: raise ValueError('信源频率须低于采样率的一半。')
         p['blocks'].append({'id': key, 'kind': kind, 'params': values})
@@ -133,6 +213,8 @@ def normalize(raw, draft=False):
 
 def build(raw):
     p = normalize(raw); items = p['blocks']; sources = []
+    if any(b['kind'].startswith('line_') or b['kind'] in ('mod_baseband','demod_baseband','mod_pam','demod_pam') or b['kind'] in baseband.WAVE_CHANNELS for b in items):
+        return baseband.build(p)
     for b in items:
         if b['kind'] in SOURCES: sources.append(b)
         else: break
@@ -141,7 +223,7 @@ def build(raw):
     if any((b['kind'] in ('sine', 'square', 'gaussian')) != analog for b in sources): raise ValueError('模拟信源可以叠加，数字信源可以拼接；两类信源不能直接混合。')
     count = p['sample_count'] if analog else sum(b['params']['count'] if b['kind'] == 'random_bits' else len(b['params']['pattern']) if b['kind'] == 'bit_pattern' else len(b['params']['text'].encode('utf-8')) * 8 for b in sources)
     if count > CONFIG['max_source_bits'] and not analog: raise ValueError(f'合并后的数字信源超过 {CONFIG["max_source_bits"]} 位。')
-    domain = '模拟样本' if analog else '比特'; direction = 'tx'; stack = []; scheme = None; channels = 0; attenuation = 0
+    domain = '模拟样本' if analog else '比特'; direction = 'tx'; stack = []; scheme = None; channels = 0; attenuation = 0; analog_transmit = None
     plan = [{'id': b['id'], 'label': BLOCKS[b['kind']]['label'], 'output': domain, 'count': p['sample_count'] if analog else (b['params'].get('count') or len(b['params'].get('pattern', '')) or len(b['params']['text'].encode('utf-8')) * 8)} for b in sources]
     for index, b in enumerate(items[len(sources):], len(sources)):
         k = b['kind']; params = b['params']; before = count
@@ -160,10 +242,21 @@ def build(raw):
                 else: count = math.ceil(count / params['columns']) * params['columns']
             stack.append((k, params, before))
         elif k.startswith('mod_'):
-            if direction != 'tx' or domain != '比特' or scheme: fail('调制器需要比特输入，每条链路仅放置一个。')
-            scheme = k[4:]; count = math.ceil(count / {'bpsk': 1, 'qpsk': 2, 'qam16': 4}[scheme]); domain = '复基带符号'; direction = 'channel'
+            if direction != 'tx' or scheme: fail('每条链路仅放置一个调制器，且须位于信道之前。')
+            scheme = k[4:]
+            if scheme in analog_modulation.SCHEMES:
+                if domain != '模拟样本' or stack: fail('模拟调制器需要原始模拟信源，不经过 PCM 或信道编码。')
+                analog_transmit = params
+                analog_modulation.modulate(source_data(p)[0], scheme, params, p['sample_rate'])
+                count += int(scheme in ('fm', 'pm')); domain = '模拟复包络'
+            else:
+                if domain != '比特': fail('数字调制器需要比特输入；模拟信源请先经 PCM 编码，或选择模拟调制器。')
+                count = math.ceil(count / {'bpsk': 1, 'qpsk': 2, 'qam16': 4}[scheme]); domain = '复基带符号'
+            direction = 'channel'
         elif k in CHANNELS:
             if direction != 'channel': fail('信道须放在调制器与解调器之间。')
+            if k == 'awgn' and analog_transmit is not None: fail('模拟链路请选择「模拟白噪声」，其参数为采样 SNR。')
+            if k == 'analog_awgn' and analog_transmit is None: fail('模拟白噪声需要模拟调制器；数字链路请选择「高斯白噪声」。')
             channels += 1
             if k == 'attenuation': attenuation += params['db']
             if attenuation > 100: fail('总衰减须不超过 100 dB。')
@@ -171,7 +264,8 @@ def build(raw):
             if direction != 'channel' or not channels: fail('先添加调制器和至少一个信道积木（也可选择理想信道）。')
             if scheme != k[6:]: fail('解调方式须与发送端调制方式一致。')
             mod_plan = next(v for v in plan if v.get('kind', '').startswith('mod_'))
-            count = mod_plan['input_count']; domain = '比特'; direction = 'rx'
+            count = mod_plan['input_count']; domain = '模拟样本' if analog_transmit is not None else '比特'; direction = 'rx'
+            if analog_transmit is not None: analog_modulation.validate(scheme, analog_transmit, params, p['sample_rate'])
         elif k in PAIRS:
             if direction != 'rx' or domain != '比特' or not stack: fail('没有可以配对的发送端编码器。')
             encoder, expected, original = stack.pop()
@@ -185,7 +279,10 @@ def build(raw):
         plan.append({'id': b['id'], 'kind': k, 'label': BLOCKS[k]['label'], 'input_count': before, 'count': count, 'output': domain})
     if items[-1]['kind'] != 'sink': raise ValueError('链路末端需要信宿。')
     token = hashlib.sha256(json.dumps(p, sort_keys=True, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode()).hexdigest()
-    return {'program': p, 'token': token, 'plan': plan, 'summary': f'{len(sources)} 个信源 · {len(items)} 个积木 · {count} ' + ('个接收样本' if analog else '个接收比特'), 'source_kind': 'analog' if analog else 'digital', 'model': '复基带 · 1 样本/符号 · 理想定时 · 硬判决'}
+    result = {'program': p, 'token': token, 'plan': plan, 'summary': f'{len(sources)} 个信源 · {len(items)} 个积木 · {count} ' + ('个接收样本' if analog else '个接收比特'), 'source_kind': 'analog' if analog else 'digital', 'model': '复基带 · 1 样本/符号 · 理想定时 · 硬判决'}
+    if analog_transmit is not None:
+        result.update(transport='analog', model='模拟复包络 · 采样时钟 · 理想帧滤波 · ' + analog_modulation.LABELS[scheme])
+    return result
 
 
 def hamming_encode(bits):
@@ -257,11 +354,8 @@ def demodulate(symbols, scheme):
     return labels[indices].ravel(), indices
 
 
-def run(raw, token):
-    compiled = build(raw)
-    if not isinstance(token, str) or token != compiled['token']: raise ValueError('配置已改变或尚未 Build，请重新构建后再 Run。')
-    p = compiled['program']; analog = compiled['source_kind'] == 'analog'
-    source_rng, noise_rng = (np.random.default_rng(s) for s in np.random.SeedSequence(p['seed']).spawn(2))
+def source_data(p):
+    source_rng = np.random.default_rng(np.random.SeedSequence(p['seed']).spawn(2)[0])
     t = np.arange(p['sample_count']) / p['sample_rate']; signals = []; texts = []
     for b in p['blocks']:
         k, q = b['kind'], b['params']
@@ -275,10 +369,28 @@ def run(raw, token):
             s = np.sin(2 * np.pi * q['frequency'] * t + np.deg2rad(q['phase']))
             y = q['amplitude'] * (s if k == 'sine' else np.where(s >= 0, 1., -1.))
         signals.append(y)
+    analog = p['blocks'][0]['kind'] in ('sine', 'square', 'gaussian')
     source = np.sum(signals, axis=0) if analog else np.concatenate(signals)
+    return source, texts, len(signals)
+
+
+def run(raw, token):
+    compiled = build(raw)
+    if not isinstance(token, str) or token != compiled['token']: raise ValueError('配置已改变或尚未 Build，请重新构建后再 Run。')
+    p = compiled['program']; analog = compiled['source_kind'] == 'analog'
+    noise_rng = np.random.default_rng(np.random.SeedSequence(p['seed']).spawn(2)[1])
+    source, texts, source_count = source_data(p)
+    if compiled.get('transport') == 'baseband':
+        result = baseband.run(compiled, source, texts, source_count, noise_rng)
+        json.dumps(result, allow_nan=False)
+        return result
+    if compiled.get('transport') == 'analog':
+        result = analog_modulation.run(compiled, source, noise_rng, CONFIG)
+        json.dumps(result, allow_nan=False)
+        return result
     data = source.copy(); reference_bits = None if analog else source.copy(); encoded_bits = None; stack = []; gain = 1 + 0j
     channel_symbols = None; decision_symbols = None; tx_symbols = None; demapped = None; decided_indices = None; clipped = 0; corrections = 0
-    for b in p['blocks'][len(signals):]:
+    for b in p['blocks'][source_count:]:
         k, q = b['kind'], b['params']; before = len(data)
         if k in ENCODERS:
             stack.append((k, q, before))
@@ -316,7 +428,7 @@ def run(raw, token):
     metrics = {'bit_count': len(reference_bits), 'bit_errors': errors, 'ber': errors / len(reference_bits), 'coded_bit_count': len(encoded_bits), 'coded_bit_errors': coded_errors, 'coded_ber': coded_errors / len(encoded_bits), 'symbol_count': len(tx_symbols), 'symbol_errors': int(np.count_nonzero(transmitted_indices != decided_indices)), 'effective_rate': len(reference_bits) / len(encoded_bits), 'evm_percent': float(100 * np.sqrt(np.mean(np.abs(decision_symbols - tx_symbols) ** 2) / np.mean(np.abs(tx_symbols) ** 2))), 'rmse': float(np.sqrt(np.mean((data - source) ** 2))) if analog else None, 'clipped_samples': clipped, 'hamming_syndromes': corrections}
     labels, points = constellation(scheme)
     result = {'token': compiled['token'], 'seed': p['seed'], 'summary': compiled['summary'], 'model': compiled['model'], 'metrics': metrics, 'plan': compiled['plan'], 'sink': {'kind': compiled['source_kind'], 'values': data.tolist(), 'reference': source.tolist(), 'sample_rate': p['sample_rate'] if analog else None, 'count': full_count, 'plot_count': shown}, 'channel': {'count': len(channel_symbols), 'plot_count': min(len(channel_symbols), CONFIG['plot_points']), 'symbol_rate': p['symbol_rate'], 'i': channel_symbols[:CONFIG['plot_points']].real.tolist(), 'q': channel_symbols[:CONFIG['plot_points']].imag.tolist()}, 'constellation': {'scheme': scheme, 'count': scatter, 'i': decision_symbols[:scatter].real.tolist(), 'q': decision_symbols[:scatter].imag.tolist(), 'ideal_i': points.real.tolist(), 'ideal_q': points.imag.tolist(), 'labels': [''.join(map(str, v)) for v in labels]}, 'text': None}
-    if not analog and len(texts) == len(signals): result['text'] = {'sent': b''.join(texts).decode('utf-8'), 'received': np.packbits(decoded_bits).tobytes().decode('utf-8', errors='replace')}
+    if not analog and len(texts) == source_count: result['text'] = {'sent': b''.join(texts).decode('utf-8'), 'received': np.packbits(decoded_bits).tobytes().decode('utf-8', errors='replace')}
     # This is also the JSON-export contract: never return NaN/Infinity.
     json.dumps(result, allow_nan=False)
     return result

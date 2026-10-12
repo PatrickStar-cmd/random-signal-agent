@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+## v0.4.1 · 传输环节模块补充 · 2026-10-12
+
+补充第三、四章传输环节：细分发/收转换器与调制/解调器，新增模拟调制、线路编译码、实基带信道、符号同步和固定/自适应均衡。提供 29 个示例、波形/频谱/眼图/时钟/收敛观测，保留旧工程与实验数据兼容性。由 v0.4.0 升级时保留 data/、替换源码并重启服务或重建 Docker，再刷新页面；无新增生产依赖。
+
+- Add nonlinear clock acquisition, early/late and Gardner PI timing loops, sample clock drift, fixed-response DFE and public-preamble-trained linear/DFE equalizers with LMS/NLMS/RLS and optional decision-directed tracking. Include actual preamble transmission/overhead, clock/convergence plots, seven presets and 12 numerical cases; all 22 previous preset results and Build tokens remain identical. Document coarse-frame assumptions and feedback error propagation.
+- Add ten course line-code encoder/decoder pairs (NRZ/RZ polarities, differential, AMI, Manchester, Miller, CMI and HDB3/HDBn), sampled real baseband and 2–256-PAM transmission, six pulse shapes, real sample-SNR and band-limited AWGN, low-pass/band-pass/AC-coupled/FIR ISI/timing channels, matched/low-pass receivers and finite ZF/regularized MMSE equalization. Include eye diagrams, 12 presets and 13 numerical/API cases with independent course vectors; retain all ten previous preset results.
+- Add the course's six analog modulation/demodulation pairs: AM, DSB-SC, SSB, VSB, FM and PM; include AM envelope/coherent detection, SSB Hilbert/filter implementations and selectable sidebands, complementary VSB filtering, full angle modulation and a narrowband FM preset. Add analog sample-SNR noise, waveform/spectrum views, recovery metrics and 10 numerical acceptance cases while preserving existing digital results.
+- Split the communication block palette into sources, transmit converters, modulators, channels, demodulators and receive converters; distinguish each category by color and show the full processing order. Existing project JSON, drafts and simulation behavior remain compatible.
+
 ## v0.4.0 · 通信原理积木编程 · 2026-10-12
 
 - Add a Scratch-inspired communication lab with an editable block pipeline and a fixed sink, separate Build/Run steps, and default TV snow until a simulation completes.

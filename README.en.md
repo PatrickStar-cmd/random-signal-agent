@@ -9,8 +9,6 @@
 
 </div>
 
-<div align="left">
-
 [简体中文 / English](README.md)
 
 **Signal simulation, filtering, and analysis — through conversation.**
@@ -19,7 +17,7 @@ Diting turns Random Signals coursework into reproducible experiments. Generate a
 
 Built for the Random Signals course at **UESTC**. The local toolchain works without a model API key; an optional Chat Completions-compatible service adds model-assisted dialogue.
 
-[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.3.1](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.3.1) · [📘 Installation guide](RELEASE.md)
+[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.4.1](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.1) · [📘 Installation guide](RELEASE.md)
 
 ## 🧭 Explore
 
@@ -37,9 +35,10 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 
 | Capability | What you can do |
 | --- | --- |
-| 🐳 Ocean UI | Layered ocean/lilac gradients, AI-generated 3D whale art and six persistent views for desktop, tablet and mobile. |
+| 🐳 Ocean UI | Layered ocean/lilac gradients and AI-generated 3D whale art for desktop, tablet and mobile. |
+| 📡 Communication lab (v0.4.1) | Six block categories and 29 presets: analog modulation, line codes, sampled channels, timing recovery and adaptive equalization, with waveform, spectrum, eye and convergence views. |
 | 🔑 Model API setup | Choose a provider/model, enter a key and test/apply in the UI; optional per-session persistence. |
-| 📄 PDF analysis reports (v0.3.1) | Preview and export Chinese brief/standard reports with vector plots, measured metrics, optional diagnosis and reproduction details. |
+| 📄 PDF analysis reports (v0.4.1) | Preview and export Chinese brief/standard reports with vector plots, measured metrics, optional diagnosis and reproduction details. |
 | 🩺 Diagnostic laboratory | Linked STFT and event timeline, six seeded fault types, blind challenge evaluation, and reversible evidence-based processing trials. |
 | 💾 Experiment workbench | Create from templates, save, reopen, duplicate, search, rename or delete snapshots, and resume after a restart. |
 | 📥 Data import wizard | Preview CSV/TXT, select time and signal columns, convert time units and locate invalid rows. |
@@ -54,28 +53,40 @@ Built for the Random Signals course at **UESTC**. The local toolchain works with
 | 🤖 Agent mode | Compare methods and parameters automatically, inspect tool traces, and review recommendations. |
 | 🎙️ Multiple inputs | Analyze simulated signals, CSV/TXT samples, or browser microphone audio; download processed audio. |
 
+## 📡 New: communication-principles lab
+
+Assemble sources → transmit converters → modulators → channels → demodulators → receive converters → sink. Keep PCM/FEC and BPSK/QPSK/16-QAM, and add AM, DSB-SC, SSB, VSB, FM, PM, ten line-code pairs, 2–256-PAM, six pulse shapes and sampled band-limited/ISI/timing channels. Nonlinear clock acquisition, early/late and Gardner PI loops, ZF/MMSE/DFE and LMS/NLMS/RLS linear or feedback equalizers extend the receiver. **Build** validates the pipeline; **Run** displays the measured output.
+
+![Communication lab: block pipeline, sink output and constellation](docs/images/communications-lab.png)
+
+**Included in v0.4.1: transmission module additions.** Choose one of 29 presets, Build and Run, then inspect the sink, spectrum, eye, clock or convergence plot. Export project JSON, full sink CSV and result JSON without a model key. Timing recovery assumes a known coarse frame boundary; adaptive equalizers train on an actual transmitted public preamble. See the [lab guide](工程文件/代码/docs/communications-lab.md), [analog modulation](工程文件/代码/docs/analog-modulation.md), [line codes and channels](工程文件/代码/docs/baseband-coding.md), and [recovery algorithms](工程文件/代码/docs/receiver-recovery.md).
+
+![v0.4.1 adaptive DFE convergence](docs/images/communications-recovery.png)
+
 <a id="en-interface"></a>
 
 ## 🎬 Interface
 
-The v0.3.1 ocean interface has six views: workspace, templates, data import, comparison, diagnostics and settings. Switching views preserves inputs and experiment state.
+v0.3.4 uses cyan, lavender and coral-pink gradients, 4 px outer borders and 2 px inner borders. Chinese text uses STZhongsong when installed; Latin text and numbers use Times New Roman. A larger, bold clock sits above the local-computing badge. Agent method comparisons separate conclusions, recommended metrics and next steps. Switching between the six views preserves inputs and experiment state.
 
-![v0.3.1 ocean workspace: Agent analysis, waveform and spectrum](docs/images/ocean-ui.png)
+These captures show v0.3.4, including the visual update shipped in its deployment ZIP. Fonts are loaded from the visitor’s computer, with serif fallbacks when unavailable.
+
+![v0.3.4 ocean workspace: Agent analysis, waveform and spectrum](docs/images/ocean-ui-v034.png)
 
 <details>
 <summary><strong>Explore templates, diagnostics and API setup</strong></summary>
 
 **Templates and experiments**: compare six methods, save named snapshots and import/export full experiment packages.
 
-![v0.3.1 templates and experiments](docs/images/workbench-v031.png)
+![v0.3.4 templates and experiments](docs/images/workbench-v034.png)
 
 **Diagnostic laboratory**: inspect linked time-frequency and waveform plots, locate events and verify processing trials.
 
-![v0.3.1 diagnostic laboratory with linked plots](docs/images/diagnostics-v031.png)
+![v0.3.4 diagnostic laboratory with linked plots](docs/images/diagnostics-v034.png)
 
 **Models and settings**: choose your provider, model and persistence options in the browser.
 
-![v0.3.1 model API setup form](docs/images/model-api-v031.png)
+![v0.3.4 model API setup form](docs/images/model-api-v034.png)
 
 </details>
 
@@ -98,15 +109,17 @@ Reports currently use Chinese. Standard reports include waveform metrics, FFT, W
 
 [Example PDF](docs/report-example.pdf) · [Report guide (Chinese)](工程文件/代码/docs/pdf-report.md)
 
+**New in v0.3.2:** Select up to 50 recent processing results, optionally include saved snapshots, and arrange them chronologically. Export one PDF with a shared cover, summary, clickable contents and plots for every group. History survives server restarts; older unsaved results cannot be recovered.
+
 <a id="en-quick-start"></a>
 
 ## 🚀 Quick start
 
-Use **Python 3.12–3.14** or **Docker Compose v2**. v0.3.1 uses FastAPI; deployment checks cover Python 3.12–3.14 on Windows and Linux, plus Docker on Linux.
+Use **Python 3.12–3.14** or **Docker Compose v2**. v0.4.1 uses FastAPI; deployment checks cover Python 3.12–3.14 on Windows and Linux, plus Docker on Linux.
 
 ### 1. Get the project
 
-Download the v0.3.1 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.3.1/random-signal-agent-v0.3.1-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
+Download the v0.4.1 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.4.1/random-signal-agent-v0.4.1-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
 
 Or clone the repository:
 
@@ -280,7 +293,7 @@ The check covers the application version, ocean assets, model settings API, Agen
 | --- | --- |
 | Why does the online preview not run new experiments? | GitHub Pages serves the saved showcase. Start the backend locally or deploy it with Docker for interactive use. |
 | Do I need an API key? | The local signal tools do not require one. Model-assisted dialogue is optional. |
-| Which Python versions work? | v0.3.1 supports Python 3.12, 3.13 and 3.14. |
+| Which Python versions work? | v0.4.1 supports Python 3.12, 3.13 and 3.14. |
 | Why can I not activate the virtual environment on Windows? | The quick-start commands call `.venv\Scripts\python.exe` directly and do not require activation. |
 | Why is the microphone unavailable? | Open the app on localhost or HTTPS and allow microphone access in the browser. |
 | Why does my uploaded signal have no SNR value? | Reference-based SNR requires a clean signal. Uploaded samples and microphone audio do not provide that reference. |
@@ -298,6 +311,7 @@ The check covers the application version, ocean assets, model settings API, Agen
 | [Installation & release](RELEASE.md) | Deployment ZIP, platform commands, and checksums. |
 | [Experiment guide](docs/README.en.md) | Saved data, parameters, file formats, and reproduction. |
 | [Code overview](工程文件/代码/README.md) | Modules and model configuration. |
+| [Communication lab](工程文件/代码/docs/communications-lab.md) | Block pipelines, Build/Run, metrics, exports and baseband model (Chinese). |
 | [Running & configuration](工程文件/代码/docs/exec.md) | Commands, settings, and logs. |
 | [Features & validation](工程文件/代码/docs/review.md) | Implemented capabilities, checks, and current limits. |
 | [Algorithm principles](工程文件/代码/docs/principle.md) | Signal-processing methods and analysis. |
@@ -317,5 +331,3 @@ Issues and pull requests are welcome for bug fixes, signal-processing methods, e
 ## 📄 License
 
 Licensed under the [MIT License](LICENSE). Retain the license and copyright notice when using, modifying, or distributing the project. Third-party dependencies and assets retain their respective licenses.
-
-</div>

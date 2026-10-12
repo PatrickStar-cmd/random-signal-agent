@@ -135,7 +135,7 @@
 </section>
 <section data-view="templates" class="tool-view" aria-label="实验从这里开始"><div class="view-heading"><div><span class="eyebrow">SIGNAL LAB / TEMPLATES</span><h2>实验从这里开始</h2><p>用可复现的模板探索信号，保存你值得回看的发现。</p></div><a href="#layoutRoot" data-view-link="workspace">查看工作区 →</a></div>
   <section id="workbenchPanel" class="workbench" aria-label="实验工作台">
-    <div class="wb-heading"><strong>2 · 处理与保存 <small>v0.4.0</small></strong><span id="wbStatus" role="status">每次操作后自动保存</span><button id="wbRecover" type="button">恢复未完成请求</button></div>
+    <div class="wb-heading"><strong>2 · 处理与保存 <small>v0.4.1</small></strong><span id="wbStatus" role="status">每次操作后自动保存</span><button id="wbRecover" type="button">恢复未完成请求</button></div>
     <details id="wbPanel" open><summary>模板与实验管理</summary>
       <form id="wbForm" class="wb-fields">
         <label>信号模板<select id="wbTemplate"><option value="sine">正弦 + 高斯噪声</option><option value="impulse">正弦 + 脉冲干扰</option><option value="ar">AR(1) 随机过程</option><option value="current">当前信号</option></select></label>
@@ -240,7 +240,7 @@
       <form id="cmForm"><fieldset id="cmFields">
         <div class="cm-toolbar"><label class="cm-preset-label">实验示例<select id="cmPreset"><option value="">从空白开始</option></select></label><button type="button" id="cmUndo" disabled title="撤销上一步">↶ 撤销</button><button type="button" id="cmRedo" disabled title="重做">↷ 重做</button><button type="button" id="cmReset">清空</button></div>
         <details class="cm-settings"><summary>实验参数 <span>随机种子与采样 / 符号时钟</span></summary><div class="cm-fields"><label>随机种子<input id="cmSeed" data-global="seed" type="number" min="0" max="4294967294" step="1" value="42" required></label><label>模拟采样率 / Hz<input id="cmSampleRate" data-global="sample_rate" type="number" min="16" max="48000" step="any" value="256" required></label><label>模拟样本数<input id="cmSampleCount" data-global="sample_count" type="number" min="32" max="1024" step="1" value="256" required></label><label>传输符号率 / Baud<input id="cmSymbolRate" data-global="symbol_rate" type="number" min="1" max="100000" step="any" value="1000" required></label></div></details>
-        <div class="cm-programming"><aside class="cm-palette" aria-label="积木箱"><h4>积木箱</h4><div id="cmCategories" class="cm-categories" role="group" aria-label="积木分类"></div><p class="cm-palette-hint">拖进链路，或点 ＋ 添加。</p><div id="cmPalette"></div></aside><div class="cm-code-area"><div class="cm-chain-title"><strong>发送 → 信道 → 接收</strong><span id="cmBlockCount">1 块积木</span></div><div id="cmProgram" class="cm-program" aria-label="按顺序连接的积木链路"></div></div></div>
+        <div class="cm-programming"><aside class="cm-palette" aria-label="积木箱"><h4>积木箱</h4><div id="cmCategories" class="cm-categories" role="group" aria-label="积木分类"></div><p class="cm-palette-hint">拖进链路，或点 ＋ 添加。</p><div id="cmPalette"></div></aside><div class="cm-code-area"><div class="cm-chain-title"><strong>信源 → 发转换器 → 调制器 → 信道 → 解调器 → 收转换器 → 信宿</strong><span id="cmBlockCount">1 块积木</span></div><div id="cmProgram" class="cm-program" aria-label="按顺序连接的积木链路"></div></div></div>
         <div class="cm-build-actions"><button id="cmBuild" class="primary" type="submit">⚒ Build · 构建</button><button id="cmRun" class="primary" type="button" disabled>▶ Run · 运行</button><span id="cmStatus" role="status">先添加信源，再搭建收发链路。</span></div>
         <div class="cm-file-actions"><button type="button" id="cmExport">导出工程 JSON</button><button type="button" id="cmImport">导入工程</button><input id="cmFile" type="file" accept=".json,application/json" hidden><span>草稿保存在当前浏览器</span></div>
       </fieldset></form>
@@ -252,9 +252,10 @@
       <label id="cmWindow" class="cm-window" hidden>浏览接收结果<input id="cmOffset" type="range" min="0" max="0" value="0" step="1" aria-label="信宿波形起始位置"></label>
       <div id="cmLegend" class="cm-legend" hidden><span>🟢 信宿输出</span><span>🟣 原始信源</span><span>🔴 错误比特</span></div>
       <div id="cmMetrics" class="cm-metrics" aria-live="polite"></div>
+      <p id="cmAnalogWarnings" class="cm-analysis-caption" role="status" hidden></p>
       <div id="cmTextResult" class="cm-text-result" hidden><h4>信宿收到的文字</h4><p id="cmReceivedText"></p></div>
-      <div class="cm-analysis-tabs" role="group" aria-label="接收信号的其他视图"><button type="button" data-cm-plot="constellation" aria-pressed="true">接收星座图</button><button type="button" data-cm-plot="channel" aria-pressed="false">信道 I / Q</button></div>
-      <canvas id="cmAnalysisCanvas" width="640" height="260" aria-label="接收星座图或信道 I/Q 波形"></canvas><p id="cmAnalysisCaption" class="cm-analysis-caption">运行后显示判决前星座点与理想星座。</p>
+      <div class="cm-analysis-tabs" role="group" aria-label="接收信号的其他视图"><button type="button" data-cm-plot="constellation" aria-pressed="true">接收星座图</button><button type="button" data-cm-plot="transmitter" aria-pressed="false" hidden>已调 I / Q</button><button type="button" data-cm-plot="spectrum" aria-pressed="false" hidden>已调频谱</button><button type="button" data-cm-plot="channel" aria-pressed="false">信道 I / Q</button><button type="button" data-cm-plot="eye" aria-pressed="false" hidden>接收眼图</button><button type="button" data-cm-plot="timing" aria-pressed="false" hidden>时钟跟踪</button><button type="button" data-cm-plot="convergence" aria-pressed="false" hidden>均衡收敛</button></div>
+      <canvas id="cmAnalysisCanvas" width="640" height="260" aria-label="接收星座图、波形、频谱、眼图、时钟跟踪或均衡收敛"></canvas><p id="cmAnalysisCaption" class="cm-analysis-caption">运行后显示判决前星座点与理想星座。</p>
       <details class="cm-trace"><summary>链路检查与实验指标</summary><p id="cmModel">复基带 · 1 样本/符号 · 理想定时 · 硬判决</p><div id="cmTrace" class="cm-trace-scroll"></div><p id="cmDetails"></p></details>
       <div class="cm-downloads"><button id="cmDownloadCSV" type="button" disabled>下载信宿 CSV</button><button id="cmDownloadResult" type="button" disabled>下载结果 JSON</button></div>
     </section>

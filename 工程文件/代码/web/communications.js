@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const root=document.querySelector('[data-view="communications"]'), byId=id=>document.getElementById(id), esc=escapeHtml;
-  const storageKey='rs_communication_draft_v1', categories={source:'信源',transmit:'发送端',channel:'信道',receive:'接收端'};
+  const storageKey='rs_communication_draft_v1', categories={source:'信源',tx_converter:'发转换器',modulator:'调制器',channel:'信道',demodulator:'解调器',rx_converter:'收转换器'};
   let catalog=null,definitions={},program=null,compiled=null,result=null,category='source',busy=false,revision=0;
   let undo=[],redo=[],drag=null,plot='constellation',snowTimer=0;
   const clone=value=>JSON.parse(JSON.stringify(value));
@@ -38,9 +38,9 @@
   }
   function parameterHTML(b){
     return Object.entries(definitions[b.kind].params).map(([key,spec])=>{
-      const val=b.params[key],data=`data-block-id="${b.id}" data-param="${key}"`,id=`cm-${b.id}-${key}`,label=esc(spec.label);
+      const val=Object.hasOwn(b.params,key)?b.params[key]:spec.default,data=`data-block-id="${b.id}" data-param="${key}"`,id=`cm-${b.id}-${key}`,label=esc(spec.label);
       if(spec.type==='boolean')return `<label class="cm-boolean" for="${id}"><input id="${id}" ${data} type="checkbox" ${val?'checked':''}>${label}</label>`;
-      if(spec.type==='select')return `<label for="${id}">${label}<select id="${id}" ${data}>${spec.choices.map(v=>`<option value="${v}" ${v===val?'selected':''}>${v}</option>`).join('')}</select></label>`;
+      if(spec.type==='select')return `<label for="${id}">${label}<select id="${id}" ${data}>${spec.choices.map(v=>`<option value="${v}" ${v===val?'selected':''}>${esc(String(spec.choice_labels?.[v]??v))}</option>`).join('')}</select></label>`;
       if(spec.type==='text')return `<label class="cm-wide" for="${id}">${label}<textarea id="${id}" ${data} maxlength="${spec.max_length}" required>${esc(val)}</textarea></label>`;
       return `<label for="${id}">${label}<input id="${id}" ${data} type="number" min="${spec.min}" max="${spec.max}" step="${spec.type==='integer'?'1':'any'}" value="${val??''}" required></label>`;
     }).join('');
@@ -114,7 +114,7 @@
   };
   byId('cmRun').onclick=async()=>{
     if(busy||!compiled)return;busy=true;result=null;showResult();buttons();const rev=revision,built=compiled;status('Run：正在生成信源、传输并译码…');
-    try{const received=await api('run',{program:built.program,token:built.token});if(rev!==revision)return;result=received;showResult();status(`Run 完成：信宿收到 ${result.sink.count} ${result.sink.kind==='analog'?'个样本':'个比特'}，错误比特 ${result.metrics.bit_errors} / ${result.metrics.bit_count}。`)}
+    try{const received=await api('run',{program:built.program,token:built.token});if(rev!==revision)return;result=received;showResult();status(result.transport==='analog'?`Run 完成：${result.analog.scheme} 恢复 ${result.sink.count} 个模拟样本，RMSE ${result.metrics.rmse.toPrecision(4)}。`:`Run 完成：信宿收到 ${result.sink.count} ${result.sink.kind==='analog'?'个样本':'个比特'}，错误比特 ${result.metrics.bit_errors} / ${result.metrics.bit_count}。`)}
     catch(error){status(error.message,true)}finally{busy=false;buttons()}
   };
   function download(name,content,mime){const url=URL.createObjectURL(new Blob([content],{type:mime})),link=document.createElement('a');link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000)}
@@ -147,17 +147,39 @@
     byId('cmTrace').innerHTML=plan.length?`<table><thead><tr><th>积木</th><th>输出类型</th><th>数量</th></tr></thead><tbody>${plan.map(row=>`<tr><td>${esc(row.label)}</td><td>${esc(row.output)}</td><td>${row.count}</td></tr>`).join('')}</tbody></table>`:'Build 后显示逐级信号类型和数据量。';
     if(!result){byId('cmDetails').textContent='';return}
     const m=result.metrics;
+    if(result.transport==='baseband'){
+      const b=result.baseband,r=b.recovery,t=r?.timing,e=r?.equalizer;
+      byId('cmDetails').textContent=`线路码/PAM：${b.scheme}；${b.symbol_rate} 码元/s × ${b.sps} 点/码元 = ${b.sample_rate} Hz。${b.pulse}；线路电平/编码位数 ${m.line_expansion.toFixed(3)}；线路违例 ${m.line_violations}。均衡前电平 RMSE ${m.before_equalizer_rmse.toPrecision(4)}，均衡后 ${m.level_rmse.toPrecision(4)}。前向抽头 [${b.equalizer_coefficients.map(v=>v.toPrecision(4)).join(', ')}]。${r?` 公共前导 ${r.training_symbols} / 完整帧 ${r.frame_symbols} 码元，数据占比 ${(100*r.payload_efficiency).toFixed(1)}%。`:''}${t?` ${t.method}：时钟分量${t.clock_informative?'已提取':'不足'}；初相 ${t.initial_phase.toFixed(4)}T，末相 ${t.final_phase.toFixed(4)}T；频率估计 ${t.frequency_ppm.toFixed(1)} ppm；末段相位抖动 ${t.phase_jitter.toPrecision(3)}T。`:''}${e?` ${e.method} / ${e.algorithm}；反馈抽头 [${e.feedback_coefficients.map(v=>v.toPrecision(4)).join(', ')}]；系数更新 ${e.updates} 次。${e.training_final_mse===null?'':` 训练 MSE ${e.training_initial_mse.toPrecision(4)} → ${e.training_final_mse.toPrecision(4)}。`}`:''}${result.sink.kind==='analog'?'信宿 RMSE 包含 PCM 量化误差。':''}`;return;
+    }
+    if(result.transport==='analog'){
+      byId('cmDetails').textContent=`${result.analog.family} · ${result.analog.scheme}；模拟采样率 ${result.analog.sample_rate} Hz，模拟符号率参数不参与此链路。最大全段绝对误差 ${m.max_abs_error.toPrecision(4)}；发送复包络功率 ${m.transmit_power.toPrecision(4)}；相位参考样本 ${result.analog.pilot_samples} 个。`+(m.overmodulated_samples?` AM 过调制样本 ${m.overmodulated_samples} 个。`:'');return;
+    }
     byId('cmDetails').textContent=`解调后 / 译码前 BER：${m.coded_bit_errors} / ${m.coded_bit_count}；符号错误：${m.symbol_errors} / ${m.symbol_count}；判决前 EVM：${m.evm_percent.toPrecision(4)}%。有效码率含填充与终止位。`+(result.sink.kind==='analog'?` PCM 饱和样本：${m.clipped_samples}；译码后 BER 以源 PCM 比特为参考，RMSE 以原始模拟信源为参考。`:'')+(m.hamming_syndromes?` Hamming 非零综合征码字：${m.hamming_syndromes}（多位错误可能误纠正）。`:'');
   }
   function showResult(){
     byId('cmNoSignal').hidden=!!result;byId('cmSignalLed').classList.toggle('on',!!result);byId('cmSignalStatus').textContent=result?'信号已抵达':'无信号';byId('cmLegend').hidden=!result;
     byId('cmTextResult').hidden=!result?.text;byId('cmReceivedText').textContent=result?.text?.received||'';
-    const m=result?.metrics,analog=result?.sink.kind==='analog';
-    const rows=[['译码后误码率',m?(100*m.ber).toFixed(3)+'%':'—',m?`${m.bit_errors} / ${m.bit_count} bit`:'等待传输'],['传输符号数',m?String(m.symbol_count):'—',m?`${result.constellation.scheme.toUpperCase()} · ${program.symbol_rate} Baud`:'等待传输'],['有效码率',m?m.effective_rate.toFixed(3):'—','源比特 / 编码后比特'],[analog?'信宿 RMSE':'判决前 EVM',m?(analog?m.rmse.toPrecision(4):m.evm_percent.toPrecision(4)+'%'):'—',analog?'相对原始模拟信源':'相对发送符号']];
+    const m=result?.metrics,analog=result?.sink.kind==='analog',direct=result?.transport==='analog',wave=result?.analog||result?.baseband;
+    const rows=direct?[
+      ['信宿 RMSE',m.rmse.toPrecision(4),'相对原始模拟信源'],
+      ['恢复样本数',String(result.sink.count),`${result.analog.scheme} · ${result.analog.sample_rate} Hz`],
+      ['输出信误比',m.rmse<=1e-12?'无误差':m.output_snr_db===null?'—':m.output_snr_db.toFixed(2)+' dB','原始信源功率 / 全段误差功率'],
+      ['复包络误差',m.channel_error_percent===null?'—':m.channel_error_percent.toPrecision(4)+'%','补偿后接收包络相对发送包络']
+    ]:[['译码后误码率',m?(100*m.ber).toFixed(3)+'%':'—',m?`${m.bit_errors} / ${m.bit_count} bit`:'等待传输'],['传输符号数',m?String(m.symbol_count):'—',m?`${result.baseband?.scheme||result.constellation.scheme.toUpperCase()} · ${program.symbol_rate} Baud`:'等待传输'],['有效码率',m?m.effective_rate.toFixed(3):'—','源比特 / 编码后比特'],[analog?'信宿 RMSE':result?.baseband?'判决前电平 RMSE':'判决前 EVM',m?(analog?m.rmse.toPrecision(4):result.baseband?m.level_rmse.toPrecision(4):m.evm_percent.toPrecision(4)+'%'):'—',analog?'相对原始模拟信源':'相对发送符号']];
     byId('cmMetrics').innerHTML=rows.map(([label,value,note])=>`<div class="cm-metric"><span>${label}</span><strong>${value}</strong><small>${esc(note)}</small></div>`).join('');
     byId('cmSinkCaption').textContent=result?`${analog?'接收模拟波形':'接收比特序列'} · 显示前 ${result.sink.plot_count} / ${result.sink.count} ${analog?'点':'位'}`:'信宿等待接收';
     byId('cmWindow').hidden=!result||result.sink.count<=result.sink.plot_count;byId('cmOffset').max=result?Math.max(0,result.sink.count-result.sink.plot_count):0;byId('cmOffset').value=0;
     byId('cmLegend').querySelector('span:last-child').hidden=!!analog;
+    byId('cmAnalogWarnings').hidden=!wave||!wave.warnings.length;
+    byId('cmAnalogWarnings').textContent=wave?wave.warnings.join(' '):'';
+    for(const tab of root.querySelectorAll('[data-cm-plot]'))tab.hidden=tab.dataset.cmPlot==='timing'?!result?.baseband?.recovery?.timing:tab.dataset.cmPlot==='convergence'?!result?.baseband?.recovery?.equalizer?.updates:tab.dataset.cmPlot==='eye'?!result?.baseband:tab.dataset.cmPlot==='constellation'?!!wave:['transmitter','spectrum'].includes(tab.dataset.cmPlot)?!wave:false;
+    root.querySelector('[data-cm-plot="transmitter"]').textContent=result?.baseband?'发送波形':'已调 I / Q';
+    root.querySelector('[data-cm-plot="spectrum"]').textContent=result?.baseband?'发送频谱':'已调频谱';
+    root.querySelector('[data-cm-plot="channel"]').textContent=result?.baseband?'信道波形':'信道 I / Q';
+    if(wave&&(plot==='constellation'||(plot==='eye'&&!result.baseband)))plot='transmitter';
+    if(!wave&&['transmitter','spectrum','eye'].includes(plot))plot='constellation';
+    if(root.querySelector(`[data-cm-plot="${plot}"]`)?.hidden)plot=wave?'transmitter':'constellation';
+    root.querySelectorAll('[data-cm-plot]').forEach(tab=>tab.setAttribute('aria-pressed',tab.dataset.cmPlot===plot?'true':'false'));
     showTrace();drawSink();drawAnalysis();buttons();
   }
   function surface(id,dark=false){
@@ -200,11 +222,33 @@
   function drawAnalysis(){
     if(root.hidden)return;const view=surface('cmAnalysisCanvas'),{x,width,height}=view;
     if(!result){byId('cmAnalysisCaption').textContent='Run 后显示接收星座与信道 I / Q。';x.fillStyle='#6b80a0';x.textAlign='center';x.fillText('Run 后，观察信号在信道中的变化。',width/2,height/2);return}
-    if(plot==='channel'){
-      const c=result.channel,all=[...c.i,...c.q],min=Math.min(...all),max=Math.max(...all),margin=Math.max(.1,(max-min)*.1),end=(c.plot_count-1)/c.symbol_rate;
+    const wave=result.analog||result.baseband;
+    if(result.baseband&&plot==='timing'){
+      const t=result.baseband.recovery.timing,values=t.phases,low=Math.min(...values),high=Math.max(...values),margin=Math.max(.03,(high-low)*.08),end=Math.max(1,values.length-1);
+      const axis=axes(view,low-margin,high+margin,end,'帧内码元 / 相位 T');axis.xEnd=end;line(view,values,axis,'#8058b6');
+      byId('cmAnalysisCaption').textContent=`${t.method} · 接收样本估计的时钟相位 / T；末段频率 ${t.frequency_ppm.toFixed(1)} ppm。曲线包含公共前导，不读取信道定时参数。`;return;
+    }
+    if(result.baseband&&plot==='convergence'){
+      const e=result.baseband.recovery.equalizer,trace=e.error_trace,values=trace.map(v=>10*Math.log10(Math.max(v.mse,1e-12))),low=Math.min(-40,...values),high=Math.max(0,...values),end=Math.max(1,trace.at(-1).symbol);
+      const axis=axes(view,low,high,end,'帧内码元 / MSE dB');axis.xEnd=end;line(view,values,axis,'#248c79');
+      byId('cmAnalysisCaption').textContent=`${e.method} / ${e.algorithm} · 32 码元滑动误差均方；前 ${e.training_symbols} 码元为公共训练，之后是判决误差，不能视为真实误码率。`;return;
+    }
+    if(result.baseband&&plot==='eye'){
+      const eye=result.baseband.eye,all=eye.traces.flat(),low=Math.min(-.1,...all),high=Math.max(.1,...all),margin=(high-low)*.08;
+      const axis=axes(view,low-margin,high+margin,2,'码元间隔 / T');axis.xEnd=2;
+      eye.traces.forEach(values=>line(view,values,axis,'#5264c442',false,1));
+      byId('cmAnalysisCaption').textContent=`${result.baseband.scheme} 眼图 · 接收滤波后、均衡前 · ${eye.traces.length} 段真实波形，每段 2 个线路码元。`;return;
+    }
+    if(wave&&plot==='spectrum'){
+      const s=wave.spectrum,low=s.frequency_hz[0],span=s.frequency_hz.at(-1)-low;
+      const axis=axes(view,Math.max(-100,Math.min(...s.density_db)),Math.max(0,...s.density_db),span,result.baseband?'基带频率 / Hz':'相对载频 / Hz',false,low);axis.xEnd=span;
+      line(view,s.density_db,axis,'#8058b6');byId('cmAnalysisCaption').textContent=`${wave.scheme} ${result.baseband?'发送基带波形':'已调复包络'}频谱 · 全帧双边周期图 / dB每Hz；${result.baseband?'包含有限帧零保护区。':'横轴为相对载频偏移，未生成射频载波。'}`;return;
+    }
+    if(plot==='channel'||plot==='transmitter'){
+      const c=plot==='transmitter'?wave.transmitter:result.channel,all=[...c.i,...c.q],min=Math.min(...all),max=Math.max(...all),margin=Math.max(.1,(max-min)*.1),end=(c.plot_count-1)/(wave?wave.sample_rate:c.symbol_rate);
       const axis=axes(view,min-margin,max+margin,end,'时间 / s');axis.xEnd=end;
       line(view,c.i,axis,'#5264c4');line(view,c.q,axis,'#219782');
-      byId('cmAnalysisCaption').textContent=`信道输出（解调前）· 蓝色 I / 绿色 Q · 前 ${c.plot_count} / ${c.count} 个符号。`;return;
+      byId('cmAnalysisCaption').textContent=`${plot==='transmitter'?(result.baseband?'发送端基带波形':'发送端已调复包络'):'信道输出（解调前）'} · 蓝色 I / 绿色 Q · ${c.plot_count} / ${c.count} ${wave?'个采样点':'个符号'}${result.baseband?'（显示数据起始窗口，Q 为零）':''}。`;return;
     }
     const c=result.constellation,bound=Math.max(1.3,...c.i.map(Math.abs),...c.q.map(Math.abs))*1.15;
     const area=Math.min(width-80,height-55),left=(width-area)/2,top=18,px=v=>left+(v/bound+1)*area/2,py=v=>top+(1-v/bound)*area/2;

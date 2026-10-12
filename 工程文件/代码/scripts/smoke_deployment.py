@@ -45,6 +45,28 @@ def check(base_url):
     transmission = json.loads(request('/api/communications/run', {'program': compiled['program'], 'token': compiled['token']}))
     assert transmission['sink']['count'] > 0
     assert transmission['text']['sent'] == transmission['text']['received']
+    for scheme in ('am', 'dsb', 'ssb', 'vsb', 'fm', 'pm'):
+        program = communication_catalog['presets']['analog_' + scheme]['program']
+        compiled = json.loads(request('/api/communications/build', {'program': program}))
+        analog = json.loads(request('/api/communications/run', {'program': compiled['program'], 'token': compiled['token']}))
+        assert analog['transport'] == 'analog' and math.isfinite(analog['metrics']['rmse'])
+        assert analog['sink']['count'] == program['sample_count'] and analog['analog']['spectrum']['frequency_hz']
+    baseband_presets = [key for key in communication_catalog['presets'] if key.startswith('line_') or key in ('pam4', 'baseband_isi')]
+    assert len(baseband_presets) == 12
+    for key in baseband_presets:
+        program = communication_catalog['presets'][key]['program']
+        compiled = json.loads(request('/api/communications/build', {'program': program}))
+        baseband = json.loads(request('/api/communications/run', {'program': compiled['program'], 'token': compiled['token']}))
+        assert baseband['transport'] == 'baseband' and math.isfinite(baseband['metrics']['level_rmse'])
+        assert baseband['metrics']['ber'] < .05 and baseband['baseband']['eye']['traces']
+        assert baseband['constellation'] is None and baseband['sink']['count'] > 0
+    recovery_presets = [key for key in communication_catalog['presets'] if key.startswith('recovery_')]
+    assert len(recovery_presets) == 7
+    for key in recovery_presets:
+        compiled = json.loads(request('/api/communications/build', {'program':communication_catalog['presets'][key]['program']}))
+        recovered = json.loads(request('/api/communications/run', {'program':compiled['program'],'token':compiled['token']}))
+        assert recovered['metrics']['ber'] < .01 and recovered['baseband']['recovery']['frame_symbols'] > 0
+        assert math.isfinite(recovered['metrics']['level_rmse'])
     session = 'deployment-' + uuid.uuid4().hex
     model_setup = json.loads(request(f'/api/model/settings?session_id={session}'))
     assert {provider['id'] for provider in model_setup['providers']} == {'openai', 'deepseek', 'custom'}
@@ -128,7 +150,7 @@ def check(base_url):
     assert request(f'/api/experiments/export?session_id={diagnostic_session}&format=zip').startswith(b'PK')
     return {'status': 'passed', 'session_id':session, 'saved_experiment':saved['id'], 'csv_sha256':hashlib.sha256(data).hexdigest(),
             'diagnostic_session':diagnostic_session,'report_history_id':history[0]['id'],
-            'checks': ['health', 'application_version', 'web_assets', 'ocean_ui_assets', 'communications_lab', 'model_settings_api', 'pdf_report', 'report_history', 'agent_pipeline', 'sse', 'csv_upload', 'synthetic_audio_download', 'experiment_save', 'full_data_export', 'snapshot_rename_duplicate_delete', 'delete_retry', 'shared_data_preserved', 'mapped_import', 'snapshot_comparison_report', 'task_list_cancel_endpoint', 'storage_preview', 'diagnostic_blind_trial_reveal_export']}
+            'checks': ['health', 'application_version', 'web_assets', 'ocean_ui_assets', 'communications_lab', 'baseband_12_presets', 'recovery_7_presets', 'model_settings_api', 'pdf_report', 'report_history', 'agent_pipeline', 'sse', 'csv_upload', 'synthetic_audio_download', 'experiment_save', 'full_data_export', 'snapshot_rename_duplicate_delete', 'delete_retry', 'shared_data_preserved', 'mapped_import', 'snapshot_comparison_report', 'task_list_cancel_endpoint', 'storage_preview', 'diagnostic_blind_trial_reveal_export']}
 
 
 def check_persistence(base_url, previous):

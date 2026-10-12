@@ -242,14 +242,42 @@ v0.3.4 发行：运行 `python scripts/build_release.py` 从已提交源码生�
 | defaults.seed | 42 | 默认种子；合法整数范围 0–4294967294。 |
 | defaults.sample_rate | 256 | 模拟信源采样率 Hz，范围 16–48000。 |
 | defaults.sample_count | 256 | 模拟信源样本数，32 至 max_samples。 |
-| defaults.symbol_rate | 1000 | 复基带符号率 Baud，用于信道时间轴；范围 1–100000。 |
+| defaults.symbol_rate | 1000 | 复符号分支的符号率 / 实基带分支的电平码元率 Baud；后者 fs=Rs×sps；范围 1–100000。 |
 
 配置上限为正整数，`max_blocks` 应足够容纳完整链路，`plot_points`/`scatter_points` 不超过资源预算；`defaults` 须处于上述范围。调整资源上限时同时评估内存和响应时间。积木自身参数由 `src/communications.py` 定义，通过 catalog 接口供表单与自动化读取。
 
-执行 `python scripts/test_communications.py`，14 项验收结果覆盖写入 `logs/communications/latest.log`。已有 `scripts/verify_release.py` 已接入该套件并校验通信脚本、样式和配置文件打包；发行在已提交的干净源码构建并验证，部署 ZIP 包含通信实验室。
+执行 `python scripts/test_communications.py`，当前 49 项验收结果覆盖写入 `logs/communications/latest.log`。`scripts/verify_release.py` 已接入该套件并校验通信脚本、样式、模拟算法、baseband、receiver_recovery 模块和配置文件打包；发行在已提交的干净源码构建并验证。
 
 本次独立浏览器验证脚本和截图位于 `debug/communications/`，目的见同目录 `note.md`；日志覆盖到 `logs/communications/browser.log`，隔离服务输出为 `server.log` / `server-error.log`。浏览器验证使用真实本地后端，桌面和手机截图没有输入模型 Key。部署冒烟 `python scripts/smoke_deployment.py --base-url http://127.0.0.1:8000` 新增通信 catalog/build/run 与静态资源交付检查，输出为 `logs/deployment/latest.log`，测试会创建独立测试会话。
 
 自动化界面入口：`[data-view-link="communications"]`、`#cmProgram`、`[data-cm-kind]`、`#cmBuild`、`#cmRun`；可通过浏览器输入/拖拽操作和页面截图验证。只计算时使用指南所列 HTTP 接口。工程草稿保存在访问者浏览器 `rs_communication_draft_v1`，结果不写入已有实验数据库。
 
+积木箱分类按钮按信号处理顺序排列：信源、发转换器、调制器、信道、解调器、收转换器。先在发转换器选择 PCM/编码/交织，再在调制器选择 BPSK/QPSK/16-QAM；接收侧先选择对应解调器，再按相反顺序添加收转换器。数字信源无需编码时可直接进入调制器。catalog 的 category 标识分别为 `source`、`tx_converter`、`modulator`、`channel`、`demodulator`、`rx_converter`；固定信宿仍为 `sink`。该分类调整无需修改配置或迁移旧工程。
+
+2026-10-12 分类细分验收继续使用 `python scripts/test_communications.py`（14 项）；旧版本对照日志为 `logs/communications-categories/compatibility.log`，浏览器分类、320/390/1440 px 布局、数字示例 Build/Run 和草稿刷新检查记录为 `logs/communications-categories/browser.log`。本轮临时脚本及截图位于 `debug/communications-categories/`，说明见 `note.md`；不需要运行该调试服务来使用正式功能。
+
 文档检查结果为 `logs/communications/docs.log`：README/指南本地链接、GitHub Markdown 的默认英文与中文切换、新截图加载和静态预览桌面/手机宽度均已检查。
+
+### 六种直接模拟调制
+
+本轮源码新增 AM、DSB-SC、SSB、VSB、FM、PM，不需要安装新增依赖或修改配置。按现有启动脚本重启服务并刷新浏览器，从“实验示例”选择四个“线性”或三个“非线性”示例，Build 后 Run。模拟信源直接进入模拟调制器，不经过 PCM；全部模拟时钟使用 sample_rate，symbol_rate 仅用于数字符号。AM 检波方式、SSB 方法/上下边带、VSB 残留宽度、FM/PM 灵敏度和低通参数详见 [模拟指南](analog-modulation.md)。
+
+`src/analog_modulation.py` 实现模拟算法，`src/communications.py` 定义积木、默认参数、示例及链路编译，无需额外启动进程。使用原 catalog/build/run 接口；新结果含 transport=analog、模拟指标和 analog 图表信息，旧数字结果结构保持一致。下载 CSV 为完整还原样本，结果 JSON 保留全帧频谱与完整信宿数组。
+
+部署冒烟 `python scripts/smoke_deployment.py --base-url http://127.0.0.1:8000` 同时检查六种新增示例；日志仍为 `logs/deployment/latest.log`。本轮隔离浏览器验收日志为 `logs/communications-analog/browser.log`，测试服务日志为同目录 server.log/server-error.log，临时脚本、PDF 提取和页面截图归入 `debug/communications-analog/`（目的见 note.md）。生产运行不依赖该调试目录。
+
+### 第四章线路编码与基带信道
+
+重启现有源码服务并刷新页面，从“实验示例”选择十种“线路码”或两个“基带”示例，Build、Run 后查看波形/频谱/眼图。全部新增参数的含义、合法范围与默认值见 [基带指南](baseband-coding.md)，表单和 catalog 来自相同定义；配置文件及启动脚本不变，无新增依赖。`src/baseband.py` 由原 communications API 自动调用，无需独立启动。
+
+`max_bits` 同时限制线路展开、发送零保护区和接收滤波尾部的采样总量。增加 sps 或长脉冲跨度前应减少信源位数；Rs 是实际电平码元率，fs=Rs×sps，滤波截止须小于 fs/2。原 `sample_rate` 只控制模拟信源及 PCM 输出的时间轴。实基带结果新增 `transport=baseband`、电平 RMSE/违例、baseband 波形/频谱/眼图/均衡系数；旧分支结果未改动。
+
+本轮 `python scripts/test_communications.py` 37 项、`python scripts/test_regressions.py` 25 项、`python scripts/verify_reproduction.py` 5 项通过。部署冒烟还逐个检查 12 个新示例的真实 HTTP Build/Run、眼图和结果。数值日志为 `logs/communications/latest.log`，十个旧示例逐字段对照为 `logs/communications-coding/compatibility.log`，浏览器与隔离服务输出为 `logs/communications-coding/browser.log`、`server.log`、`server-error.log`；调试脚本、PDF 提取/渲染、独立服务数据和截图在 `debug/communications-coding/`。以上功能已纳入 v0.4.1 发布 ZIP。
+
+### 自动符号同步与自适应均衡（当前源码）
+
+以上累积功能已纳入 v0.4.1「传输环节模块补充」。提交干净源码后运行 `python scripts/build_release.py`、`python scripts/verify_release.py`；产物为 `outputs/release/random-signal-agent-v0.4.1-deploy.zip`、`SHA256SUMS.txt` 和平台验证 JSON。完整验证包含 49 项通信验收及既有各套件、540 个基准、真实启动与 HTTP 全流程。发布前合并 GitHub 六组平台/Python 及 Docker 检查到 `verification.json`，随 Release 上传。日志覆盖 `logs/release/`，本次临时发布材料在 `debug/release-v041/`，干净解压环境由 `debug/release/` 管理并自动回收。
+
+沿用现有启动脚本、环境配置及 API，重启源码服务并刷新页面。选择三个“同步”或四个“均衡”新示例，Build、Run；在基带/PAM 接收器中选择同步模式、均衡结构及 LMS/NLMS/RLS。自适应模式须在发送器配置足量“公共训练前导”；关闭“训练后按判决继续自适应”可冻结系数。全部新增参数、范围、默认值和实验步骤见 [同步与均衡指南](receiver-recovery.md)。`src/receiver_recovery.py` 由 `baseband.py` 调用，无需单独启动或新增依赖。
+
+当前通信 49 项、回归 25 项、复现 5 项通过，运行命令保持上文不变。启动服务后执行 `python scripts/smoke_deployment.py --base-url http://127.0.0.1:8000` 验证 HTTP 全流程，额外检查 7 个同步/均衡示例。日志覆盖写入 `logs/communications/latest.log` 与 `logs/deployment/latest.log`；本次算法观测、22 个旧示例对照、浏览器、文档和隔离服务日志位于 `logs/communications-recovery/`。临时课件页图、脚本及数据位于 `debug/communications-recovery/`，不参与部署；页面截图见指南。新默认字段规范化省略，原工程 schema 1 与 Build token 保持兼容。以上功能随 v0.4.1 发布 ZIP 交付。
