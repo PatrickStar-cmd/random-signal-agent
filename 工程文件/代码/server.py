@@ -168,12 +168,12 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
 
     @app.post('/api/communications/{action}')
     async def communication_action(action: str, request: Request):
-        if action not in ('validate', 'build', 'run'):
+        if action not in ('validate', 'build', 'run', 'sweep'):
             raise ValueError('未知通信实验操作。')
         if request.headers.get('content-type', '').split(';')[0] != 'application/json':
             raise ValueError('通信实验请求须使用 JSON。')
         payload = await body(request)
-        if set(payload) - ({'program', 'token'} if action == 'run' else {'program'}):
+        if set(payload) - ({'program', 'token', 'settings'} if action == 'sweep' else {'program', 'token'} if action == 'run' else {'program'}):
             raise ValueError('通信实验请求包含未知字段。')
         if action == 'build':
             return await run_in_threadpool(communications.build, payload.get('program'))
@@ -183,6 +183,9 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
             if not communication_slots.acquire(blocking=False):
                 raise TaskBusy('通信仿真正在运行，请稍后重试。')
             try:
+                if action == 'sweep':
+                    from src.communication_sweep import sweep
+                    return sweep(payload.get('program'), payload.get('token'), payload.get('settings'))
                 return communications.run(payload.get('program'), payload.get('token'))
             finally:
                 communication_slots.release()

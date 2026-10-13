@@ -15,6 +15,7 @@ import re
 
 import numpy as np
 from src import analog_modulation, baseband, receiver_recovery
+from src import communication_catalog, communication_codecs, advanced_communications
 
 CONFIG = json.loads((Path(__file__).resolve().parents[1] / 'config/communications.json').read_text(encoding='utf-8'))
 
@@ -120,7 +121,9 @@ block('timing_offset','定时偏移信道','channel','线性插值产生分数�
 block('clock_drift','采样时钟漂移','channel','实基带采样时钟偏差，插值产生随帧时间增长的定时误差；正 ppm 表示接收波形时间拉长。',ppm=number('时钟误差 / ppm',300,-500,500))
 block('sink', '信宿', 'sink', '显示接收端译码后的信号。固定在链路末端。')
 
+communication_catalog.register(block, number, field, BLOCKS)
 PAIRS = {'pcm_decode': 'pcm_encode', 'repeat_decode': 'repeat_encode', 'hamming_decode': 'hamming_encode', 'conv_decode': 'conv_encode', 'deinterleave': 'interleave'}
+PAIRS.update(communication_codecs.PAIRS)
 PAIRS.update({'line_'+scheme+'_decode':'line_'+scheme+'_encode' for scheme in baseband.LINE_CODES})
 SOURCES = {k for k, v in BLOCKS.items() if v['category'] == 'source'}
 ENCODERS = set(PAIRS.values())
@@ -151,6 +154,9 @@ for mode,label in [(1,'非线性时钟提取'),(2,'早迟门自动同步'),(3,'G
     PRESETS['recovery_timing_'+str(mode)]={'label':'同步 · '+label,'program':preset(['random_bits','line_nrz_polar_encode','mod_baseband','timing_offset','clock_drift','sample_awgn','demod_baseband','line_nrz_polar_decode','sink'],{0:{'count':2048},2:{'pulse':5,'rolloff':.6,'training_symbols':256},3:{'offset':.35},4:{'ppm':0 if mode==1 else 300},5:{'snr_db':25},6:{'timing_mode':mode,'loop_bandwidth':.005}})}
 for key,label,mode,algorithm in [('fixed_dfe','已知响应 DFE',3,1),('linear_nlms','NLMS 自适应线性',4,1),('dfe_nlms','NLMS 自适应 DFE',5,1),('dfe_rls','RLS 自适应 DFE',5,2)]:
     PRESETS['recovery_'+key]={'label':'均衡 · '+label,'program':preset(['random_bits','line_nrz_polar_encode','mod_baseband','isi_channel','sample_awgn','demod_baseband','line_nrz_polar_decode','sink'],{0:{'count':2048},2:{'training_symbols':0 if mode==3 else 1024},3:{'taps':'1,0.7' if mode==4 else '1,0.9'},4:{'snr_db':25},5:{'equalizer':mode,'adaptive_algorithm':algorithm,'half_taps':4 if mode==4 else 1}})}
+
+
+PRESETS.update(communication_catalog.presets(preset))
 
 
 def catalog():
@@ -213,6 +219,8 @@ def normalize(raw, draft=False):
 
 def build(raw):
     p = normalize(raw); items = p['blocks']; sources = []
+    if any(b['kind'] in communication_catalog.KINDS for b in items) and not any(b['kind'].startswith('line_') or b['kind'] in ('mod_baseband','mod_pam') for b in items):
+        return advanced_communications.build(p)
     if any(b['kind'].startswith('line_') or b['kind'] in ('mod_baseband','demod_baseband','mod_pam','demod_pam') or b['kind'] in baseband.WAVE_CHANNELS for b in items):
         return baseband.build(p)
     for b in items:
@@ -361,6 +369,7 @@ def source_data(p):
         k, q = b['kind'], b['params']
         if k not in SOURCES: break
         if k == 'random_bits': y = source_rng.integers(0, 2, q['count'], dtype=np.uint8)
+        elif k == 'pn_bits': y = communication_codecs.pn(q['count'], q['degree'], q['initial'])
         elif k == 'bit_pattern': y = np.array([int(c) for c in q['pattern']], dtype=np.uint8)
         elif k == 'text':
             encoded = q['text'].encode('utf-8'); texts.append(encoded); y = np.unpackbits(np.frombuffer(encoded, dtype=np.uint8))
@@ -380,6 +389,8 @@ def run(raw, token):
     p = compiled['program']; analog = compiled['source_kind'] == 'analog'
     noise_rng = np.random.default_rng(np.random.SeedSequence(p['seed']).spawn(2)[1])
     source, texts, source_count = source_data(p)
+    if compiled.get('transport') == 'advanced':
+        return advanced_communications.run(compiled, source, texts, source_count, noise_rng)
     if compiled.get('transport') == 'baseband':
         result = baseband.run(compiled, source, texts, source_count, noise_rng)
         json.dumps(result, allow_nan=False)

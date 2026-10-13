@@ -11,6 +11,7 @@ import json
 import math
 import numpy as np
 from src import receiver_recovery as recovery
+from src import communication_codecs as codec
 
 LINE_CODES = {
     'nrz_unipolar': '单极性 NRZ', 'nrz_polar': '双极性 NRZ',
@@ -196,7 +197,9 @@ def build(program):
     if not sources: raise ValueError('基带链路需要开头的信源。')
     analog = sources[0]['kind'] in ('sine', 'square', 'gaussian')
     if any((b['kind'] in ('sine', 'square', 'gaussian')) != analog for b in sources): raise ValueError('两类信源不能混合。')
-    source_counts = [program['sample_count'] if analog else b['params']['count'] if b['kind'] == 'random_bits' else len(b['params']['pattern']) if b['kind'] == 'bit_pattern' else len(b['params']['text'].encode()) * 8 for b in sources]
+    source_counts = [program['sample_count'] if analog else b['params']['count'] if b['kind'] in ('random_bits','pn_bits') else len(b['params']['pattern']) if b['kind'] == 'bit_pattern' else len(b['params']['text'].encode()) * 8 for b in sources]
+    for b in sources:
+        if b['kind']=='pn_bits': codec.pn(1,b['params']['degree'],b['params']['initial'])
     count = program['sample_count'] if analog else sum(source_counts)
     if not analog and count > c.CONFIG['max_source_bits']: raise ValueError('合并数字信源超过上限。')
     domain = '模拟样本' if analog else '比特'; direction = 'tx'; stack = []; modulator = None; channels = 0; attenuation = 0; line = None
@@ -209,12 +212,19 @@ def build(program):
             if kind.startswith('line_'):
                 if domain != '比特': fail('线路编码器需要比特，模拟信源请先 PCM 编码。')
                 line = kind; count *= expansion(line_scheme(kind), params); domain = '线路电平'
+            elif kind in codec.SOURCE_CODECS:
+                if domain != '模拟样本': fail('信源编码需要模拟样本。')
+                count=codec.encoded_count(kind,count,params); domain='比特'
             elif kind == 'pcm_encode':
                 if domain != '模拟样本': fail('PCM 需要模拟样本。')
                 count *= params['bits']; domain = '比特'
             else:
                 if domain != '比特': fail('信道编码/交织需要比特，须位于线路编码之前。')
-                if kind == 'repeat_encode': count *= params['factor']
+                if kind == 'ldpc_encode': fail('LDPC 请连接 PSK/QAM 软解调链路。')
+                if kind in ('crc_append','scramble'):
+                    count=codec.encoded_count(kind,count,params)
+                    if kind=='scramble': codec.pn(1,params['degree'],params['initial'])
+                elif kind == 'repeat_encode': count *= params['factor']
                 elif kind == 'hamming_encode': count = math.ceil(count / 4) * 7
                 elif kind == 'conv_encode': count = (count + 2) * 2
                 else: count = math.ceil(count / params['columns']) * params['columns']
@@ -225,6 +235,7 @@ def build(program):
             shaping, guard, count = frame_layout(symbol_count, params, items); domain = '基带波形'; direction = 'channel'
         elif kind in c.CHANNELS:
             if direction != 'channel': fail('信道须位于波形形成器和抽样判决之间。')
+            if kind not in WAVE_CHANNELS | {'ideal','attenuation','dropout','awgn','analog_awgn','phase_shift'}: fail('该信道需要数字复基带链路。')
             if kind in ('awgn', 'analog_awgn', 'phase_shift'): fail('实基带链路请选择基带白噪声/带限 AWGN；相位旋转属于复包络链路。')
             channels += 1
             if kind == 'attenuation': attenuation += params['db']
@@ -248,7 +259,7 @@ def build(program):
                 if domain != '线路电平': fail('线路译码需要基带抽样电平。')
                 domain = '比特'
             elif domain != '比特': fail('先完成线路译码。')
-            if kind == 'pcm_decode': domain = '模拟样本'
+            if kind == 'pcm_decode' or c.PAIRS[kind] in codec.SOURCE_CODECS: domain = '模拟样本'
             count = original
         elif kind == 'sink':
             if index != len(items) - 1 or direction != 'rx' or stack or domain != ('模拟样本' if analog else '比特'): fail('信宿前需要完整的配对接收链路。')
@@ -265,13 +276,16 @@ def build(program):
 def run(compiled, source, texts, source_count, rng):
     from src import communications as c
     p = compiled['program']; data = source.copy(); reference = source.copy() if compiled['source_kind'] == 'digital' else None
-    stack = []; clipped = corrections = violations = 0; gain = 1.; warnings = []; line_params = None; recovery_info = {}
+    stack = []; clipped = corrections = violations = 0; gain = 1.; warnings = []; line_params = None; recovery_info = {}; codec_info=[]
     for block in p['blocks'][source_count:]:
         kind, params = block['kind'], block['params']
         if kind in c.ENCODERS:
             stack.append((kind, params, len(data)))
             if kind.startswith('line_'):
                 coded = data.copy(); line_params = params; scheme = line_scheme(kind); data = line_encode(data, scheme, params)
+            elif kind in set(codec.PAIRS.values())-{'conv_encode'}:
+                data=codec.encode(kind,data,params)
+                if kind in codec.SOURCE_CODECS: reference=data.copy()
             elif kind == 'pcm_encode':
                 clipped = int(np.count_nonzero(abs(data) > params['full_scale']))
                 quantized = np.rint((np.clip(data, -params['full_scale'], params['full_scale']) + params['full_scale']) / (2 * params['full_scale']) * (2 ** params['bits'] - 1)).astype(int)
@@ -352,7 +366,10 @@ def run(compiled, source, texts, source_count, rng):
             else: data = decided.copy()
         elif kind in c.PAIRS:
             _, expected, size = stack.pop()
+            if c.PAIRS[kind] in codec.SOURCE_CODECS: decoded_bits=data.copy()
             if kind.startswith('line_'): data, violations = line_decode(data, line_scheme(kind), params); demapped = data.copy()
+            elif kind in codec.PAIRS:
+                data,details=codec.decode(kind,data,params); codec_info.append({'kind':kind,**details})
             elif kind == 'repeat_decode': data = (data.reshape(-1, params['factor']).sum(axis=1) > params['factor']//2).astype(np.uint8)
             elif kind == 'hamming_decode': data, n = c.hamming_decode(data); corrections += n
             elif kind == 'conv_decode': data = c.viterbi_decode(data)
@@ -387,5 +404,9 @@ def run(compiled, source, texts, source_count, rng):
                         'line_levels':symbols.tolist(),'decision_levels':decided.tolist(),'before_equalizer':before_equalization.tolist(),'equalizer_coefficients':coefficients.tolist(),
                         'sampled_impulse':{str(i):v for i,v in h.items()},'eye':{'samples_per_symbol':tx['sps'],'traces':eyes,'point_count':2*tx['sps']+1}}}
     if recovery_info: result['baseband']['recovery'] = recovery_info
+    if codec_info:
+        result['baseband']['codecs']=codec_info
+        checks=[v['crc_pass'] for v in codec_info if 'crc_pass' in v]
+        metrics.update(crc_pass=all(checks) if checks else None,crc_detected_frame_errors=int(not all(checks)) if checks else None)
     if not analog and len(texts)==source_count: result['text']={'sent':b''.join(texts).decode(),'received':np.packbits(decoded_bits).tobytes().decode('utf-8',errors='replace')}
     return result

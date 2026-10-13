@@ -55,7 +55,13 @@ def decorate_preview(page):
         <p>全部 29 个示例、原生拖放/排序、撤销重做、Build/Run、草稿和工程/完整结果导出继续可用。下面是新版实际运行截图。</p>
         <a href="images/communications-studio.png"><img class="preview-image" src="images/communications-studio.png" alt="海洋风格积木工坊、紧凑链路、信宿观察和完整参数面板" loading="lazy"></a>
         <p><a href="images/communications-studio-recovery.png">查看均衡参数与收敛图</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.2">下载 v0.4.2</a></p></section>''', 1)
-    page = page.replace('「通信原理积木编程」已包含通信实验室。', '「积木编程视图更新」包含完整通信实验室。')
+    if 'id="block-features-preview"' not in page:
+        page = page.replace('<main>', '''<main><section id="block-features-preview"><h2>v0.4.3 · 积木功能更新 🧩</h2>
+        <p>122 个可添加模块、49 个预设：CRC、PRBS、扰码、压扩与预测编码、FSK/DPSK/MSK/GMSK、软 Viterbi、LDPC、完整复基带接收机、载波与帧同步、CMA、衰落导频估计和 OFDM。</p>
+        <p>观察每块接收处理的输出、相关峰和 OFDM 网格；自动扫描 BER/SER/FER，以 Eb/N₀ 对比链路，显示 95% 置信区间并导出 JSON/CSV。</p>
+        <a href="images/communications-v043-sweep.jpg"><img class="preview-image" src="images/communications-v043-sweep.jpg" alt="v0.4.3 软译码性能扫描与 95% 置信区间" loading="lazy"></a>
+        <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.3">下载 v0.4.3</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v043.md">算法与实验说明</a></p></section>''', 1)
+    page = page.replace('「通信原理积木编程」已包含通信实验室。', '「积木功能更新」包含完整通信实验室。')
     return page.replace('v0.4.0', f'v{VERSION}')
 
 

@@ -221,3 +221,7 @@ BPSK 采用 ±1，QPSK 为 (±1 ±j)/sqrt(2)，16-QAM 每轴用 Gray 标记的�
 选择积木只更新高亮和面板。编辑时立即写入工程、保存撤销状态和草稿，使 compiled/result 失效；输入框不因单次按键重建，因此空值、输入焦点和光标可继续编辑。Build 先校验全局字段，再临时生成每个积木的原生字段进行完整约束校验；有错误就选择对应积木、展开所在组并调用 reportValidity。服务器仍执行类型、配对与数量的完整编译校验。
 
 绘图、完整帧指标、草稿键名、API、固定信宿与历史逻辑继续复用。HTML dialog 的取消返回值在每次显示前重置，Escape 与取消按钮都保留原链路；拖放区显式指定 move/copy 效果，移动和添加按同一个有序数组操作。浏览器和隔离服务日志覆盖 logs/communications-studio/，真实截图在仓库 docs/images/communications-studio*.png。
+
+### v0.4.3 数字通信积木与性能统计
+
+新增原理详见 [积木功能更新](communications-v043.md)：CRC 多项式、LFSR、压扩、重构预测、连续相位调制、LLR/Viterbi、LDPC 校验矩阵及最小和、RRC、Gardner、载波与帧同步、复数自适应/CMA、衰落、导频 LS、OFDM、Eb/N₀ 和 Wilson 区间。该文同时说明参数单位、处理顺序、数据边界、发送开销、公开参考信号与日志路径。

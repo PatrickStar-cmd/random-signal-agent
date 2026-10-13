@@ -135,7 +135,7 @@
 </section>
 <section data-view="templates" class="tool-view" aria-label="实验从这里开始"><div class="view-heading"><div><span class="eyebrow">SIGNAL LAB / TEMPLATES</span><h2>实验从这里开始</h2><p>用可复现的模板探索信号，保存你值得回看的发现。</p></div><a href="#layoutRoot" data-view-link="workspace">查看工作区 →</a></div>
   <section id="workbenchPanel" class="workbench" aria-label="实验工作台">
-    <div class="wb-heading"><strong>2 · 处理与保存 <small>v0.4.2</small></strong><span id="wbStatus" role="status">每次操作后自动保存</span><button id="wbRecover" type="button">恢复未完成请求</button></div>
+    <div class="wb-heading"><strong>2 · 处理与保存 <small>v0.4.3</small></strong><span id="wbStatus" role="status">每次操作后自动保存</span><button id="wbRecover" type="button">恢复未完成请求</button></div>
     <details id="wbPanel" open><summary>模板与实验管理</summary>
       <form id="wbForm" class="wb-fields">
         <label>信号模板<select id="wbTemplate"><option value="sine">正弦 + 高斯噪声</option><option value="impulse">正弦 + 脉冲干扰</option><option value="ar">AR(1) 随机过程</option><option value="current">当前信号</option></select></label>
@@ -256,9 +256,16 @@
       </div>
     <section class="cm-panel cm-results" aria-label="通信实验结果分析"><header class="cm-panel-heading"><h3>📈 实验结果分析</h3></header><div id="cmMetrics" class="cm-metrics" aria-live="polite"></div><p id="cmAnalogWarnings" class="cm-analysis-caption" role="status" hidden></p>
       <div class="cm-analysis-tabs" role="group" aria-label="接收信号的其他视图"><button type="button" data-cm-plot="constellation" aria-pressed="true">接收星座图</button><button type="button" data-cm-plot="transmitter" aria-pressed="false" hidden>已调 I / Q</button><button type="button" data-cm-plot="spectrum" aria-pressed="false" hidden>已调频谱</button><button type="button" data-cm-plot="channel" aria-pressed="false">信道 I / Q</button><button type="button" data-cm-plot="eye" aria-pressed="false" hidden>接收眼图</button><button type="button" data-cm-plot="timing" aria-pressed="false" hidden>时钟跟踪</button><button type="button" data-cm-plot="convergence" aria-pressed="false" hidden>均衡收敛</button></div>
+      <div class="cm-analysis-tabs"><button type="button" data-cm-plot="correlation" hidden>前导 / PN 相关</button><button type="button" data-cm-plot="ofdm" hidden>OFDM 资源网格</button><label id="cmStageLabel" hidden>🔎 处理中间结果 <select id="cmStage"><option value="">选择处理积木…</option></select></label></div>
       <canvas id="cmAnalysisCanvas" width="640" height="260" aria-label="接收星座图、波形、频谱、眼图、时钟跟踪或均衡收敛"></canvas><p id="cmAnalysisCaption" class="cm-analysis-caption">运行后显示判决前星座点与理想星座。</p>
       <details class="cm-trace"><summary>链路检查与实验指标</summary><p id="cmModel">复基带 · 1 样本/符号 · 理想定时 · 硬判决</p><div id="cmTrace" class="cm-trace-scroll"></div><p id="cmDetails"></p></details>
       <div class="cm-downloads"><button id="cmDownloadCSV" type="button" disabled>下载信宿 CSV</button><button id="cmDownloadResult" type="button" disabled>下载结果 JSON</button></div>
+      <details class="cm-sweep"><summary>📊 批量性能实验 · BER / SER / FER</summary><div class="cm-sweep-fields">
+        <label>扫描噪声积木<select id="cmSweepNoise"></select></label><label>横轴<select id="cmSweepMode"><option value="native">积木原生 SNR / Es/N₀</option><option value="ebn0">信息比特 Eb/N₀</option></select></label>
+        <label>起始 dB<input id="cmSweepStart" type="number" min="-10" max="40" value="0" step="0.25"></label><label>结束 dB<input id="cmSweepStop" type="number" min="-10" max="40" value="12" step="0.25"></label><label>步长 dB<input id="cmSweepStep" type="number" min="0.25" max="20" value="2" step="0.25"></label>
+        <label>每点最多帧数<input id="cmSweepFrames" type="number" min="1" max="100" value="10"></label><label>每点目标误比特<input id="cmSweepErrors" type="number" min="1" max="100000" value="100"></label><label>曲线名称<input id="cmSweepName" type="text" maxlength="60" placeholder="当前链路"></label>
+      </div><div class="cm-downloads"><button id="cmSweepRun" type="button" disabled>📈 扫描并加入对比</button><button id="cmSweepClear" type="button">清空曲线</button><button id="cmSweepExport" type="button" disabled>导出扫描 JSON</button><button id="cmSweepCSV" type="button" disabled>导出扫描 CSV</button><label>指标<select id="cmSweepMetric"><option value="ber">BER</option><option value="ser">SER</option><option value="fer">FER</option></select></label></div>
+      <p id="cmSweepStatus" class="cm-analysis-caption" role="status">按多个随机种子累计错误数；曲线包含 95% 置信区间。</p><canvas id="cmSweepCanvas" width="640" height="290" aria-label="误码率、误符号率或误帧率曲线及 95% 置信区间"></canvas><div id="cmSweepTable" class="cm-trace-scroll"></div></details>
     </section>
     </div>
   </fieldset></form>

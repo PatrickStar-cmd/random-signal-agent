@@ -289,3 +289,11 @@ v0.3.4 发行：运行 `python scripts/build_release.py` 从已提交源码生�
 数值验证：`python scripts/test_communications.py`（49 项）；前端语法：`node --check web/communications.js`。本轮真实浏览器覆盖 29 个示例、完整导出、参数、拖放和九种屏宽；记录为 logs/communications-studio/browser.log、browser-presets.json、tests.log，隔离服务日志为同目录 server.log/server-error.log。调试目的与隔离数据位于 debug/communications-studio/，均不进入部署包。
 
 发布仍执行 `python scripts/build_release.py` 和 `python scripts/verify_release.py`，从已提交源码产生 outputs/release/random-signal-agent-v0.4.2-deploy.zip、SHA256SUMS.txt 与平台验证 JSON。六组平台/Python 及 Docker CI 汇总到发布 verification.json；日志覆盖 logs/release/，临时发布材料在 debug/release-v042/。
+
+### v0.4.3 积木功能更新
+
+运行 `python scripts/test_communications.py` 和 `python scripts/test_communications_advanced.py`，日志分别覆盖 `logs/communications/latest.log` 与 `advanced.log`。使用 `python scripts/run_communication_sweep.py --preset soft_viterbi --mode ebn0 --stop 6 --frames 10` 生成 `outputs/communications/sweep.json` 和 CSV，日志覆盖 `logs/communications/sweep.log`。接口、配置字段和参数说明见 [v0.4.3 指南](communications-v043.md)。
+
+页面中 Build 后运行预设，展开“批量性能实验”扫描并加入对比。浏览器验收与六档宽度记录位于 `logs/communications-v043/browser.json`，测试服务为隔离的 `debug/communications-v043/serve.py`，端口 8793；正式部署仍使用标准启动脚本。静态预览中的性能图来自真实浏览器。
+
+部署继续执行 `python scripts/build_release.py` 和 `python scripts/verify_release.py`，新增模块与验收套件均加入解包检查；v0.4.3 ZIP、SHA256SUMS.txt 和最终平台验证记录随 Release 交付。

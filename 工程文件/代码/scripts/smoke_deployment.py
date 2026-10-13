@@ -67,6 +67,15 @@ def check(base_url):
         recovered = json.loads(request('/api/communications/run', {'program':compiled['program'],'token':compiled['token']}))
         assert recovered['metrics']['ber'] < .01 and recovered['baseband']['recovery']['frame_symbols'] > 0
         assert math.isfinite(recovered['metrics']['level_rmse'])
+    for key in ('crc_scramble','soft_viterbi','ldpc','digital_gmsk','complete_receiver','complex_nlms','blind_cma','fading_rayleigh','ofdm'):
+        compiled = json.loads(request('/api/communications/build', {'program':communication_catalog['presets'][key]['program']}))
+        received = json.loads(request('/api/communications/run', {'program':compiled['program'],'token':compiled['token']}))
+        assert received['transport']=='advanced' and received['metrics']['ber']<.02
+        assert received['sink']['count']>0
+    program=communication_catalog['presets']['soft_viterbi']['program']
+    compiled=json.loads(request('/api/communications/build',{'program':program}))
+    scanned=json.loads(request('/api/communications/sweep',{'program':compiled['program'],'token':compiled['token'],'settings':{'block_id':'block-3','start':0,'stop':2,'step':2,'frames':2,'target_errors':100}}))
+    assert scanned['complete'] and len(scanned['points'])==2 and scanned['confidence']==.95
     session = 'deployment-' + uuid.uuid4().hex
     model_setup = json.loads(request(f'/api/model/settings?session_id={session}'))
     assert {provider['id'] for provider in model_setup['providers']} == {'openai', 'deepseek', 'custom'}

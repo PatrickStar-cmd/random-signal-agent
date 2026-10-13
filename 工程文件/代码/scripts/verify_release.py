@@ -62,6 +62,8 @@ def main():
         assert (code / 'src/analog_modulation.py').is_file()
         assert (code / 'src/baseband.py').is_file()
         assert (code / 'src/receiver_recovery.py').is_file()
+        for name in ('advanced_communications','communication_catalog','communication_codecs','communication_dsp','communication_sweep'):
+            assert (code / 'src' / (name+'.py')).is_file()
         assert (code / 'config/model-providers.json').is_file()
         assert (code / 'assets/fonts/NotoSansSC-Regular.ttf').stat().st_size > 1000000
         assert (code / 'assets/fonts/OFL.txt').is_file()
@@ -89,6 +91,7 @@ def main():
             run([python, 'scripts/test_pdf_report.py'])
             run([python, 'scripts/test_report_history.py'])
             run([python, 'scripts/test_communications.py'])
+            run([python, 'scripts/test_communications_advanced.py'])
             run([python, 'scripts/benchmark_algorithms.py'])
             report['benchmark'] = json.loads((code / 'outputs/benchmark/summary.json').read_text(encoding='utf-8'))
             env['PATH'] = str(bin_dir) + os.pathsep + env.get('PATH', '')
@@ -115,7 +118,8 @@ def main():
                                     'regression_suite', 'integration_suite', 'workbench_roundtrip', 'numerical_benchmark', 'real_startup_script',
                                     'health', 'application_version', 'web_assets', 'ocean_ui_assets', 'model_settings_api',
                                     'model_settings_acceptance', 'pdf_report_acceptance', 'report_history_acceptance', 'studio_acceptance', 'agent_pipeline', 'sse', 'csv_upload',
-                                    'synthetic_audio_download', 'diagnostic_acceptance', 'communication_lab_acceptance']
+                                    'synthetic_audio_download', 'diagnostic_acceptance', 'communication_lab_acceptance',
+                                    'communication_advanced_acceptance', 'communication_performance_sweep']
             finally:
                 if process is not None and process.poll() is None:
                     if os.name == 'nt':
