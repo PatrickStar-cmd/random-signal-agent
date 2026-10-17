@@ -16,6 +16,7 @@ import re
 import numpy as np
 from src import analog_modulation, baseband, receiver_recovery
 from src import communication_catalog, communication_codecs, advanced_communications
+from src import communication_runtime as runtime
 
 CONFIG = json.loads((Path(__file__).resolve().parents[1] / 'config/communications.json').read_text(encoding='utf-8'))
 
@@ -160,7 +161,9 @@ PRESETS.update(communication_catalog.presets(preset))
 
 
 def catalog():
-    return {'schema': CONFIG['schema'], 'defaults': CONFIG['defaults'], 'blocks': list(BLOCKS.values()), 'presets': PRESETS, 'limits': {k: v for k, v in CONFIG.items() if k.startswith('max_')}}
+    from src.communication_studio import contract
+    blocks=[{**v,'inputs':contract(k)[0],'output':contract(k)[1]} for k,v in BLOCKS.items()]
+    return {'schema': CONFIG['schema'], 'defaults': CONFIG['defaults'], 'blocks': blocks, 'presets': PRESETS, 'limits': {k: v for k, v in CONFIG.items() if k.startswith('max_')}}
 
 
 def numeric(value, name, low, high, integer=False):
@@ -209,7 +212,7 @@ def normalize(raw, draft=False):
                 raise ValueError(label + '长度无效。')
             # Omit default-valued recovery extensions to preserve existing
             # schema-1 baseband canonical programs and Build tokens.
-            optional = receiver_recovery.TX_DEFAULT_FIELDS if kind in ('mod_baseband','mod_pam') else receiver_recovery.RX_DEFAULT_FIELDS if kind in ('demod_baseband','demod_pam') else set()
+            optional = receiver_recovery.TX_DEFAULT_FIELDS if kind in ('mod_baseband','mod_pam') else receiver_recovery.RX_DEFAULT_FIELDS if kind in ('demod_baseband','demod_pam') else {'automatic_variance'} if kind.startswith('soft_') else set()
             if name not in optional or v != spec['default']: values[name] = v
         if not draft and kind == 'bit_pattern' and not re.fullmatch('[01]+', values['pattern']): raise ValueError('自定义比特只能包含 0 和 1。')
         if not draft and kind in ('sine', 'square') and values['frequency'] >= p['sample_rate'] / 2: raise ValueError('信源频率须低于采样率的一半。')
@@ -377,6 +380,9 @@ def source_data(p):
         else:
             s = np.sin(2 * np.pi * q['frequency'] * t + np.deg2rad(q['phase']))
             y = q['amplitude'] * (s if k == 'sine' else np.where(s >= 0, 1., -1.))
+        ctx=runtime.CURRENT.get()
+        if ctx and getattr(ctx,'source_active',False):
+            runtime.enter(b); y=runtime.record(b,y,p['sample_rate'])
         signals.append(y)
     analog = p['blocks'][0]['kind'] in ('sine', 'square', 'gaussian')
     source = np.sum(signals, axis=0) if analog else np.concatenate(signals)
@@ -388,7 +394,11 @@ def run(raw, token):
     if not isinstance(token, str) or token != compiled['token']: raise ValueError('配置已改变或尚未 Build，请重新构建后再 Run。')
     p = compiled['program']; analog = compiled['source_kind'] == 'analog'
     noise_rng = np.random.default_rng(np.random.SeedSequence(p['seed']).spawn(2)[1])
-    source, texts, source_count = source_data(p)
+    ctx=runtime.CURRENT.get()
+    if ctx: ctx.source_active=True
+    try: source, texts, source_count = source_data(p)
+    finally:
+        if ctx: ctx.source_active=False
     if compiled.get('transport') == 'advanced':
         return advanced_communications.run(compiled, source, texts, source_count, noise_rng)
     if compiled.get('transport') == 'baseband':
@@ -402,6 +412,7 @@ def run(raw, token):
     data = source.copy(); reference_bits = None if analog else source.copy(); encoded_bits = None; stack = []; gain = 1 + 0j
     channel_symbols = None; decision_symbols = None; tx_symbols = None; demapped = None; decided_indices = None; clipped = 0; corrections = 0
     for b in p['blocks'][source_count:]:
+        runtime.enter(b)
         k, q = b['kind'], b['params']; before = len(data)
         if k in ENCODERS:
             stack.append((k, q, before))
@@ -433,6 +444,7 @@ def run(raw, token):
                 decoded_bits = data.copy(); values = data.reshape(-1, q['bits']).dot(2 ** np.arange(q['bits'] - 1, -1, -1))
                 data = values / (2 ** q['bits'] - 1) * 2 * q['full_scale'] - q['full_scale']
             data = data[:size]
+        data=runtime.record(b,data,p['symbol_rate'])
     if not analog: decoded_bits = data.astype(np.uint8)
     errors = int(np.count_nonzero(reference_bits != decoded_bits)); coded_errors = int(np.count_nonzero(encoded_bits != demapped))
     full_count = len(data); shown = min(full_count, CONFIG['plot_points']); scatter = min(len(tx_symbols), CONFIG['scatter_points'])

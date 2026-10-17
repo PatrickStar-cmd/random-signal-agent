@@ -2,6 +2,7 @@
 import math
 import numpy as np
 from src import baseband
+from src import communication_runtime as runtime
 
 
 def constellation(scheme):
@@ -88,16 +89,23 @@ def interp(wave, positions):
     return np.interp(positions,x,wave.real,left=0,right=0)+1j*np.interp(positions,x,wave.imag,left=0,right=0)
 
 
-def fading(count, sample_rate, doppler, rng, k_db=None):
+def fading(count, sample_rate, doppler, rng, k_db=None,state_key='fading'):
+    def initial():
+        value={'offset':0}
+        if doppler==0: value['scatter']=(rng.normal()+1j*rng.normal())/math.sqrt(2)
+        else: value.update(phases=rng.uniform(-np.pi,np.pi,32),angles=rng.uniform(-np.pi,np.pi,32))
+        if k_db is not None: value['los_phase']=rng.uniform(-np.pi,np.pi)
+        return value
+    memory=runtime.state(state_key,initial);offset=memory['offset'];memory['offset']+=count
     if doppler==0:
-        scatter=np.full(count,(rng.normal()+1j*rng.normal())/math.sqrt(2))
+        scatter=np.full(count,memory['scatter'])
     else:
-        t=np.arange(count)/sample_rate; phases=rng.uniform(-np.pi,np.pi,32); angles=rng.uniform(-np.pi,np.pi,32)
+        t=(offset+np.arange(count))/sample_rate; phases=memory['phases']; angles=memory['angles']
         scatter=np.zeros(count,dtype=complex)
         for phase,angle in zip(phases,angles): scatter+=np.exp(1j*(phase+2*np.pi*doppler*np.cos(angle)*t))/math.sqrt(32)
     if k_db is None: return scatter
-    k=10**(k_db/10); phase=rng.uniform(-np.pi,np.pi)
-    los=np.exp(1j*(phase+2*np.pi*doppler*np.arange(count)/sample_rate))
+    k=10**(k_db/10); phase=memory['los_phase']
+    los=np.exp(1j*(phase+2*np.pi*doppler*(offset+np.arange(count))/sample_rate))
     return math.sqrt(1/(k+1))*scatter+math.sqrt(k/(k+1))*los
 
 
@@ -114,12 +122,18 @@ def coarse_frequency(wave, fs, scheme):
 
 
 def timing_recover(wave, sps, bandwidth=.005, manual=False, offset=0):
-    phase=float(offset*sps%sps) if manual else float(np.argmax([np.mean(abs(wave[p::sps])**2) for p in range(sps)]))
+    if float(sps).is_integer():
+        sps=int(sps);phase=float(offset*sps%sps) if manual else float(np.argmax([np.mean(abs(wave[p::sps])**2) for p in range(sps)]))
+    else:
+        candidates=np.linspace(0,sps,max(4,int(math.ceil(sps))),endpoint=False)
+        phase=float(offset*sps%sps) if manual else float(candidates[np.argmax([np.mean(abs(interp(wave,p+np.arange(int(len(wave)/sps))*sps))**2) for p in candidates])])
+    memory=runtime.state('timing',lambda:{'period':float(sps),'phase':phase})
+    if not manual: phase=memory['phase']
     # Use scalar interpolation in the loop; complexity is linear in sample count.
     def sample(t):
         i=int(t); f=t-i
         return wave[i]*(1-f)+wave[i+1]*f if 0<=i<len(wave)-1 else 0j
-    position=phase+sps; period=float(sps); output=[sample(phase)]; phases=[phase/sps]; errors=[]
+    position=phase+sps; period=memory['period']; output=[sample(phase)]; phases=[phase/sps]; errors=[]
     power=max(float(np.mean(abs(wave)**2)),1e-12)
     while position<len(wave)-sps:
         early=output[-1]; middle=sample(position-period/2); current=sample(position)
@@ -129,11 +143,13 @@ def timing_recover(wave, sps, bandwidth=.005, manual=False, offset=0):
         output.append(current); phases.append((position-len(phases)*sps)/sps); errors.append(error)
         position+=period+(0 if manual else 2*bandwidth*error)
     stride=max(1,len(phases)//512)
+    memory.update(period=period,phase=float((position-len(wave))%sps))
     return np.array(output),{'method':'手动相位' if manual else 'Gardner PI','phases':phases[::stride],'phase_step':stride,'frequency_ppm':(period/sps-1)*1e6,'error':errors[::stride]}
 
 
 def carrier_recover(symbols, scheme, bandwidth):
-    _,points=constellation(scheme); phase=frequency=0.; output=np.zeros_like(symbols); trace=[]
+    memory=runtime.state('carrier',lambda:{'phase':0.,'frequency':0.})
+    _,points=constellation(scheme);phase=memory['phase'];frequency=memory['frequency'];output=np.zeros_like(symbols); trace=[]
     # Normalize for phase detector only; output retains measured amplitude.
     rms=max(float(np.sqrt(np.mean(abs(symbols)**2))),1e-12)
     for i,x in enumerate(symbols):
@@ -143,6 +159,7 @@ def carrier_recover(symbols, scheme, bandwidth):
         frequency+=bandwidth**2*error; phase+=frequency+2*bandwidth*error
         output[i]=value
         if i%16==0: trace.append(float(phase))
+    memory.update(phase=float(phase%(2*np.pi)),frequency=float(frequency))
     return output,{'phase_trace':trace,'residual_cycles_per_symbol':float(frequency/(2*np.pi))}
 
 
@@ -163,9 +180,9 @@ def frame_sync(symbols, preamble, count, threshold):
 
 def equalize(symbols, points, q, training=None, cma=False):
     half=q['half_taps']; nt=2*half+1; nf=q.get('feedback_taps',0) if q.get('dfe',False) else 0
-    weights=np.zeros(nt+nf,dtype=complex); weights[half]=1
-    padded=np.pad(symbols,(half,half)); feedback=np.zeros(nf,dtype=complex)
-    output=np.zeros_like(symbols); covariance=np.eye(nt+nf,dtype=complex)*100
+    memory=runtime.state('equalizer',lambda:{'weights':np.eye(1,nt+nf,half,dtype=complex).ravel(),'feedback':np.zeros(nf,dtype=complex),'covariance':np.eye(nt+nf,dtype=complex)*100})
+    weights=memory['weights'];feedback=memory['feedback'];covariance=memory['covariance']
+    padded=np.pad(symbols,(half,half));output=np.zeros_like(symbols)
     errors=[]; trace=[]; target_modulus=float(np.mean(abs(points)**4)/np.mean(abs(points)**2))
     for i in range(len(symbols)):
         x=np.r_[padded[i:i+nt][::-1],feedback]
@@ -186,6 +203,7 @@ def equalize(symbols, points, q, training=None, cma=False):
         output[i]=y; errors.append(float((target_modulus-abs(y)**2)**2 if cma else abs(error)**2))
         if (i+1)%32==0: trace.append({'symbol':i+1,'mse':float(np.mean(errors[-32:]))})
     if len(symbols)%32: trace.append({'symbol':len(symbols),'mse':float(np.mean(errors[-(len(symbols)%32):]))})
+    memory.update(weights=weights,feedback=feedback,covariance=covariance)
     return output,{'method':'CMA' if cma else '自适应 DFE' if nf else '自适应线性','algorithm':'CMA' if cma else ['LMS','NLMS','RLS'][q['algorithm']], 'error_trace':trace,'updates':len(symbols),'training_symbols':0 if training is None else len(training),'weights_i':weights.real.tolist(),'weights_q':weights.imag.tolist()}
 
 

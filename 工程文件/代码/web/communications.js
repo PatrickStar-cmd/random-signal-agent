@@ -7,6 +7,7 @@
   let catalog=null,definitions={},program=null,compiled=null,result=null,category='source',busy=false,revision=0;
   let undo=[],redo=[],drag=null,plot='constellation',snowTimer=0,selectedId=null;
   let sweeps=[];
+  let studio=null;
   const inspectorState=new Map();
   const clone=value=>JSON.parse(JSON.stringify(value));
   const empty=()=>({schema:catalog.schema,...clone(catalog.defaults),blocks:[{id:'sink',kind:'sink',params:{}}]});
@@ -21,19 +22,20 @@
     byId('cmDownloadCSV').disabled=busy||!result;byId('cmDownloadResult').disabled=busy||!result;
     byId('cmBuildBadge').classList.toggle('ready',!!compiled);
     byId('cmBuildBadge').textContent=busy?'处理中…':compiled?'Build 已通过':'等待构建';
+    studio?.buttons(busy);
   }
-  function persist(){try{localStorage.setItem(storageKey,JSON.stringify(program))}catch{status('当前浏览器无法保存草稿，可使用“导出工程 JSON”。',true)}}
+  function persist(){try{localStorage.setItem(storageKey,JSON.stringify(program))}catch{status('当前浏览器无法保存草稿，可使用“导出工程 JSON”。',true)}studio?.persist()}
   function invalidate(message='配置已改变，请重新 Build，再 Run。'){
-    revision++;compiled=null;result=null;persist();buttons();showResult();status(message);
+    revision++;compiled=null;result=null;studio?.invalidate();persist();buttons();showResult();status(message);
   }
-  function checkpoint(){undo.push(clone(program));if(undo.length>30)undo.shift();redo=[]}
+  function checkpoint(){undo.push({program:clone(program),experience:studio?.editSnapshot()});if(undo.length>30)undo.shift();redo=[]}
   function confirmReplace(message){
     const dialog=byId('cmReplaceDialog');dialog.returnValue='cancel';byId('cmReplaceMessage').textContent=message;
     return new Promise(resolve=>{dialog.addEventListener('close',()=>resolve(dialog.returnValue==='replace'),{once:true});dialog.showModal()});
   }
   function change(fn,message){if(busy||!catalog)return;checkpoint();fn();invalidate(message);renderProgram()}
-  function setProgram(next,message){change(()=>{program=clone(next);selectedId=program.blocks[0]?.id},message)}
-  function history(direction){if(busy)return;const from=direction==='undo'?undo:redo,to=direction==='undo'?redo:undo;if(!from.length)return;to.push(clone(program));program=from.pop();invalidate('已'+(direction==='undo'?'撤销':'重做')+'，重新 Build 后即可运行。');renderProgram()}
+  function setProgram(next,message){change(()=>{studio?.replaceProgram();program=clone(next);selectedId=program.blocks[0]?.id},message)}
+  function history(direction){if(busy)return;const from=direction==='undo'?undo:redo,to=direction==='undo'?redo:undo;if(!from.length)return;to.push({program:clone(program),experience:studio?.editSnapshot()});const item=from.pop();program=item.program||item;if(item.experience)studio?.restoreEdit(item.experience);invalidate('已'+(direction==='undo'?'撤销':'重做')+'，重新 Build 后即可运行。');renderProgram()}
   async function api(action,payload){
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),60000);
     try{
@@ -42,10 +44,11 @@
     }catch(error){if(error.name==='AbortError')throw Error('请求超时，请重新尝试。');throw error}finally{clearTimeout(timer)}
   }
   function palette(){
+    const available=catalog.blocks.filter(b=>b.kind!=='sink'&&(studio?studio.matches(b,category):b.category===category));
     byId('cmCategories').innerHTML=Object.entries(categories).map(([key,label])=>`<button type="button" data-cm-filter="${key}" data-cm-category="${key}" aria-pressed="${key===category}"><span aria-hidden="true">${categoryEmoji[key]}</span>${label}</button>`).join('');
     byId('cmCategoryName').textContent=`${categoryEmoji[category]} ${categories[category]}`;
-    byId('cmCategoryCount').textContent=`${catalog.blocks.filter(b=>b.category===category).length} 个模块`;
-    byId('cmPalette').innerHTML=catalog.blocks.filter(b=>b.category===category).map(b=>`<button type="button" class="cm-palette-block" draggable="true" data-cm-kind="${b.kind}" data-cm-category="${b.category}" aria-label="添加 ${esc(b.label)}"><span class="cm-add-symbol" aria-hidden="true">＋</span><strong>${esc(b.label)}</strong><small>${esc(b.description)}</small></button>`).join('');
+    byId('cmCategoryCount').textContent=`${available.length} 个模块`;
+    byId('cmPalette').innerHTML=available.map(b=>`<button type="button" class="cm-palette-block" draggable="true" data-cm-kind="${b.kind}" data-cm-category="${b.category}" aria-label="添加 ${esc(b.label)}"><span class="cm-add-symbol" aria-hidden="true">＋</span><strong>${esc(b.label)}</strong><small>${esc(b.description)}</small></button>`).join('');studio?.decoratePalette();
   }
   function parameterHTML(b,entries=Object.entries(definitions[b.kind].params)){
     return entries.map(([key,spec])=>{
@@ -81,7 +84,7 @@
   function selectBlock(id){
     if(!program.blocks.some(b=>b.id===id))return;selectedId=id;
     byId('cmProgram').querySelectorAll('[data-cm-select]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.cmSelect===id)));
-    byId('cmProgram').querySelectorAll('[data-cm-id]').forEach(card=>card.classList.toggle('cm-selected',card.dataset.cmId===id));renderInspector();
+    byId('cmProgram').querySelectorAll('[data-cm-id]').forEach(card=>card.classList.toggle('cm-selected',card.dataset.cmId===id));renderInspector();studio?.selection();
   }
   function validateFields(){
     const global=root.querySelector('[data-global]:invalid');
@@ -108,11 +111,12 @@
       const id=esc(b.id),select=`<button type="button" class="cm-block-select" data-cm-select="${id}" aria-pressed="${b.id===selectedId}" aria-label="编辑 ${esc(def.label)} 参数"><strong>${b.kind==='sink'?'📺 ':''}${esc(def.label)}</strong><span class="cm-slots">${summaryHTML(b)}</span></button>`;
       if(b.kind==='sink')return `<article class="cm-block cm-sink ${b.id===selectedId?'cm-selected':''}" data-cm-category="sink" data-cm-id="${id}" data-cm-index="${i}">${select}</article>`;
       return `<article class="cm-block ${b.id===selectedId?'cm-selected':''}" data-cm-category="${def.category}" data-cm-id="${id}" data-cm-index="${i}"><div class="cm-block-head"><button type="button" class="cm-handle" draggable="true" data-cm-move="${id}" aria-label="拖动 ${esc(def.label)}" title="拖动改变链路顺序">⠿</button>${select}<span class="cm-block-controls"><button type="button" data-cm-up="${id}" aria-label="上移 ${esc(def.label)}" ${i===0?'disabled':''}>↑</button><button type="button" data-cm-down="${id}" aria-label="下移 ${esc(def.label)}" ${i===program.blocks.length-2?'disabled':''}>↓</button><button type="button" class="cm-remove" data-cm-remove="${id}" aria-label="移除 ${esc(def.label)}">×</button></span></div></article>`;
-    }).join('');renderInspector();buttons();
+    }).join('');renderInspector();studio?.render();buttons();
   }
   function add(kind,index=program.blocks.length-1){
+    if(arguments.length<2&&studio)index=studio.insertionIndex(index);
     if(program.blocks.length>=catalog.limits.max_blocks){status(`最多放置 ${catalog.limits.max_blocks} 个积木，请移除不需要的模块。`,true);return}
-    change(()=>{selectedId=uid();program.blocks.splice(Math.max(0,Math.min(index,program.blocks.length-1)),0,{id:selectedId,kind,params:Object.fromEntries(Object.entries(definitions[kind].params).map(([k,v])=>[k,v.default]))})});
+    change(()=>{selectedId=uid();program.blocks.splice(Math.max(0,Math.min(index,program.blocks.length-1)),0,{id:selectedId,kind,params:Object.fromEntries(Object.entries(definitions[kind].params).map(([k,v])=>[k,v.default]))});studio?.used(kind)});
   }
   function move(id,index){
     const from=program.blocks.findIndex(b=>b.id===id);if(from<0||program.blocks[from].kind==='sink')return;
@@ -136,6 +140,7 @@
     else{
       const b=program.blocks.find(b=>b.id===el.dataset.blockId),spec=definitions[b.kind].params[el.dataset.param];
       b.params[el.dataset.param]=spec.type==='boolean'?el.checked:spec.type==='text'?el.value:el.value===''?null:Number(el.value);
+      studio?.parameterChanged();
     }
     invalidate();
     byId('cmProjectName').textContent='我的通信工程';
@@ -170,11 +175,11 @@
     event.preventDefault();if(busy||!catalog||!validateFields())return;
     busy=true;compiled=null;result=null;showResult();buttons();status('Build：正在检查信号类型、参数与收发配对…');
     try{compiled=await api('build',{program:clone(program)});program=compiled.program;persist();renderProgram();showTrace();status(`Build 完成：${compiled.summary}。点击 Run 开始传输。`)}
-    catch(error){compiled=null;status(error.message,true)}finally{busy=false;buttons()}
+    catch(error){compiled=null;status(error.message,true);studio?.markError(error.message)}finally{busy=false;buttons()}
   };
   byId('cmRun').onclick=async()=>{
     if(busy||!compiled)return;busy=true;result=null;showResult();buttons();const rev=revision,built=compiled;status('Run：正在生成信源、传输并译码…');
-    try{const received=await api('run',{program:built.program,token:built.token});if(rev!==revision)return;result=received;showResult();status(result.transport==='analog'?`Run 完成：${result.analog.scheme} 恢复 ${result.sink.count} 个模拟样本，RMSE ${result.metrics.rmse.toPrecision(4)}。`:`Run 完成：信宿收到 ${result.sink.count} ${result.sink.kind==='analog'?'个样本':'个比特'}，错误比特 ${result.metrics.bit_errors} / ${result.metrics.bit_count}。`)}
+    try{const received=studio?await studio.runJob('run',{program:built.program,token:built.token}):await api('run',{program:built.program,token:built.token});if(rev!==revision)return;result=received;showResult();status(result.transport==='analog'?`Run 完成：${result.analog.scheme} 恢复 ${result.sink.count} 个模拟样本，RMSE ${result.metrics.rmse.toPrecision(4)}。`:`Run 完成：信宿收到 ${result.sink.count} ${result.sink.kind==='analog'?'个样本':'个比特'}，错误比特 ${result.metrics.bit_errors} / ${result.metrics.bit_count}。`)}
     catch(error){status(error.message,true)}finally{busy=false;buttons()}
   };
   function download(name,content,mime){const url=URL.createObjectURL(new Blob([content],{type:mime})),link=document.createElement('a');link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000)}
@@ -185,8 +190,10 @@
     busy=true;buttons();status('正在读取工程…');
     let imported=null;
     try{
-      if(file.size>256*1024)throw Error('工程文件须小于 256 KiB。');
-      const checked=await api('validate',{program:JSON.parse(await file.text())});
+      if(file.size>(catalog.limits.max_project_bytes||8388608))throw Error('工程文件须小于 8 MiB。');
+      const parsed=JSON.parse(await file.text());
+      if(parsed.document_schema===2&&studio){busy=false;buttons();await studio.importDocument(parsed,true);return}
+      const checked=await api('validate',{program:parsed});
       const sinks=checked.program.blocks.filter(b=>b.kind==='sink');if(sinks.length!==1||checked.program.blocks.at(-1).kind!=='sink')throw Error('工程须保留一个位于末端的信宿。');
       if(program.blocks.length===1||await confirmReplace('用导入的工程替换当前链路？可通过“撤销”恢复。'))imported=checked.program;
       else status('已取消导入。');
@@ -204,11 +211,11 @@
   byId('cmStage').onchange=()=>{if(byId('cmStage').value)plot='stage';drawAnalysis()};
   byId('cmSweepMetric').onchange=drawSweep;
   byId('cmSweepNoise').onchange=buttons;
-  byId('cmSweepClear').onclick=()=>{sweeps=[];drawSweep();buttons();byId('cmSweepStatus').textContent='曲线已清空。'};
+  byId('cmSweepClear').onclick=()=>{sweeps=[];drawSweep();buttons();studio?.persist();byId('cmSweepStatus').textContent='曲线已清空。'};
   byId('cmSweepExport').onclick=()=>download('communication-sweeps.json',JSON.stringify({sweeps},null,2)+'\n','application/json');
   byId('cmSweepCSV').onclick=()=>{
-    const rows=['curve,axis,db,frames,bit_count,bit_errors,ber,ber_low,ber_high,ser,ser_low,ser_high,fer,fer_low,fer_high,theory_ber'];
-    for(const s of sweeps)for(const p of s.points)rows.push([s.name,s.axis,p.db,p.frames,p.bit_count,p.bit_errors,p.ber,...p.ber_interval,p.ser,...p.ser_interval,p.fer,...p.fer_interval,p.theory_ber??''].map(v=>'"'+String(v).replaceAll('"','""')+'"').join(','));
+    const rows=['curve,axis,db,frames,bit_count,bit_errors,ber,ber_low,ber_high,ser,ser_low,ser_high,fer,fer_low,fer_high,theory_ber,rmse,stop_reason'];
+    for(const s of sweeps)for(const p of s.points)rows.push([s.name,s.axis,p.db,p.frames,p.bit_count,p.bit_errors,p.ber,...p.ber_interval,p.ser,...p.ser_interval,p.fer,...p.fer_interval,p.theory_ber??'',p.rmse??'',p.stop_reason].map(v=>'"'+String(v).replaceAll('"','""')+'"').join(','));
     download('communication-sweeps.csv',rows.join('\n')+'\n','text/csv');
   };
   byId('cmSweepRun').onclick=async()=>{
@@ -217,10 +224,11 @@
     const settings={block_id:byId('cmSweepNoise').value,mode:byId('cmSweepMode').value,start:Number(byId('cmSweepStart').value),stop:Number(byId('cmSweepStop').value),step:Number(byId('cmSweepStep').value),frames:Number(byId('cmSweepFrames').value),target_errors:Number(byId('cmSweepErrors').value)};
     busy=true;buttons();byId('cmSweepStatus').textContent='正在累计各信噪比下的多帧误码结果…';
     try{
-      const data=await api('sweep',{program:compiled.program,token:compiled.token,settings});
+      Object.assign(settings,studio?.sweepSettings()||{});
+      const data=studio?await studio.runJob('sweep',{program:compiled.program,token:compiled.token,settings}):await api('sweep',{program:compiled.program,token:compiled.token,settings});
       data.name=byId('cmSweepName').value.trim()||byId('cmProjectName').textContent;
-      if(sweeps.length>=6)sweeps.shift();sweeps.push(data);drawSweep();
-      byId('cmSweepStatus').textContent=`${data.complete?'扫描完成':'已达到本轮时长上限，保留已完成统计'}：${data.points.length} 个点，${data.points.reduce((n,p)=>n+p.frames,0)} 帧。最多保留 6 条曲线；零错误点以空心上界标记显示。`;
+      if(sweeps.length>=6)sweeps.shift();sweeps.push(data);studio?.persist();drawSweep();
+      byId('cmSweepStatus').textContent=`${data.complete?'扫描完成':'扫描已暂停，保留已完成统计，可续跑'}：${data.points.length} 个点，${data.points.reduce((n,p)=>n+p.frames,0)} 帧。最多保留 6 条曲线；零错误点以空心上界标记显示。`;
     }catch(error){byId('cmSweepStatus').textContent=error.message}finally{busy=false;buttons()}
   };
   byId('cmOffset').oninput=drawSink;
@@ -243,6 +251,7 @@
     byId('cmDetails').textContent=`解调后 / 译码前 BER：${m.coded_bit_errors} / ${m.coded_bit_count}；符号错误：${m.symbol_errors} / ${m.symbol_count}；判决前 EVM：${m.evm_percent.toPrecision(4)}%。有效码率含填充与终止位。`+(result.sink.kind==='analog'?` PCM 饱和样本：${m.clipped_samples}；译码后 BER 以源 PCM 比特为参考，RMSE 以原始模拟信源为参考。`:'')+(m.hamming_syndromes?` Hamming 非零综合征码字：${m.hamming_syndromes}（多位错误可能误纠正）。`:'');
   }
   function showResult(){
+    studio?.onResult(result);
     byId('cmNoSignal').hidden=!!result;byId('cmSignalLed').classList.toggle('on',!!result);byId('cmSignalStatus').textContent=result?'信号已抵达':'无信号';byId('cmLegend').hidden=!result;
     byId('cmTextResult').hidden=!result?.text;byId('cmReceivedText').textContent=result?.text?.received||'';
     const m=result?.metrics,analog=result?.sink.kind==='analog',direct=result?.transport==='analog',wave=result?.analog||result?.baseband||result?.advanced;
@@ -367,8 +376,13 @@
     if(root.hidden||!root.querySelector('.cm-sweep').open)return;
     const view=surface('cmSweepCanvas'),{x,width,height}=view,metric=byId('cmSweepMetric').value,axisName=sweeps.at(-1)?.axis;
     const curves=sweeps.filter(s=>s.axis===axisName),points=curves.flatMap(s=>s.points),colors=['#5365cf','#238879','#af5390','#bd7a21','#3797b5','#8059a6'];
-    byId('cmSweepTable').innerHTML=curves.length?'<table><thead><tr><th>曲线</th><th>dB</th><th>帧数</th><th>'+metric.toUpperCase()+'</th><th>95% 区间</th><th>停止条件</th></tr></thead><tbody>'+curves.flatMap(s=>s.points.map(p=>`<tr><td>${esc(s.name)}</td><td>${p.db}</td><td>${p.frames}</td><td>${p[metric].toExponential(3)}</td><td>${p[metric+'_interval'].map(v=>v.toExponential(2)).join(' – ')}</td><td>${({target_errors:'目标误码数',frame_limit:'帧数上限',time_limit:'时长上限'})[p.stop_reason]}</td></tr>`)).join('')+'</tbody></table>':'';
+    byId('cmSweepTable').innerHTML=curves.length?'<table><thead><tr><th>曲线</th><th>参数值</th><th>帧数</th><th>'+metric.toUpperCase()+'</th><th>95% 区间</th><th>停止条件</th></tr></thead><tbody>'+curves.flatMap(s=>s.points.map(p=>`<tr><td>${esc(s.name)}</td><td>${p.db}</td><td>${p.frames}</td><td>${p[metric]?.toExponential(3)??'—'}</td><td>${p[metric+'_interval']?.map(v=>v.toExponential(2)).join(' – ')??'—'}</td><td>${({target_errors:'目标误码数',frame_limit:'帧数上限',time_limit:'时长上限',cancelled:'已取消',running:'运行中'})[p.stop_reason]}</td></tr>`)).join('')+'</tbody></table>':'';
     if(!points.length){x.fillStyle='#526b8e';x.textAlign='center';x.fillText('扫描后显示性能曲线，可修改链路继续加入对比。',width/2,height/2);return}
+    if(metric==='rmse'){
+      const values=points.filter(p=>Number.isFinite(p.rmse));if(!values.length)return;
+      const min=Math.min(...points.map(p=>p.db)),max=Math.max(...points.map(p=>p.db)),axis=axes(view,0,Math.max(.000001,...values.map(p=>p.rmse))*1.1,Math.max(1,max-min),'',false,min);
+      curves.forEach((s,i)=>{x.strokeStyle=colors[i];x.fillStyle=colors[i];x.beginPath();s.points.filter(p=>Number.isFinite(p.rmse)).forEach((p,j)=>{if(j)x.lineTo(axis.px(p.db-min),axis.py(p.rmse));else x.moveTo(axis.px(p.db-min),axis.py(p.rmse))});x.stroke();x.fillText(s.name.slice(0,24),axis.p.left+8,axis.p.top+15+i*15)});return;
+    }
     const minX=Math.min(...points.map(p=>p.db)),maxX=Math.max(...points.map(p=>p.db)),lower=Math.max(-8,Math.floor(Math.log10(Math.min(...points.map(p=>Math.max(p[metric+'_interval'][0]||p[metric+'_interval'][1],1e-8))))));
     const axis=axes(view,lower,0,Math.max(1,maxX-minX),'',false,minX);axis.xEnd=Math.max(1,maxX-minX);
     for(let i=0;i<curves.length;i++){
@@ -388,6 +402,14 @@
     buttons();
     try{
       const response=await fetch('/api/communications/catalog');if(!response.ok)throw Error('积木箱加载失败，请刷新重试。');catalog=await response.json();definitions=Object.fromEntries(catalog.blocks.map(b=>[b.kind,b]));program=empty();
+      studio=window.createCommunicationExperience?.({root,byId,esc,api,clone,uid,
+        get:()=>({program,compiled,result,catalog,definitions,selectedId,busy,sweeps}),
+        mutate:(fn,message)=>change(fn,message),setProgram,selectBlock,palette,renderProgram,status,
+        setBusy:value=>{busy=value;buttons()},setResult:value=>{result=value;showResult()},
+        applyDocument:doc=>change(()=>{program=clone(doc.program);selectedId=program.blocks[0].id;studio.loadState(doc);sweeps=clone(doc.sweeps||[])},'工程已载入。'),
+        restoreResult:(built,value)=>{compiled=built;result=value;showResult();buttons()},
+        addCurves:curves=>{for(const curve of curves){const prior=curve.resume_of?sweeps.findIndex(s=>s.job_id===curve.resume_of):-1;if(prior>=0)sweeps.splice(prior,1);if(sweeps.length>=6)sweeps.shift();sweeps.push(curve)}drawSweep();persist();buttons()},
+        repaintSweeps:drawSweep,download});
       root.querySelector('[data-global="sample_count"]').max=catalog.limits.max_samples;
       let saved=null;try{saved=localStorage.getItem(storageKey)}catch{status('浏览器草稿存储不可用，仍可搭建链路并导出工程。')}
       if(saved){
@@ -397,7 +419,8 @@
           program=data.program;status('已恢复浏览器草稿。点击 Build，再 Run。');
         }catch{status('原草稿无法读取，已打开空白链路。可导入工程 JSON 继续。',true)}
       }
-      byId('cmPreset').innerHTML='<option value="">选择一个实验示例…</option>'+Object.entries(catalog.presets).map(([key,v])=>`<option value="${key}">${esc(v.label)}</option>`).join('');palette();renderProgram();showResult();
+      studio?.restoreDraft();
+      byId('cmPreset').innerHTML='<option value="">选择一个实验示例…</option>'+Object.entries(catalog.presets).map(([key,v])=>`<option value="${key}">${esc(v.label)}</option>`).join('');palette();renderProgram();showResult();studio?.ready();
     }catch(error){status(error.message,true);buttons()}
   }
   showResult();init();

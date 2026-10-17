@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import math
 import numpy as np
+from src import communication_runtime as runtime
 
 SCHEMES = {'am', 'dsb', 'ssb', 'vsb', 'fm', 'pm'}
 LABELS = {'am': 'AM', 'dsb': 'DSB-SC', 'ssb': 'SSB', 'vsb': 'VSB', 'fm': 'FM', 'pm': 'PM'}
@@ -85,6 +86,7 @@ def run(compiled, source, noise_rng, config):
     data = sent.copy(); gain = 1 + 0j; transmitted_power = float(np.mean(abs(sent) ** 2))
     for block in program['blocks']:
         kind, params = block['kind'], block['params']
+        if kind not in ('sine','square','gaussian'): runtime.enter(block)
         if kind == 'analog_awgn':
             scale = math.sqrt(transmitted_power * 10 ** (-params['snr_db'] / 10) / 2)
             data += scale * (noise_rng.normal(size=len(data)) + 1j * noise_rng.normal(size=len(data)))
@@ -95,6 +97,10 @@ def run(compiled, source, noise_rng, config):
         elif kind.startswith('demod_'):
             received = data.copy(); decision = received / gain if params['compensate'] else received.copy()
             recovered = demodulate(decision, scheme, transmit, params, sample_rate)
+        if kind.startswith('mod_') or kind in ('ideal','analog_awgn','attenuation','phase_shift','dropout'):
+            data=runtime.record(block,data,sample_rate)
+        elif kind.startswith('demod_') or kind=='sink':
+            recovered=runtime.record(block,recovered,sample_rate)
     if scheme in ('fm', 'pm') and np.any(np.abs(decision) < 1e-10 * transmit['amplitude']):
         warnings.append('角调制接收样本接近零幅值，相位不可可靠判定；可能出现相位跳变或周跳。')
     error = recovered - source

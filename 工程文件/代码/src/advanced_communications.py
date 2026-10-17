@@ -4,11 +4,13 @@ import json
 import math
 import numpy as np
 from src import communication_codecs as codec, communication_dsp as dsp
+from src import communication_runtime as runtime
+from src import communication_algorithms as algorithms
 
 SYMBOL_SCHEMES={'bpsk','qpsk','qam16','ook','dbpsk','dqpsk'}
 WAVE_SCHEMES={'fsk2','msk','gmsk'}
 TX_PROCESS={'tx_rrc','tx_frame','tx_pilots','tx_ofdm'}
-RX_PROCESS={'rx_matched','rx_timing','rx_frame','rx_frequency','rx_carrier','rx_equalizer','rx_cma','rx_pilots','rx_ofdm','rx_complete'}
+RX_PROCESS={'rx_matched','rx_timing','rx_frame','rx_frequency','rx_carrier','rx_equalizer','rx_cma','rx_pilots','rx_ofdm','rx_complete','rx_agc','rx_noise_estimate','resample','rx_fse','rx_ofdm_frequency','rx_ofdm_tracking'}
 EXT_ENCODERS=set(codec.PAIRS.values())-{'conv_encode'}
 
 
@@ -33,7 +35,7 @@ def build(p):
     if not analog and count>c.CONFIG['max_source_bits']: raise ValueError('合并信源超过比特上限。')
     for b in sources:
         if b['kind']=='pn_bits': codec.pn(1,b['params']['degree'],b['params']['initial'])
-    domain='模拟样本' if analog else '比特'; direction='tx'; stack=[]; channels=0; scheme=None; features={}; consumed=set(); attenuation=0
+    domain='模拟样本' if analog else '比特'; direction='tx'; stack=[]; channels=0; scheme=None; features={}; consumed=set(); attenuation=0;receive_sps=1
     plan=[{'id':b['id'],'label':c.BLOCKS[b['kind']]['label'],'kind':b['kind'],'output':domain,'count':source_count(b,p)} for b in sources]
     for index,b in enumerate(items[len(sources):],len(sources)):
         k,q=b['kind'],b['params']; before=count
@@ -71,7 +73,7 @@ def build(p):
                 if 'tx_frame' in features: fail('周期导频放在公共前导之前。')
                 count+=math.ceil(count/q['interval'])
             elif k=='tx_frame': count+=q['length']
-            elif k=='tx_rrc': count=count*q['sps']+3*q['span']*q['sps']; domain='复采样波形'
+            elif k=='tx_rrc': count=count*q['sps']+3*q['span']*q['sps']; domain='复采样波形';receive_sps=q['sps']
             elif k=='tx_ofdm':
                 if 'tx_frame' in features or 'tx_pilots' in features: fail('OFDM 自带训练和导频，请移除单载波组帧/导频。')
                 if q['cp']>=q['nfft']: fail('CP 长度须小于 FFT 点数。')
@@ -80,13 +82,15 @@ def build(p):
         elif k in c.CHANNELS:
             if direction not in ('signal_tx','channel'): fail('信道须放在发送处理之后、接收处理之前。')
             if domain not in ('复符号','复采样波形','OFDM 波形'): fail('信道输入须为复符号或波形。')
-            allowed={'ideal','awgn','complex_awgn','attenuation','phase_shift','dropout','frequency_offset','phase_noise','sample_delay','complex_multipath','rayleigh','rician','clock_drift','timing_offset'}
+            allowed={'ideal','awgn','complex_awgn','attenuation','phase_shift','dropout','frequency_offset','phase_noise','sample_delay','complex_multipath','rayleigh','rician','clock_drift','timing_offset','time_multipath','burst_noise'}
             if k not in allowed: fail('该信道用于实基带或模拟链路。')
             if k=='awgn' and domain!='复符号': fail('过采样波形请选择复波形白噪声。')
             if k in ('clock_drift','timing_offset','sample_delay') and 'tx_rrc' not in features and 'tx_ofdm' not in features: fail('未知定时请使用 RRC 成形或 OFDM。')
             if k in ('clock_drift','timing_offset','sample_delay') and 'tx_rrc' in features and 'tx_frame' not in features: fail('未知定时接收需要公共前导组帧与帧同步。')
             if 'tx_ofdm' in features and k in ('clock_drift','timing_offset'): fail('OFDM 暂使用帧延迟，时钟漂移实验请选择 RRC。')
             if k=='complex_multipath': count+=len(dsp.complex_taps(q))-1
+            if k=='time_multipath': algorithms.parse_paths(q)
+            if k=='burst_noise' and q['bad_snr']>q['good_snr']: fail('坏状态 SNR 应不大于好状态 SNR。')
             if k=='sample_delay': count+=q['samples']+1
             if k=='clock_drift': count=math.ceil(count*(1+q['ppm']*1e-6))+1
             if k=='attenuation':
@@ -94,22 +98,37 @@ def build(p):
                 if attenuation>100: fail('总衰减须不超过 100 dB。')
             fs=p['symbol_rate']*features.get('tx_rrc',{}).get('params',{}).get('sps',features.get('tx_ofdm',{}).get('params',{}).get('nfft',features['modulator']['params'].get('sps',1)))
             if k=='frequency_offset' and abs(q['hz'])>=fs/2: fail('频偏须小于采样率的一半。')
-            if k in ('rayleigh','rician') and q['doppler']>=fs/2: fail('多普勒须小于采样率的一半。')
+            if k in ('rayleigh','rician','time_multipath') and q['doppler']>=fs/2: fail('多普勒须小于采样率的一半。')
             channels+=1; direction='channel'
         elif k in RX_PROCESS:
             if direction not in ('channel','signal_rx') or not channels or k in consumed: fail('接收处理须位于信道之后、解调之前，每种处理只放一次。')
             direction='signal_rx'; consumed.add(k)
-            if k=='rx_complete':
+            if k=='rx_agc':
+                if domain not in ('复符号','复采样波形','OFDM 波形'): fail('AGC 需要复符号或波形。')
+            elif k=='rx_noise_estimate':
+                if domain!='复符号' or scheme not in ('bpsk','qpsk','qam16'): fail('噪声估计需要 PSK/QAM 符号。')
+                if q['method']==0 and 'rx_frame' not in consumed: fail('前导残差估计需要先完成帧同步。')
+            elif k=='resample':
+                if domain!='复采样波形' or 'tx_rrc' not in features or 'rx_matched' in consumed: fail('重采样放在 RRC 链路信道之后、匹配滤波之前。')
+                receive_sps*=q['up']/q['down']
+                if not 2<=receive_sps<=64: fail('重采样后每码元采样点须为 2–64。')
+                count=math.ceil(count*q['up']/q['down']);features['receiver_sps']=receive_sps
+            elif k=='rx_fse':
+                if domain!='复采样波形' or not {'rx_matched'}<=consumed or 'tx_frame' not in features: fail('T/2 均衡需要公共前导和匹配滤波输出。')
+                count=features['tx_frame']['count'];domain='复符号';consumed.add('rx_timing')
+            elif k=='rx_ofdm_frequency':
+                if domain!='OFDM 波形': fail('OFDM 频偏估计需要 OFDM 波形。')
+            elif k=='rx_complete':
                 if not {'tx_rrc','tx_frame'}<=features.keys() or domain!='复采样波形' or consumed!={'rx_complete'}: fail('一体接收需要 RRC 与公共前导，且不重复连接独立接收处理。')
                 if scheme not in ('bpsk','qpsk'): fail('一体载波恢复支持 BPSK / QPSK。')
                 consumed.update({'rx_matched','rx_timing','rx_frame','rx_frequency','rx_carrier'})
                 domain='复符号'; count=features['tx_frame']['count']
             elif k=='rx_matched':
                 if domain!='复采样波形' or 'tx_rrc' not in features: fail('匹配滤波需要发送 RRC。')
-                count+=features['tx_rrc']['params']['sps']*features['tx_rrc']['params']['span']
+                count+=math.ceil(receive_sps*features['tx_rrc']['params']['span'])
             elif k=='rx_timing':
                 if domain!='复采样波形' or 'rx_matched' not in consumed: fail('符号同步放在 RRC 匹配滤波之后。')
-                count=math.ceil(count/features['tx_rrc']['params']['sps']); domain='复符号'
+                count=math.ceil(count/receive_sps); domain='复符号'
             elif k=='rx_frequency':
                 if scheme not in ('bpsk','qpsk') or domain=='OFDM 波形': fail('幂次粗频偏估计支持单载波 BPSK/QPSK。')
             elif k=='rx_carrier':
@@ -125,13 +144,14 @@ def build(p):
                 if domain!='复符号' or 'tx_pilots' not in features: fail('需要配对的周期导频插入。')
                 if 'tx_frame' in features and 'rx_frame' not in consumed: fail('先定位帧，再做周期导频估计。')
                 count=features['tx_pilots']['input_count']+features.get('tx_frame',{}).get('params',{}).get('length',0)
-            elif k=='rx_ofdm':
+            elif k in ('rx_ofdm','rx_ofdm_tracking'):
                 if domain!='OFDM 波形' or 'tx_ofdm' not in features: fail('OFDM 接收需要配对的发送 OFDM。')
-                count=features['tx_ofdm']['input_count']; domain='复符号'
+                count=features['tx_ofdm']['input_count']; domain='复符号';consumed.add('rx_ofdm')
         elif k.startswith('demod_') or k.startswith('soft_'):
             requested=k.split('_',1)[1]
             if direction not in ('channel','signal_rx') or not channels or requested!=scheme: fail('解调方式须与发送映射匹配。')
             if scheme in SYMBOL_SCHEMES and domain!='复符号': fail('先完成波形接收滤波 / 抽样或 OFDM 解调。')
+            if q.get('automatic_variance') and 'rx_noise_estimate' not in consumed: fail('自动 LLR 方差需要接收噪声方差估计积木。')
             for tx,rx in [('tx_frame','rx_frame'),('tx_rrc','rx_timing'),('tx_pilots','rx_pilots'),('tx_ofdm','rx_ofdm')]:
                 if tx in features and rx not in consumed: fail('缺少 '+c.BLOCKS[rx]['label']+'。')
             count=features['coded_count']; domain='LLR' if k.startswith('soft_') else '比特'; direction='rx'
@@ -167,8 +187,10 @@ def run(compiled, source, texts, source_count, rng):
     from src import communications as c
     p=compiled['program']; f=compiled['features']; data=source.copy(); analog=compiled['source_kind']=='analog'
     reference=None if analog else source.copy(); stack=[]; info={}; snapshots=[]; recovery={}; gain=1+0j; prefix=0
-    fs=p['symbol_rate']; tx=None; channel=None; tx_power=1.; in_channel=False; decoded_bits=None; clipped=corrections=0; eye=None
+    fs=p['symbol_rate']; tx=None; channel=None; tx_power=1.; in_channel=False; decoded_bits=None; clipped=corrections=0; eye=None;noise_estimate=None
+    receive_sps=f.get('receiver_sps',f.get('tx_rrc',{}).get('params',{}).get('sps',1))
     for b in p['blocks'][source_count:]:
+        runtime.enter(b)
         k,q=b['kind'],b['params']; before=len(data)
         if k in c.ENCODERS:
             stack.append((k,q,before))
@@ -206,21 +228,36 @@ def run(compiled, source, texts, source_count, rng):
             elif k in ('attenuation','phase_shift'):
                 factor=10**(-q['db']/20) if k=='attenuation' else np.exp(1j*np.deg2rad(q['degrees'])); gain*=factor; data=data*factor
             elif k=='dropout': data=data*(rng.random(len(data))>=q['probability'])
-            elif k=='frequency_offset': data=data*np.exp(2j*np.pi*q['hz']*np.arange(len(data))/fs)
-            elif k=='phase_noise': data=data*np.exp(1j*np.cumsum(rng.normal(0,np.deg2rad(q['std']),len(data))))
+            elif k=='frequency_offset':
+                memory=runtime.state('frequency_offset',lambda:{'phase':0.});phases=memory['phase']+2*np.pi*q['hz']*np.arange(len(data))/fs
+                memory['phase']=float((memory['phase']+2*np.pi*q['hz']*len(data)/fs)%(2*np.pi));data=data*np.exp(1j*phases)
+            elif k=='phase_noise':
+                memory=runtime.state('phase_noise',lambda:{'phase':0.});phases=memory['phase']+np.cumsum(rng.normal(0,np.deg2rad(q['std']),len(data)))
+                memory['phase']=float(phases[-1]%(2*np.pi));data=data*np.exp(1j*phases)
             elif k=='sample_delay': data=dsp.interp(data,np.arange(len(data)+q['samples']+1)-q['samples']-q['fraction'])
             elif k=='timing_offset': data=dsp.interp(data,np.arange(len(data))-q['offset']*f['tx_rrc']['params']['sps'])
             elif k=='clock_drift':
                 scale=1+q['ppm']*1e-6; data=dsp.interp(data,np.arange(math.ceil(len(data)*scale)+1)/scale)
             elif k=='complex_multipath': data=np.convolve(data,dsp.complex_taps(q))
             elif k in ('rayleigh','rician'): data=data*dsp.fading(len(data),fs,q['doppler'],rng,q.get('k_db'))
+            elif k=='time_multipath': data=algorithms.time_multipath(data,q,fs,rng)
+            elif k=='burst_noise': data,info['burst']=algorithms.burst_noise(data,q,tx_power,rng)
             channel=data.copy()
         elif k in RX_PROCESS:
-            if k=='rx_frequency': data,recovery['frequency']=dsp.coarse_frequency(data,fs,scheme)
+            if k=='rx_agc':
+                data,info['agc']=algorithms.agc(data,q);gain=gain/abs(gain)
+            elif k=='rx_noise_estimate': noise_estimate,info['noise_estimate']=algorithms.noise_estimate(data,dsp.constellation(scheme)[1],preamble if q['method']==0 else None)
+            elif k=='resample': data=algorithms.resample(data,q['up'],q['down']);fs*=q['up']/q['down']
+            elif k=='rx_fse':
+                data,recovery['equalizer']=algorithms.fse(data,receive_sps,preamble,f['tx_frame']['count'],dsp.constellation(scheme)[1],q);fs=p['symbol_rate'];gain=1+0j
+            elif k=='rx_ofdm_frequency': data,recovery['frequency']=algorithms.ofdm_frequency(data,f['tx_ofdm']['params'],fs,q['search'])
+            elif k=='rx_ofdm_tracking':
+                data,estimate=algorithms.ofdm_tracking(data,f['tx_ofdm']['params'],q,f['tx_ofdm']['input_count']);info['ofdm'].update(estimate);gain=1+0j;fs=p['symbol_rate']
+            elif k=='rx_frequency': data,recovery['frequency']=dsp.coarse_frequency(data,fs,scheme)
             elif k=='rx_matched':
-                data=np.convolve(data,dsp.rrc(f['tx_rrc']['params'])[::-1]); eye=eye_view(data,f['tx_rrc']['params'])
+                receive_pulse={**f['tx_rrc']['params'],'sps':receive_sps};data=np.convolve(data,dsp.rrc(receive_pulse)[::-1]);eye=eye_view(data,receive_pulse)
             elif k=='rx_timing':
-                data,recovery['timing']=dsp.timing_recover(data,f['tx_rrc']['params']['sps'],q['bandwidth'],q['manual'],q['offset']); fs=p['symbol_rate']
+                data,recovery['timing']=dsp.timing_recover(data,receive_sps,q['bandwidth'],q['manual'],q['offset']); fs=p['symbol_rate']
                 if 'tx_frame' not in f: data=data[2*f['tx_rrc']['params']['span']:][:f['tx_rrc']['input_count']]
             elif k=='rx_carrier':
                 data,recovery['carrier']=dsp.carrier_recover(data,scheme,q['bandwidth']); gain=abs(gain)
@@ -250,7 +287,7 @@ def run(compiled, source, texts, source_count, rng):
             else:
                 received=np.pad(received[:len(mapped)],(0,max(0,len(mapped)-len(received))))
                 hard,decided_indices=dsp.decisions(received,scheme); decision_symbols=received; _,points=dsp.constellation(scheme)
-                data=dsp.soft_demod(received,scheme,q['noise_variance']) if k.startswith('soft_') else hard
+                data=dsp.soft_demod(received,scheme,noise_estimate if q.get('automatic_variance') else q['noise_variance']) if k.startswith('soft_') else hard
             data=data[:len(encoded)]; demapped=(data<0).astype(np.uint8) if k.startswith('soft_') else data.copy()
         elif k in c.PAIRS:
             encoder,params,size=stack.pop()
@@ -263,6 +300,7 @@ def run(compiled, source, texts, source_count, rng):
             elif k=='deinterleave': data=data.reshape(q['columns'],-1).T.ravel()
             elif k=='pcm_decode': data=codec.bits_to_words(data,q['bits'])/(2**q['bits']-1)*2*q['full_scale']-q['full_scale']
             data=data[:size]
+        data=runtime.record(b,data,fs)
     if not analog: decoded_bits=data.astype(np.uint8)
     errors=int(np.count_nonzero(reference!=decoded_bits)); coded_errors=int(np.count_nonzero(encoded!=demapped))
     bit_count=len(reference); symbol_errors=int(np.count_nonzero(transmitted_indices!=decided_indices))
@@ -300,7 +338,8 @@ def channel_fs(compiled):
 def eye_view(wave,q):
     sps=q['sps']; start=2*q['span']*sps; traces=[]
     for i in range(64):
-        segment=wave[start+i*sps:start+(i+2)*sps+1]
-        if len(segment)!=2*sps+1: break
+        positions=start+i*sps+np.linspace(0,2*sps,int(round(2*sps))+1)
+        if positions[-1]>=len(wave): break
+        segment=dsp.interp(wave,positions)
         traces.extend([segment.real.tolist(),segment.imag.tolist()])
     return {'samples_per_symbol':sps,'traces':traces}

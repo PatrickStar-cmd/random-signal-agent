@@ -297,3 +297,8 @@ v0.3.4 发行：运行 `python scripts/build_release.py` 从已提交源码生�
 页面中 Build 后运行预设，展开“批量性能实验”扫描并加入对比。浏览器验收与六档宽度记录位于 `logs/communications-v043/browser.json`，测试服务为隔离的 `debug/communications-v043/serve.py`，端口 8793；正式部署仍使用标准启动脚本。静态预览中的性能图来自真实浏览器。
 
 部署继续执行 `python scripts/build_release.py` 和 `python scripts/verify_release.py`，新增模块与验收套件均加入解包检查；v0.4.3 ZIP、SHA256SUMS.txt 和最终平台验证记录随 Release 交付。
+
+
+### v0.4.4 积木编程体验更新
+
+执行 `python scripts/test_communications_experience.py`（24 项），日志覆盖 logs/communications/experience.log；旧套件和 540 组基准继续执行。启动脚本不变，打开 /#communicationsPanel。新增配置字段、工程库/续跑目录、后台任务 API 详见 [v0.4.4 指南](communications-v044.md)。logs/communications-v044/browser.json 记录 54 个示例与交互、响应式验收；debug/communications-v044/ 放隔离数据、报告渲染与临时材料。发布执行 build_release.py、verify_release.py，新增模块及套件纳入清洁解包验收，实际平台结果随 verification.json 交付。

@@ -23,7 +23,7 @@ def register(block, number, field, blocks):
     block('ldpc_decode','LDPC 软译码','rx_converter','归一化最小和迭代，输出校验未通过码字数。输入为 LLR。',iterations=number('最大迭代次数',30,1,60,True),scale=number('最小和归一化系数',.8,.1,1))
     block('conv_soft_decode','软判决 Viterbi','rx_converter','使用 LLR 对 (7,5)₈ 卷积码作零尾完整帧软译码。')
     for scheme in ('bpsk','qpsk','qam16'):
-        block('soft_'+scheme,scheme.upper()+' 软解调','demodulator','Max-log LLR：正数偏向 0，负数偏向 1；送软 Viterbi 或 LDPC。',noise_variance=number('复噪声方差 N₀',.1,.000001,100),compensate=field('已知增益 / 相位补偿',True,'boolean'))
+        block('soft_'+scheme,scheme.upper()+' 软解调','demodulator','Max-log LLR：正数偏向 0，负数偏向 1；送软 Viterbi 或 LDPC。',noise_variance=number('复噪声方差 N₀',.1,.000001,100),compensate=field('已知增益 / 相位补偿',True,'boolean'),automatic_variance=field('使用接收噪声方差估计',False,'boolean'))
     for kind, label in MODULATIONS.items():
         waveform = kind in ('fsk2','msk','gmsk')
         params = {'sps':select('每码元采样点',8,{4:4,8:8,16:16,32:32})} if waveform else {}
@@ -56,6 +56,14 @@ def register(block, number, field, blocks):
         params={'doppler':number('最大多普勒 / Hz（0 为帧内静态）',0,0,1000)}
         if kind=='rician': params['k_db']=number('直达 / 散射功率比 K / dB',6,-10,30)
         block(kind,label+' 衰落','channel','复高斯平坦衰落；非零多普勒使用 32 个散射波的时变模型。',**params)
+    block('rx_agc','AGC 自动增益控制','demodulator','按接收功率更新对数增益；多帧运行保持增益状态。',target=number('目标 RMS',1,.1,4),step=number('增益环步长',.05,.001,.5))
+    block('rx_noise_estimate','接收噪声方差估计','demodulator','用公共前导 LS 残差或星座判决残差估计 N₀，供软解调使用。',method=select('估计方法',0,{0:'公共前导残差',1:'判决残差'}))
+    block('resample','通用有理重采样','demodulator','窗函数 sinc 插值与抗混叠，按 up/down 改变接收采样率。',up=number('插值因子 up',2,1,16,True),down=number('抽取因子 down',1,1,16,True))
+    block('rx_fse','T/2 分数间隔均衡','demodulator','匹配滤波后，用公开前导获取帧位置，再以 T/2 抽头间隔进行 NLMS 训练和判决引导。',half_taps=number('单侧抽头数',4,1,12,True),step=number('NLMS 步长',.1,.00001,.5))
+    block('rx_ofdm_frequency','OFDM 频偏估计与补偿','demodulator','循环前缀相关估计分数频偏，公开训练符号搜索整数子载波偏移。',search=number('整数频偏搜索范围 ±子载波',4,0,8,True))
+    block('rx_ofdm_tracking','OFDM 导频跟踪接收','demodulator','训练符号初始化，随后按每个 OFDM 符号的梳状导频更新信道估计。',method=select('导频 LS 方法',1,{0:'频域线性插值',1:'DFT / 有限冲激响应 LS'}),tracking_gain=number('信道更新系数',.8,.01,1),regularization=number('均衡正则 λ',.00001,.000001,.1))
+    block('time_multipath','独立路径时变多径','channel','每条路径独立 Rayleigh / 多普勒过程，功率归一化；多帧保留路径相位与延迟历史。',delays=field('各路径采样延迟','0,1,3',max_length=100),powers_db=field('各路径相对功率 / dB','0,-6,-12',max_length=100),doppler=number('最大多普勒 / Hz',10,0,1000))
+    block('burst_noise','Markov 突发噪声','channel','好/坏两态 Markov 信道，以不同 SNR 产生连续噪声突发；支持跨帧状态。',good_to_bad=number('好→坏概率 / 点',.005,0,1),bad_to_good=number('坏→好概率 / 点',.1,0,1),good_snr=number('好状态 SNR / dB',30,-10,60),bad_snr=number('坏状态 SNR / dB',-3,-20,60))
     KINDS.update(set(blocks)-before)
 
 
@@ -78,4 +86,9 @@ def presets(preset):
     for kind in ('rayleigh','rician'):
         add('fading_'+kind,'衰落 · '+kind+' / 导频 LS',['random_bits','mod_qpsk','tx_pilots',kind,'awgn','rx_pilots','demod_qpsk','sink'],{3:{'doppler':1},4:{'esn0_db':25}})
     add('ofdm','多载波 · OFDM / 多径 / LS',['random_bits','mod_qam16','tx_ofdm','complex_multipath','complex_awgn','rx_ofdm','demod_qam16','sink'],{3:{'taps':'1,0.35+0.15j,0.1'},4:{'snr_db':30}})
+    add('agc_soft','接收估计 · AGC / 自动 N₀ / 软译码',['random_bits','conv_encode','mod_qpsk','tx_frame','attenuation','awgn','rx_agc','rx_frame','rx_noise_estimate','soft_qpsk','conv_soft_decode','sink'],{4:{'db':12},5:{'esn0_db':28},9:{'automatic_variance':True}})
+    add('resample_receiver','重采样 · 8→12 点 / 码元',['random_bits','mod_qpsk','tx_frame','tx_rrc','ideal','resample','rx_matched','rx_timing','rx_frame','demod_qpsk','sink'],{5:{'up':3,'down':2}})
+    add('fractional_equalizer','均衡 · T/2 NLMS',['random_bits','mod_qpsk','tx_frame','tx_rrc','complex_multipath','complex_awgn','rx_matched','rx_fse','rx_frame','demod_qpsk','sink'],{2:{'length':512},4:{'taps':'1,0.3+0.1j','spacing':4},5:{'snr_db':25}})
+    add('ofdm_cfo_tracking','OFDM · 频偏 / 时变路径 / 导频跟踪',['random_bits','mod_qpsk','tx_ofdm','frequency_offset','time_multipath','complex_awgn','rx_ofdm_frequency','rx_ofdm_tracking','demod_qpsk','sink'],{0:{'count':2048},3:{'hz':230},4:{'doppler':10},5:{'snr_db':30},7:{'tracking_gain':1}})
+    add('burst_interleave','突发噪声 · 交织 / 卷积码 / CRC',['random_bits','crc_append','conv_encode','interleave','mod_bpsk','burst_noise','soft_bpsk','deinterleave','conv_soft_decode','crc_check','sink'],{5:{'bad_snr':2,'good_to_bad':.003},6:{'noise_variance':.1}})
     return result

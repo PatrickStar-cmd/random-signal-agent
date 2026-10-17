@@ -61,7 +61,13 @@ def decorate_preview(page):
         <p>观察每块接收处理的输出、相关峰和 OFDM 网格；自动扫描 BER/SER/FER，以 Eb/N₀ 对比链路，显示 95% 置信区间并导出 JSON/CSV。</p>
         <a href="images/communications-v043-sweep.jpg"><img class="preview-image" src="images/communications-v043-sweep.jpg" alt="v0.4.3 软译码性能扫描与 95% 置信区间" loading="lazy"></a>
         <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.3">下载 v0.4.3</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v043.md">算法与实验说明</a></p></section>''', 1)
-    page = page.replace('「通信原理积木编程」已包含通信实验室。', '「积木功能更新」包含完整通信实验室。')
+    if 'id="block-experience-preview"' not in page:
+        page=page.replace('<main>','''<main><section id="block-experience-preview"><h2>v0.4.4 · 积木编程体验更新 🌊</h2>
+        <p>130 个可添加模块、54 个示例。搜索收藏、自动补齐接收链路、真实单步、多图联动、命名工程与快照、框选组合积木、共享信道分支、通用扫描续跑、多帧状态和中文 PDF。</p>
+        <p>新增 AGC、自动噪声估计、有理数重采样、T/2 均衡、OFDM 频偏与导频跟踪、独立时变多径和突发噪声。</p>
+        <a href="images/communications-v044-studio.png"><img class="preview-image" src="images/communications-v044-studio.png" alt="v0.4.4 海洋积木工程、组合接收机与联动观察" loading="lazy"></a>
+        <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.4">下载 v0.4.4</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v044.md">体验与算法指南</a></p></section>''',1)
+    page = page.replace('「通信原理积木编程」已包含通信实验室。', '「积木编程体验更新」包含完整通信实验室。')
     return page.replace('v0.4.0', f'v{VERSION}')
 
 

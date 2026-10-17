@@ -34,7 +34,7 @@ def check(base_url):
     assert b'<html' in request('/').lower()
     release = json.loads((ROOT / 'config/release.json').read_text(encoding='utf-8'))
     assert health['version'] == release['version'], 'Running application version differs from this package'
-    for asset in ('ocean-whale.webp', 'ocean-waves.svg', 'ocean.css', 'ocean.js', 'app.js', 'diagnostics.js', 'communications.css', 'communications.js', 'model-settings.css', 'model-settings.js', 'report.js'):
+    for asset in ('ocean-whale.webp', 'ocean-waves.svg', 'ocean.css', 'ocean.js', 'app.js', 'diagnostics.js', 'communications.css', 'communications.js', 'communication-experience.js', 'model-settings.css', 'model-settings.js', 'report.js'):
         delivered = request('/' + asset)
         assert delivered == (ROOT / 'web' / asset).read_bytes(), f'Missing or stale packaged asset: {asset}'
     artwork = request('/ocean-whale.webp')
@@ -77,6 +77,20 @@ def check(base_url):
     scanned=json.loads(request('/api/communications/sweep',{'program':compiled['program'],'token':compiled['token'],'settings':{'block_id':'block-3','start':0,'stop':2,'step':2,'frames':2,'target_errors':100}}))
     assert scanned['complete'] and len(scanned['points'])==2 and scanned['confidence']==.95
     session = 'deployment-' + uuid.uuid4().hex
+    for key in ('agc_soft','resample_receiver','fractional_equalizer','ofdm_cfo_tracking','burst_interleave'):
+        compiled=json.loads(request('/api/communications/build',{'program':communication_catalog['presets'][key]['program']}))
+        job=json.loads(request('/api/communications/job-start',{'session_id':session,'kind':'run','payload':{'program':compiled['program'],'token':compiled['token']}}))
+        deadline=time.monotonic()+30
+        while True:
+            value=json.loads(request('/api/communications/job-status',{'session_id':session,'id':job['id']}))
+            if value['status'] in ('completed','failed','cancelled'):break
+            assert time.monotonic()<deadline;time.sleep(.05)
+        assert value['status']=='completed',value
+        assert value['result']['metrics']['ber']<.02
+        assert len(value['observations'])==len(compiled['program']['blocks'])
+    project={'document_schema':2,'name':'通信部署验收','program':compiled['program'],'result':value['result']}
+    saved_project=json.loads(request('/api/communications/project-save',{'session_id':session,'document':project}))
+    assert request('/api/communications/report-pdf',{'session_id':session,'document':project}).startswith(b'%PDF')
     model_setup = json.loads(request(f'/api/model/settings?session_id={session}'))
     assert {provider['id'] for provider in model_setup['providers']} == {'openai', 'deepseek', 'custom'}
     assert 'api_key' not in model_setup['settings'] and model_setup['settings']['source'] == 'environment'
@@ -158,7 +172,7 @@ def check(base_url):
     assert request(f'/api/diagnostics/view?session_id={diagnostic_session}&format=html').startswith(b'<!doctype html>')
     assert request(f'/api/experiments/export?session_id={diagnostic_session}&format=zip').startswith(b'PK')
     return {'status': 'passed', 'session_id':session, 'saved_experiment':saved['id'], 'csv_sha256':hashlib.sha256(data).hexdigest(),
-            'diagnostic_session':diagnostic_session,'report_history_id':history[0]['id'],
+            'diagnostic_session':diagnostic_session,'report_history_id':history[0]['id'],'communication_project_id':saved_project['id'],
             'checks': ['health', 'application_version', 'web_assets', 'ocean_ui_assets', 'communications_lab', 'baseband_12_presets', 'recovery_7_presets', 'model_settings_api', 'pdf_report', 'report_history', 'agent_pipeline', 'sse', 'csv_upload', 'synthetic_audio_download', 'experiment_save', 'full_data_export', 'snapshot_rename_duplicate_delete', 'delete_retry', 'shared_data_preserved', 'mapped_import', 'snapshot_comparison_report', 'task_list_cancel_endpoint', 'storage_preview', 'diagnostic_blind_trial_reveal_export']}
 
 
@@ -184,6 +198,9 @@ def check_persistence(base_url, previous):
     with urllib.request.urlopen(base_url+f'/api/reports/history?session_id={session}',timeout=15) as response:
         assert any(e['id']==previous['report_history_id'] for e in json.load(response)['history'])
     previous['checks'].append('report_history_restart_persistence')
+    req=urllib.request.Request(base_url+'/api/communications/project-load',data=json.dumps({'session_id':session,'id':previous['communication_project_id']}).encode(),headers={'Content-Type':'application/json'})
+    with urllib.request.urlopen(req,timeout=15) as response:assert json.load(response)['document']['result']['metrics']['ber']<.02
+    previous['checks'].append('communication_project_restart_persistence')
     return previous
 
 

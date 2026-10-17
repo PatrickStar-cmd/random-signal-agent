@@ -12,6 +12,7 @@ import math
 import numpy as np
 from src import receiver_recovery as recovery
 from src import communication_codecs as codec
+from src import communication_runtime as runtime
 
 LINE_CODES = {
     'nrz_unipolar': '单极性 NRZ', 'nrz_polar': '双极性 NRZ',
@@ -278,6 +279,7 @@ def run(compiled, source, texts, source_count, rng):
     p = compiled['program']; data = source.copy(); reference = source.copy() if compiled['source_kind'] == 'digital' else None
     stack = []; clipped = corrections = violations = 0; gain = 1.; warnings = []; line_params = None; recovery_info = {}; codec_info=[]
     for block in p['blocks'][source_count:]:
+        runtime.enter(block)
         kind, params = block['kind'], block['params']
         if kind in c.ENCODERS:
             stack.append((kind, params, len(data)))
@@ -378,6 +380,7 @@ def run(compiled, source, texts, source_count, rng):
                 decoded_bits = data.copy(); quantized = data.reshape(-1, params['bits']).dot(2 ** np.arange(params['bits'] - 1, -1, -1))
                 data = quantized / (2 ** params['bits'] - 1) * 2 * params['full_scale'] - params['full_scale']
             data = data[:size]
+        data=runtime.record(block,data,locals().get('fs',p['sample_rate']))
     analog = compiled['source_kind'] == 'analog'
     if not analog: decoded_bits = data.astype(np.uint8)
     errors = int(np.count_nonzero(reference != decoded_bits)); coded_errors = int(np.count_nonzero(coded != demapped))

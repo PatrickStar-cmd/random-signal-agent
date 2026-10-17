@@ -26,6 +26,8 @@ from src import diagnostics
 from src import pdf_report
 from src import report_history
 from src import communications
+from src import communication_studio
+from src.communication_jobs import Jobs as CommunicationJobs
 from src.model_settings import ModelSettings, CONFIG as MODEL_CONFIG
 from src.llm_client import LLMClientError
 from src.experiment_compare import compare_experiments, comparison_html, comparison_svg
@@ -113,12 +115,16 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
     @asynccontextmanager
     async def lifespan(app):
         yield
+        await run_in_threadpool(communication_jobs.close)
         await run_in_threadpool(engine.close)
 
     app = FastAPI(title="Random Signal Agent", version=VERSION, lifespan=lifespan)
     app.add_middleware(BodyLimit)
     app.state.agent, app.state.store, app.state.engine = agent, store, engine
     communication_slots = threading.BoundedSemaphore(communications.CONFIG['concurrent_runs'])
+    communication_projects=communication_studio.ProjectStore(store.root)
+    communication_jobs=CommunicationJobs(store.root,communication_slots)
+    app.state.communication_jobs=communication_jobs
 
     @app.exception_handler(ValueError)
     async def bad_request(request, exc):
@@ -168,6 +174,28 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
 
     @app.post('/api/communications/{action}')
     async def communication_action(action: str, request: Request):
+        studio_actions={'describe','receiver','pair','document-check','project-list','project-save','project-load','job-start','job-status','job-control','window','report-preview','report-pdf'}
+        if action in studio_actions:
+            if request.headers.get('content-type','').split(';')[0]!='application/json': raise ValueError('通信实验请求须使用 JSON。')
+            payload=await body(request);session=session_key(payload.get('session_id'))
+            if action=='describe': return await run_in_threadpool(communication_studio.describe,payload.get('program'))
+            if action=='document-check': return {'document':await run_in_threadpool(communication_studio.validate_document,payload.get('document'))}
+            if action in ('receiver','pair'):
+                operation=communication_studio.complete_receiver if action=='receiver' else communication_studio.pair_parameters
+                return {'program':await run_in_threadpool(operation,payload.get('program'))}
+            if action=='project-list': return {'projects':await run_in_threadpool(communication_projects.listing,session)}
+            if action=='project-load': return await run_in_threadpool(communication_projects.load,session,payload.get('id'),payload.get('version'))
+            if action=='project-save': return await run_in_threadpool(communication_projects.save,session,payload.get('document'),payload.get('id'),payload.get('version'))
+            if action=='job-start': return communication_jobs.start(session,payload.get('kind'),payload.get('payload'))
+            if action=='job-status': return communication_jobs.status(session,payload.get('id'))
+            if action=='job-control': return communication_jobs.control(session,payload.get('id'),payload.get('control'))
+            if action=='window': return communication_jobs.window(session,payload.get('id'),payload.get('block_id'),payload.get('offset',0),payload.get('count',256),payload.get('branch'))
+            from src import communication_report
+            if action=='report-preview':
+                facts=await run_in_threadpool(communication_report.facts,payload.get('document'))
+                return {k:facts[k] for k in ('summary','sections','app_version')}
+            pdf=await run_in_threadpool(communication_report.render,payload.get('document'))
+            return Response(pdf,media_type='application/pdf',headers={'Content-Disposition':'attachment; filename="communication-experiment.pdf"'})
         if action not in ('validate', 'build', 'run', 'sweep'):
             raise ValueError('未知通信实验操作。')
         if request.headers.get('content-type', '').split(';')[0] != 'application/json':
