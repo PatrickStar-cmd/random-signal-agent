@@ -1,10 +1,10 @@
-# v0.4.4 · Installation and deployment
+# v0.4.5 · Installation and deployment
 
-**v0.4.4 · 积木编程体验更新 / Communication block programming experience update** adds search/favorites, typed connection guidance, automatic receiver completion, actual block stepping, linked scopes, named projects and snapshots, reusable composite blocks, shared-channel receiver branches, generic resumable parameter sweeps, stateful packet execution and Chinese communication PDF reports. Eight new algorithms bring the catalog to 130 addable blocks, one fixed sink and 54 presets. The ocean theme and all previous experiments remain available. See the [experience and algorithm guide](工程文件/代码/docs/communications-v044.md).
+**v0.4.5 · 真实收发链路与实验分析更新 / Realistic transceiver and experiment analysis update** adds 20 blocks, configurable OFDM resources, full-frame RF instruments, automatic A/B alignment and seven guided comparison tasks. Includes 150 addable modules and 64 presets. Existing ocean styling, projects, stepping, branches, resumable sweeps and packet state remain available. See the [RF guide](工程文件/代码/docs/communications-v045.md).
 
-Download `random-signal-agent-v0.4.4-deploy.zip` from the [v0.4.4 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.4) and extract it; the archive contains source, Web assets, configuration, documentation and example data. Use **Python 3.12–3.14** or **Docker**. The [previous v0.1.0 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.1.0) remains available and requires Python 3.12.
+Download `random-signal-agent-v0.4.5-deploy.zip` from the [v0.4.5 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.5) and extract it; the archive contains source, Web assets, configuration, documentation and example data. Use **Python 3.12–3.14** or **Docker**. The [previous v0.1.0 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.1.0) remains available and requires Python 3.12.
 
-Open a terminal in `random-signal-agent/工程文件/代码` (or `random-signal-agent-v0.4.4/工程文件/代码` in a deployment archive).
+Open a terminal in `random-signal-agent/工程文件/代码` (or `random-signal-agent-v0.4.5/工程文件/代码` in a deployment archive).
 
 ## Windows
 
@@ -47,7 +47,7 @@ The check covers health, Web assets, Agent mode, streaming responses, CSV upload
 
 ## 中文说明
 
-下载 v0.4.4 部署包并解压，进入 `工程文件/代码` 后按上方命令启动。支持 Python 3.12–3.14，依赖版本在 `requirements-repro.txt` 固定。也可使用 Docker Compose；默认地址为 <http://127.0.0.1:8000>。实验可导出 ZIP，升级前停止服务并备份整个 `data/` 目录。
+下载 v0.4.5 部署包并解压，进入 `工程文件/代码` 后按上方命令启动。支持 Python 3.12–3.14，依赖版本在 `requirements-repro.txt` 固定。也可使用 Docker Compose；默认地址为 <http://127.0.0.1:8000>。实验可导出 ZIP，升级前停止服务并备份整个 `data/` 目录。
 
 完整应用包含对话、分析、上传及音频处理，不需要外部模型密钥即可使用本地工具链。服务器部署、模型配置与日志查看见[部署说明](工程文件/代码/DEPLOY.md)。
 
@@ -75,9 +75,9 @@ Keys are held in server memory by default. Opting into **记住配置** stores t
 
 The package includes the seven-view ocean interface, transparent AI-generated whale artwork, responsive charts and all local styles/scripts. GitHub Pages is a static preview; API configuration and interactive experiments require the Python backend.
 
-打开“模型与设置 → 模型 API 配置”，选择服务、输入自己的 Key、读取模型列表并“测试并应用”，无需重启。默认只在服务内存保存；勾选“记住配置”后会将 Key 明文写入 `data/model-settings.sqlite3`，需保护该文件及数据备份。可随时切回本地模式或清除配置。v0.4.4 部署包已包含海洋界面及所有图片资源；GitHub Pages 仍为静态预览。
+打开“模型与设置 → 模型 API 配置”，选择服务、输入自己的 Key、读取模型列表并“测试并应用”，无需重启。默认只在服务内存保存；勾选“记住配置”后会将 Key 明文写入 `data/model-settings.sqlite3`，需保护该文件及数据备份。可随时切回本地模式或清除配置。v0.4.5 部署包已包含海洋界面及所有图片资源；GitHub Pages 仍为静态预览。
 
-## PDF analysis reports (v0.4.4)
+## PDF analysis reports (v0.4.5)
 
 In **模板与实验 → PDF 分析报告**, enter report details, choose brief/standard, preview the summary, then download. Reports currently use Chinese and include measured results, vector plots and reproduction information; existing comparison and diagnosis sections appear when available. No model key is required. Blind experiments must be revealed first; true SNR/RMSE need a clean reference.
 
@@ -142,7 +142,7 @@ From v0.4.0, stop the service, retain the existing data/ and needed uploads/outp
 从 v0.4.1 升级：停止服务，保留 data/ 和需要的 uploads/outputs/，替换源码并重启或重建 Docker，再刷新浏览器；没有新增依赖或数据迁移。
 
 
-## v0.4.4 升级与验证
+## v0.4.5 升级与验证
 
 保留 data/、uploads/、outputs/，替换源码后重启服务并刷新浏览器。旧 schema 1 通信工程继续导入；新 schema 2 保存组合、分支、结果和曲线。新增工程库和扫描检查点使用当前会话标识，无数据库迁移或新增生产依赖。备份 data/ 时一并保留 communication-projects/ 和 communication-jobs/。
 

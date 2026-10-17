@@ -6,11 +6,13 @@ import numpy as np
 from src import communication_codecs as codec, communication_dsp as dsp
 from src import communication_runtime as runtime
 from src import communication_algorithms as algorithms
+from src import communication_rf as rf
 
-SYMBOL_SCHEMES={'bpsk','qpsk','qam16','ook','dbpsk','dqpsk'}
+SYMBOL_SCHEMES=set(rf.SCHEMES)|{'ook','dbpsk','dqpsk'}
 WAVE_SCHEMES={'fsk2','msk','gmsk'}
 TX_PROCESS={'tx_rrc','tx_frame','tx_pilots','tx_ofdm'}
 RX_PROCESS={'rx_matched','rx_timing','rx_frame','rx_frequency','rx_carrier','rx_equalizer','rx_cma','rx_pilots','rx_ofdm','rx_complete','rx_agc','rx_noise_estimate','resample','rx_fse','rx_ofdm_frequency','rx_ofdm_tracking'}
+RX_PROCESS |= rf.RX
 EXT_ENCODERS=set(codec.PAIRS.values())-{'conv_encode'}
 
 
@@ -47,6 +49,7 @@ def build(p):
                 if domain!='模拟样本': fail('该信源编码需要模拟样本。')
                 domain='比特'
             elif domain!='比特': fail('先将模拟信源编码成比特。')
+            if k=='puncture' and (not stack or stack[-1][0]!='conv_encode'): fail('打孔须紧接卷积编码器。')
             stack.append((k,q,count))
             if k in EXT_ENCODERS: count=codec.encoded_count(k,count,q)
             elif k=='pcm_encode': count*=q['bits']
@@ -68,7 +71,7 @@ def build(p):
             features['mapped_count']=count; direction='signal_tx'
         elif k in TX_PROCESS:
             if direction!='signal_tx' or domain!='复符号' or k in features: fail('发送处理须位于映射器与信道之间，每种处理只放一次。')
-            if scheme not in ('bpsk','qpsk','qam16'): fail('该处理支持 BPSK、QPSK 和 16QAM。')
+            if scheme not in rf.SCHEMES: fail('该处理需要 PSK / QAM 星座映射。')
             if k=='tx_pilots':
                 if 'tx_frame' in features: fail('周期导频放在公共前导之前。')
                 count+=math.ceil(count/q['interval'])
@@ -77,12 +80,17 @@ def build(p):
             elif k=='tx_ofdm':
                 if 'tx_frame' in features or 'tx_pilots' in features: fail('OFDM 自带训练和导频，请移除单载波组帧/导频。')
                 if q['cp']>=q['nfft']: fail('CP 长度须小于 FFT 点数。')
-                count=(math.ceil(count/len(dsp.ofdm_indices(q['nfft'])[2]))+1)*(q['nfft']+q['cp']); domain='OFDM 波形'
+                count=(math.ceil(count/len(dsp.ofdm_indices(q['nfft'],q)[2]))+1)*(q['nfft']+q['cp']); domain='OFDM 波形'
             features[k]={'params':q,'input_count':before,'count':count}
+        elif k in rf.TX:
+            if direction!='signal_tx' or domain not in ('复符号','复采样波形','OFDM 波形'): fail('发送射频处理放在发送成形后、信道前。')
+            if k=='tx_clip_filter' and domain!='OFDM 波形': fail('削峰滤波需要发送 OFDM 波形。')
         elif k in c.CHANNELS:
-            if direction not in ('signal_tx','channel'): fail('信道须放在发送处理之后、接收处理之前。')
+            if direction not in ('signal_tx','channel') and not (k=='adc' and direction=='signal_rx'): fail('信道须放在发送处理之后、接收处理之前。')
             if domain not in ('复符号','复采样波形','OFDM 波形'): fail('信道输入须为复符号或波形。')
             allowed={'ideal','awgn','complex_awgn','attenuation','phase_shift','dropout','frequency_offset','phase_noise','sample_delay','complex_multipath','rayleigh','rician','clock_drift','timing_offset','time_multipath','burst_noise'}
+            allowed |= rf.CHANNEL
+            if k=='adc' and direction=='signal_rx' and consumed-{'rx_agc','rx_dc','rx_notch'}: fail('ADC 放在接收前端、重采样和匹配滤波之前。')
             if k not in allowed: fail('该信道用于实基带或模拟链路。')
             if k=='awgn' and domain!='复符号': fail('过采样波形请选择复波形白噪声。')
             if k in ('clock_drift','timing_offset','sample_delay') and 'tx_rrc' not in features and 'tx_ofdm' not in features: fail('未知定时请使用 RRC 成形或 OFDM。')
@@ -97,16 +105,21 @@ def build(p):
                 attenuation+=q['db']
                 if attenuation>100: fail('总衰减须不超过 100 dB。')
             fs=p['symbol_rate']*features.get('tx_rrc',{}).get('params',{}).get('sps',features.get('tx_ofdm',{}).get('params',{}).get('nfft',features['modulator']['params'].get('sps',1)))
-            if k=='frequency_offset' and abs(q['hz'])>=fs/2: fail('频偏须小于采样率的一半。')
+            if k in ('frequency_offset','narrowband') and abs(q['hz'])>=fs/2: fail('频偏须小于采样率的一半。')
             if k in ('rayleigh','rician','time_multipath') and q['doppler']>=fs/2: fail('多普勒须小于采样率的一半。')
-            channels+=1; direction='channel'
+            channels+=1; direction='signal_rx' if direction=='signal_rx' else 'channel'
         elif k in RX_PROCESS:
             if direction not in ('channel','signal_rx') or not channels or k in consumed: fail('接收处理须位于信道之后、解调之前，每种处理只放一次。')
             direction='signal_rx'; consumed.add(k)
-            if k=='rx_agc':
+            if k in rf.RX:
+                if k=='rx_iq' and ('rx_frame' not in consumed or scheme in ('bpsk','ook','dbpsk')): fail('I/Q 校正需要复数训练星座和前置帧同步。')
+                if k=='rx_notch':
+                    fs=p['symbol_rate']*receive_sps if domain=='复采样波形' else p['symbol_rate']*features['tx_ofdm']['params']['nfft'] if domain=='OFDM 波形' else p['symbol_rate']
+                    if abs(q['hz'])>=fs/2: fail('陷波频率须低于采样率的一半。')
+            elif k=='rx_agc':
                 if domain not in ('复符号','复采样波形','OFDM 波形'): fail('AGC 需要复符号或波形。')
             elif k=='rx_noise_estimate':
-                if domain!='复符号' or scheme not in ('bpsk','qpsk','qam16'): fail('噪声估计需要 PSK/QAM 符号。')
+                if domain!='复符号' or scheme not in rf.SCHEMES: fail('噪声估计需要 PSK/QAM 符号。')
                 if q['method']==0 and 'rx_frame' not in consumed: fail('前导残差估计需要先完成帧同步。')
             elif k=='resample':
                 if domain!='复采样波形' or 'tx_rrc' not in features or 'rx_matched' in consumed: fail('重采样放在 RRC 链路信道之后、匹配滤波之前。')
@@ -132,12 +145,12 @@ def build(p):
             elif k=='rx_frequency':
                 if scheme not in ('bpsk','qpsk') or domain=='OFDM 波形': fail('幂次粗频偏估计支持单载波 BPSK/QPSK。')
             elif k=='rx_carrier':
-                if domain!='复符号' or scheme not in ('bpsk','qpsk','qam16'): fail('载波环需要抽样后的 PSK/QAM 符号。')
+                if domain!='复符号' or scheme not in rf.SCHEMES: fail('载波环需要抽样后的 PSK/QAM 符号。')
             elif k=='rx_frame':
                 if domain!='复符号' or 'tx_frame' not in features: fail('帧同步需要公共前导和符号序列。')
                 count=features['tx_frame']['count']
             elif k in ('rx_equalizer','rx_cma'):
-                if domain!='复符号' or scheme not in ('bpsk','qpsk','qam16'): fail('均衡器需要 PSK/QAM 复符号。')
+                if domain!='复符号' or scheme not in rf.SCHEMES: fail('均衡器需要 PSK/QAM 复符号。')
                 if k=='rx_equalizer' and 'rx_frame' not in consumed: fail('训练均衡先进行帧同步。')
                 if k=='rx_cma' and 'rx_frame' in consumed: fail('CMA 放在帧同步之前，由前导修正盲均衡的相位。')
             elif k=='rx_pilots':
@@ -163,6 +176,8 @@ def build(p):
             if k in ('ldpc_decode','conv_soft_decode'):
                 if domain!='LLR': fail('该译码需要软解调输出的 LLR。')
                 domain='比特'
+            elif k=='depuncture':
+                if domain!='LLR': fail('解打孔需要 LLR，后接软 Viterbi。')
             elif k=='deinterleave' and domain=='LLR': pass
             elif domain!='比特': fail('先将软信息译码为比特。')
             if expected in codec.SOURCE_CODECS or expected=='pcm_encode': domain='模拟样本'
@@ -188,6 +203,7 @@ def run(compiled, source, texts, source_count, rng):
     p=compiled['program']; f=compiled['features']; data=source.copy(); analog=compiled['source_kind']=='analog'
     reference=None if analog else source.copy(); stack=[]; info={}; snapshots=[]; recovery={}; gain=1+0j; prefix=0
     fs=p['symbol_rate']; tx=None; channel=None; tx_power=1.; in_channel=False; decoded_bits=None; clipped=corrections=0; eye=None;noise_estimate=None
+    rf_stages=[]
     receive_sps=f.get('receiver_sps',f.get('tx_rrc',{}).get('params',{}).get('sps',1))
     for b in p['blocks'][source_count:]:
         runtime.enter(b)
@@ -210,6 +226,9 @@ def run(compiled, source, texts, source_count, rng):
             if scheme in WAVE_SCHEMES:
                 data=dsp.frequency_modulate(data,scheme,q); transmitted_indices=encoded.copy(); mapped=data.copy(); fs*=q['sps']
             else: data,transmitted_indices=dsp.map_bits(data,scheme); mapped=data.copy()
+        elif k in rf.TX:
+            original=data.copy();data,info[k]=rf.process(k,data,q,fs,f.get('tx_ofdm',{}).get('params'))
+            if len(rf_stages)<8: rf_stages.append({'label':c.BLOCKS[k]['label'],'before':rf.measure(original,fs),'after':rf.measure(data,fs)})
         elif k=='tx_pilots': data=dsp.insert_pilots(data,q['interval'])
         elif k=='tx_frame':
             preamble=dsp.public_preamble(q['length'],scheme); data=np.r_[preamble,data]
@@ -242,9 +261,15 @@ def run(compiled, source, texts, source_count, rng):
             elif k in ('rayleigh','rician'): data=data*dsp.fading(len(data),fs,q['doppler'],rng,q.get('k_db'))
             elif k=='time_multipath': data=algorithms.time_multipath(data,q,fs,rng)
             elif k=='burst_noise': data,info['burst']=algorithms.burst_noise(data,q,tx_power,rng)
+            elif k in rf.CHANNEL:
+                original=data.copy();data,info[k]=rf.process(k,data,q,fs)
+                if len(rf_stages)<8: rf_stages.append({'label':c.BLOCKS[k]['label'],'before':rf.measure(original,fs),'after':rf.measure(data,fs)})
             channel=data.copy()
         elif k in RX_PROCESS:
-            if k=='rx_agc':
+            if k in rf.RX:
+                original=data.copy();data,info[k]=rf.process(k,data,q,fs,training=preamble if k=='rx_iq' else None)
+                if len(rf_stages)<8: rf_stages.append({'label':c.BLOCKS[k]['label'],'before':rf.measure(original,fs),'after':rf.measure(data,fs)})
+            elif k=='rx_agc':
                 data,info['agc']=algorithms.agc(data,q);gain=gain/abs(gain)
             elif k=='rx_noise_estimate': noise_estimate,info['noise_estimate']=algorithms.noise_estimate(data,dsp.constellation(scheme)[1],preamble if q['method']==0 else None)
             elif k=='resample': data=algorithms.resample(data,q['up'],q['down']);fs*=q['up']/q['down']
@@ -270,6 +295,7 @@ def run(compiled, source, texts, source_count, rng):
                 data=np.r_[data[:prefix],payload]; gain=1+0j
             elif k=='rx_ofdm':
                 data,estimate=dsp.ofdm_demodulate(data,f['tx_ofdm']['params'],q,f['tx_ofdm']['input_count']); info['ofdm'].update(estimate)
+                fs=p['symbol_rate']
                 if q['equalize']: gain=1+0j
             elif k=='rx_complete':
                 data,recovery['frequency']=dsp.coarse_frequency(data,fs,scheme)
@@ -292,7 +318,8 @@ def run(compiled, source, texts, source_count, rng):
         elif k in c.PAIRS:
             encoder,params,size=stack.pop()
             if encoder in codec.SOURCE_CODECS or encoder=='pcm_encode': decoded_bits=data.copy()
-            if k in codec.PAIRS:
+            if k=='depuncture': data=codec.depuncture(data,size,q['rate'])
+            elif k in codec.PAIRS:
                 data,details=codec.decode(k,data,q); info.setdefault('codecs',[]).append({'kind':k,**details})
             elif k=='repeat_decode': data=(data.reshape(-1,q['factor']).sum(axis=1)>q['factor']//2).astype(np.uint8)
             elif k=='hamming_decode': data,n=c.hamming_decode(data); corrections+=n
@@ -327,6 +354,8 @@ def run(compiled, source, texts, source_count, rng):
             'channel':view(channel,shown,channel_fs(compiled)), 'advanced':advanced,
             'constellation':{'scheme':scheme,'count':scatter,'i':decision_symbols[:scatter].real.tolist(),'q':decision_symbols[:scatter].imag.tolist(),'ideal_i':points.real.tolist(),'ideal_q':points.imag.tolist(),'labels':[]},'text':None}
     if not analog and len(texts)==source_count: result['text']={'sent':b''.join(texts).decode('utf-8'),'received':np.packbits(decoded_bits).tobytes().decode('utf-8',errors='replace')}
+    result['analysis']=rf.analyze(tx,channel,mapped,decision_symbols,channel_fs(compiled),bit_count,info.get('ofdm'),rf_stages)
+    metrics.update(net_bit_rate=result['analysis']['net_bit_rate'],spectral_efficiency=result['analysis']['spectral_efficiency'],papr_db=result['analysis']['tx']['papr_db'])
     json.dumps(result,allow_nan=False)
     return result
 

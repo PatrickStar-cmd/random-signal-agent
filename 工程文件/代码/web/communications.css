@@ -270,3 +270,18 @@
 .cm-marquee { position:absolute; border:2px dashed #765ec1; background:#9f91e52b; pointer-events:none; z-index:5; }
 @media(max-width:1000px){.cm-experience-row label{flex-basis:160px}.cm-organize .cm-experience-row label{flex-basis:100%}}
 @media(max-width:640px){.cm-experience{padding:12px;border-radius:17px}.cm-experience-row label{flex:1 1 135px}.cm-scope-grid,.cm-flow-branches,.cm-group-fields{grid-template-columns:minmax(0,1fr)}.cm-experience-row button{font-size:12px}.cm-experience .cm-inline{flex-basis:auto}.cm-multi{flex-basis:15px}.cm-port-line{padding-left:4px}.cm-discovery{margin:10px}.cm-palette-entry{min-width:0}.cm-organize{margin:0 10px 10px}}
+
+/* v0.4.5 instruments reuse the ocean studio palette and strong outlines. */
+.cm-rf-panel { min-width:0; color:#526b8e; }
+.cm-rf-panel>summary { cursor:pointer; font-weight:700; font-size:16px; padding:5px 0 12px; color:#4d5e91; }
+.cm-rf-panel details>summary { cursor:pointer; padding:12px 0; font-weight:600; }
+.cm-rf-panel canvas { display:block; width:100%; height:260px; border:3px solid #a3b8df; border-radius:14px; box-sizing:border-box; background:#f4f8ff; }
+#cmRFGrid { height:230px; }
+.cm-rf-panel p { font-size:12px; line-height:1.8; overflow-wrap:anywhere; }
+.cm-rf-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:14px 0; }
+.cm-rf-metrics>div { padding:14px; border:3px solid #adc2df; border-radius:15px; background:linear-gradient(135deg,#f7faff,#edf7f5); min-width:0; }
+.cm-rf-metrics span { display:block; font-size:12px; margin-bottom:8px; }
+.cm-rf-metrics strong { color:#4d5e91; font-size:18px; overflow-wrap:anywhere; }
+#cmRFComparisons { max-height:270px; overflow:auto; margin-top:14px; }
+#cmAlignmentStatus { font-size:12px; line-height:1.7; color:#526b8e; }
+@media(max-width:640px){.cm-rf-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.cm-rf-metrics>div{padding:10px}.cm-rf-metrics strong{font-size:15px}.cm-rf-panel>summary{font-size:14px}}

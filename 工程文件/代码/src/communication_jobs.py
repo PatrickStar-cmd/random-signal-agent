@@ -74,7 +74,7 @@ class Jobs:
         for old in sorted(p.parent.glob('*.json'),key=lambda q:q.stat().st_mtime,reverse=True)[30:]: old.unlink()
     def start(self,session,kind,payload):
         from src import communications as c
-        if kind not in ('debug','run','sweep','continuous','branches','experiments'): raise ValueError('未知通信任务类型。')
+        if kind not in ('debug','run','sweep','continuous','branches','experiments','rf-task'): raise ValueError('未知通信任务类型。')
         if not isinstance(payload,dict): raise ValueError('任务参数无效。')
         if kind not in ('branches','experiments'):
             built=c.build(payload.get('program'))
@@ -84,6 +84,9 @@ class Jobs:
             programs=payload.get('programs',[])
             if not isinstance(programs,list) or not 2<=len(programs)<=4: raise ValueError('自动对照需要 2–4 个方案。')
             for program in programs: c.build(program)
+        if kind=='rf-task':
+            from src.communication_v045 import task_programs
+            task_programs(payload.get('task_id'),built['program'])
         if kind=='continuous': c.numeric(payload.get('frames',10),'多帧数量',1,c.CONFIG['max_continuous_frames'],True)
         if kind=='sweep':
             from src.communication_sweep import parameter
@@ -146,6 +149,20 @@ class Jobs:
                     curve=sweep(program,built['token'],p['settings'],lambda v:job.update(progress={'index':index,'curve':v,'curves':curves}),job.cancel)
                     curve['name']=p.get('names',[])[index] if p.get('names') else f'方案 {index+1}';curves.append(curve)
                 result={'curves':curves,'complete':len(curves)==len(p['programs']) and all(v['complete'] for v in curves)}
+            elif job.kind=='rf-task':
+                from src.communication_v045 import task_programs
+                task,variants=task_programs(p.get('task_id'),p['program']);rows=[]
+                built=c.build(p['program']);ctx=runtime.Observer(built,points=c.CONFIG['plot_points'],cancel=job.cancel,retain=True)
+                job.ctx=ctx
+                with runtime.execution(ctx): baseline=c.run(built['program'],built['token'])
+                baseline['experience']={'observations':ctx.observations,'contract':1,'job_id':job.id}
+                for variant in variants:
+                    if job.cancel.is_set(): break
+                    built=c.build(variant['program']);ctx=runtime.Observer(built,cancel=job.cancel)
+                    with runtime.execution(ctx): value=c.run(built['program'],built['token'])
+                    rows.append({'name':variant['name'],'program':built['program'],'result':value})
+                    job.update(progress={'completed':len(rows),'total':len(variants)})
+                result={'task':task,'baseline':baseline,'variants':rows,'complete':len(rows)==len(variants),'seed_policy':'各方案使用相同源种子与噪声种子；按各方案发送采样 SNR / EsN0 比较'}
             elif job.kind=='continuous': result=self.continuous(job)
             else:
                 from src import communications as c
@@ -172,7 +189,7 @@ class Jobs:
             except runtime.Cancelled:
                 break
             m=last['metrics'];bits+=m.get('bit_count',0);errors+=m.get('bit_errors',0);symbols+=m.get('symbol_count',0);symbol_errors+=m.get('symbol_errors',0);failed+=m.get('frame_errors',int(m.get('bit_errors',0)>0))
-            rows.append({'frame':index+1,'ber':m.get('ber'),'rmse':m.get('rmse'),'evm_percent':m.get('evm_percent'),'state_count':len(states),
+            rows.append({'frame':index+1,'ber':m.get('ber'),'rmse':m.get('rmse'),'evm_percent':m.get('evm_percent'),'state_count':len(states),'papr_db':m.get('papr_db'),'net_bit_rate':m.get('net_bit_rate'),
                 'carrier':last.get('advanced',{}).get('recovery',{}).get('carrier'),'equalizer':last.get('advanced',{}).get('recovery',{}).get('equalizer')})
             last['experience']={'observations':ctx.observations,'frame':index,'contract':1,'job_id':job.id}
             job.update(progress={'completed':index+1,'total':p.get('frames',10),'frames':rows,'ber':errors/max(1,bits),'fer':failed/(index+1),'state_count':len(states)})

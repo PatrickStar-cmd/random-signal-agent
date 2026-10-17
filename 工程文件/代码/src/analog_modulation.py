@@ -113,7 +113,10 @@ def run(compiled, source, noise_rng, config):
                'overmodulated_samples': int(np.count_nonzero(1 + transmit['sensitivity'] * source < 0)) if scheme == 'am' else 0}
     spectrum = abs(np.fft.fftshift(np.fft.fft(sent))) ** 2 / (sample_rate * len(sent))
     shown = min(len(sent), config['plot_points'])
-    return {'token': compiled['token'], 'seed': program['seed'], 'summary': compiled['summary'], 'model': compiled['model'],
+    from src import communication_rf as rf
+    analysis=rf.analyze(sent,received,sent,decision,sample_rate,None)
+    metrics['papr_db']=analysis['tx']['papr_db']
+    return {'analysis':analysis,'token': compiled['token'], 'seed': program['seed'], 'summary': compiled['summary'], 'model': compiled['model'],
             'transport': 'analog', 'metrics': metrics, 'plan': compiled['plan'], 'text': None, 'constellation': None,
             'sink': {'kind': 'analog', 'values': recovered.tolist(), 'reference': source.tolist(), 'sample_rate': sample_rate,
                      'count': len(source), 'plot_count': min(len(source), config['plot_points'])},

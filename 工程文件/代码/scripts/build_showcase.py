@@ -67,6 +67,8 @@ def decorate_preview(page):
         <p>新增 AGC、自动噪声估计、有理数重采样、T/2 均衡、OFDM 频偏与导频跟踪、独立时变多径和突发噪声。</p>
         <a href="images/communications-v044-studio.png"><img class="preview-image" src="images/communications-v044-studio.png" alt="v0.4.4 海洋积木工程、组合接收机与联动观察" loading="lazy"></a>
         <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.4">下载 v0.4.4</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v044.md">体验与算法指南</a></p></section>''',1)
+    if 'id="rf-analysis-preview"' not in page:
+        page=page.replace('<main>','<main>'+'<section id="rf-analysis-preview"><h2>v0.4.5 · 真实收发链路与实验分析更新 🌊</h2><p>150 个可添加模块、64 个示例、7 项实验任务。高阶调制、I/Q 校正、功放、ADC、OFDM 削峰、窄带干扰和打孔编码，配合 Welch、CCDF、ACLR、资源栅格、自动对齐与效率分析。</p><a href="images/communications-v045-analysis.png"><img class="preview-image" src="images/communications-v045-analysis.png" alt="v0.4.5 海洋射频测量仪表" loading="lazy"></a><p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.5">下载 v0.4.5</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v045.md">射频与测量指南</a></p></section>',1)
     page = page.replace('「通信原理积木编程」已包含通信实验室。', '「积木编程体验更新」包含完整通信实验室。')
     return page.replace('v0.4.0', f'v{VERSION}')
 

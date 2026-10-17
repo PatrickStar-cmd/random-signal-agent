@@ -214,8 +214,8 @@
   byId('cmSweepClear').onclick=()=>{sweeps=[];drawSweep();buttons();studio?.persist();byId('cmSweepStatus').textContent='曲线已清空。'};
   byId('cmSweepExport').onclick=()=>download('communication-sweeps.json',JSON.stringify({sweeps},null,2)+'\n','application/json');
   byId('cmSweepCSV').onclick=()=>{
-    const rows=['curve,axis,db,frames,bit_count,bit_errors,ber,ber_low,ber_high,ser,ser_low,ser_high,fer,fer_low,fer_high,theory_ber,rmse,stop_reason'];
-    for(const s of sweeps)for(const p of s.points)rows.push([s.name,s.axis,p.db,p.frames,p.bit_count,p.bit_errors,p.ber,...p.ber_interval,p.ser,...p.ser_interval,p.fer,...p.fer_interval,p.theory_ber??'',p.rmse??'',p.stop_reason].map(v=>'"'+String(v).replaceAll('"','""')+'"').join(','));
+    const rows=['curve,axis,db,frames,bit_count,bit_errors,ber,ber_low,ber_high,ser,ser_low,ser_high,fer,fer_low,fer_high,theory_ber,rmse,evm_percent,papr_db,net_bit_rate,spectral_efficiency,stop_reason'];
+    for(const s of sweeps)for(const p of s.points)rows.push([s.name,s.axis,p.db,p.frames,p.bit_count,p.bit_errors,p.ber,...p.ber_interval,p.ser,...p.ser_interval,p.fer,...p.fer_interval,p.theory_ber??'',p.rmse??'',p.evm_percent??'',p.papr_db??'',p.net_bit_rate??'',p.spectral_efficiency??'',p.stop_reason].map(v=>'"'+String(v).replaceAll('"','""')+'"').join(','));
     download('communication-sweeps.csv',rows.join('\n')+'\n','text/csv');
   };
   byId('cmSweepRun').onclick=async()=>{
@@ -378,10 +378,10 @@
     const curves=sweeps.filter(s=>s.axis===axisName),points=curves.flatMap(s=>s.points),colors=['#5365cf','#238879','#af5390','#bd7a21','#3797b5','#8059a6'];
     byId('cmSweepTable').innerHTML=curves.length?'<table><thead><tr><th>曲线</th><th>参数值</th><th>帧数</th><th>'+metric.toUpperCase()+'</th><th>95% 区间</th><th>停止条件</th></tr></thead><tbody>'+curves.flatMap(s=>s.points.map(p=>`<tr><td>${esc(s.name)}</td><td>${p.db}</td><td>${p.frames}</td><td>${p[metric]?.toExponential(3)??'—'}</td><td>${p[metric+'_interval']?.map(v=>v.toExponential(2)).join(' – ')??'—'}</td><td>${({target_errors:'目标误码数',frame_limit:'帧数上限',time_limit:'时长上限',cancelled:'已取消',running:'运行中'})[p.stop_reason]}</td></tr>`)).join('')+'</tbody></table>':'';
     if(!points.length){x.fillStyle='#526b8e';x.textAlign='center';x.fillText('扫描后显示性能曲线，可修改链路继续加入对比。',width/2,height/2);return}
-    if(metric==='rmse'){
-      const values=points.filter(p=>Number.isFinite(p.rmse));if(!values.length)return;
-      const min=Math.min(...points.map(p=>p.db)),max=Math.max(...points.map(p=>p.db)),axis=axes(view,0,Math.max(.000001,...values.map(p=>p.rmse))*1.1,Math.max(1,max-min),'',false,min);
-      curves.forEach((s,i)=>{x.strokeStyle=colors[i];x.fillStyle=colors[i];x.beginPath();s.points.filter(p=>Number.isFinite(p.rmse)).forEach((p,j)=>{if(j)x.lineTo(axis.px(p.db-min),axis.py(p.rmse));else x.moveTo(axis.px(p.db-min),axis.py(p.rmse))});x.stroke();x.fillText(s.name.slice(0,24),axis.p.left+8,axis.p.top+15+i*15)});return;
+    if(['rmse','evm_percent','papr_db','net_bit_rate','spectral_efficiency'].includes(metric)){
+      const values=points.filter(p=>Number.isFinite(p[metric]));if(!values.length)return;
+      const min=Math.min(...points.map(p=>p.db)),max=Math.max(...points.map(p=>p.db)),axis=axes(view,0,Math.max(.000001,...values.map(p=>p[metric]))*1.1,Math.max(1,max-min),'',false,min);
+      curves.forEach((s,i)=>{x.strokeStyle=colors[i];x.fillStyle=colors[i];x.beginPath();s.points.filter(p=>Number.isFinite(p[metric])).forEach((p,j)=>{if(j)x.lineTo(axis.px(p.db-min),axis.py(p[metric]));else x.moveTo(axis.px(p.db-min),axis.py(p[metric]))});x.stroke();x.fillText(s.name.slice(0,24),axis.p.left+8,axis.p.top+15+i*15)});return;
     }
     const minX=Math.min(...points.map(p=>p.db)),maxX=Math.max(...points.map(p=>p.db)),lower=Math.max(-8,Math.floor(Math.log10(Math.min(...points.map(p=>Math.max(p[metric+'_interval'][0]||p[metric+'_interval'][1],1e-8))))));
     const axis=axes(view,lower,0,Math.max(1,maxX-minX),'',false,minX);axis.xEnd=Math.max(1,maxX-minX);
@@ -392,7 +392,7 @@
         x.beginPath();x.moveTo(xx,top);x.lineTo(xx,bottom);x.moveTo(xx-3,top);x.lineTo(xx+3,top);x.moveTo(xx-3,bottom);x.lineTo(xx+3,bottom);x.stroke();x.beginPath();x.arc(xx,yy,3,0,2*Math.PI);if(p[metric])x.fill();else x.stroke();
       }
       if(metric==='ber'&&s.points.every(p=>p.theory_ber!==undefined)){x.setLineDash([4,4]);x.beginPath();s.points.forEach((p,j)=>{const xx=axis.px(p.db-minX),yy=axis.py(Math.max(lower,Math.log10(Math.max(p.theory_ber,1e-12))));if(j)x.lineTo(xx,yy);else x.moveTo(xx,yy)});x.stroke();x.setLineDash([])}
-      x.textAlign='left';x.fillText(s.name.slice(0,24),axis.p.left+8,axis.p.top+15+i*15);
+      x.textAlign='left';x.fillText((s.name+(metric==='ber'&&s.theory_label?' · 虚线：'+s.theory_label:'')).slice(0,65),axis.p.left+8,axis.p.top+15+i*15);
     }
     x.fillStyle='#526b8e';x.textAlign='left';x.font=chartFont(10);x.fillText('log₁₀ '+metric.toUpperCase()+' · '+axisName,axis.p.left,13);
   }

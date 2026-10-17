@@ -220,24 +220,29 @@ def estimate_pilots(symbols, interval, count, floor):
     return corrected[mask][:count],{'pilot_positions':locations.tolist(),'gain_i':estimates.real.tolist(),'gain_q':estimates.imag.tolist()}
 
 
-def ofdm_indices(nfft):
-    active=np.arange(1,nfft); pilots=active[active%4==1]; data=active[active%4!=1]
+def ofdm_indices(nfft,q=None):
+    q=q or {}; count=q.get('active_count',0) or nfft-1; spacing=q.get('pilot_interval',4)
+    if not 4<=count<nfft: raise ValueError('有效子载波数须为 4 至 FFT 点数减一，或 0（全部）。')
+    active=np.r_[np.arange(1,(count+1)//2+1),np.arange(nfft-count//2,nfft)]
+    if count==nfft-1: active=np.arange(1,nfft)
+    pilots=active[active%spacing==1];data=active[active%spacing!=1]
+    if len(pilots)<2 or not len(data): raise ValueError('资源配置需要至少两个导频和一个数据子载波。')
     return active,pilots,data
 
 
 def ofdm_modulate(symbols, q):
-    n,cp=q['nfft'],q['cp']; active,pilots,data=ofdm_indices(n)
+    n,cp=q['nfft'],q['cp']; active,pilots,data=ofdm_indices(n,q)
     rows=math.ceil(len(symbols)/len(data)); grid=np.zeros((rows+1,n),dtype=complex)
     # Public BPSK training avoids the all-ones time-domain impulse.
     grid[0,active]=np.random.default_rng(43064).choice([-1,1],len(active))
     grid[1:,pilots]=1; grid[1:,data]=np.pad(symbols,(0,rows*len(data)-len(symbols))).reshape(rows,-1)
     time=np.fft.ifft(grid,axis=1)*math.sqrt(n)
     wave=np.concatenate((time[:,-cp:],time),axis=1).ravel()
-    return wave,{'nfft':n,'cp':cp,'data_carriers':data.tolist(),'pilot_carriers':pilots.tolist(),'symbols':rows,'papr_db':float(10*np.log10(np.max(abs(wave)**2)/np.mean(abs(wave)**2)))}
+    return wave,{'nfft':n,'cp':cp,'data_carriers':data.tolist(),'pilot_carriers':pilots.tolist(),'active_carriers':active.tolist(),'roles':['dc' if i==0 else 'pilot' if i in pilots else 'data' if i in data else 'guard' for i in range(n)],'symbols':rows,'papr_db':float(10*np.log10(np.max(abs(wave)**2)/np.mean(abs(wave)**2)))}
 
 
 def ofdm_demodulate(wave, q, receive, count):
-    n,cp=q['nfft'],q['cp']; active,pilots,data=ofdm_indices(n)
+    n,cp=q['nfft'],q['cp']; active,pilots,data=ofdm_indices(n,q)
     training,_=ofdm_modulate(np.zeros(1,dtype=complex),q); training=training[:n+cp]
     corr=abs(np.correlate(wave,training,mode='valid'))
     start=int(np.argmax(corr)); rows=1+math.ceil(count/len(data)); length=rows*(n+cp)

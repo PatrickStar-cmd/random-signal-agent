@@ -84,7 +84,7 @@ def ofdm_acquire(wave,q):
     energy=np.convolve(abs(wave)**2,np.ones(n+cp),mode='valid')
     normalized=correlation/np.sqrt(np.maximum(energy*np.sum(abs(known_wave)**2),1e-24))
     candidates=np.argpartition(normalized,-min(32,len(normalized)))[-min(32,len(normalized)):]
-    active,_,_=dsp.ofdm_indices(n);known=np.random.default_rng(43064).choice([-1,1],len(active));best=(-1.,0)
+    active,_,_=dsp.ofdm_indices(n,q);known=np.random.default_rng(43064).choice([-1,1],len(active));best=(-1.,0)
     for start in candidates:
         received=np.fft.fft(wave[start+cp:start+cp+n])/math.sqrt(n)
         response=np.zeros(n,dtype=complex);response[active]=received[active]/known
@@ -96,7 +96,7 @@ def ofdm_acquire(wave,q):
 
 
 def ofdm_tracking(wave,q,receive,count):
-    n,cp=q['nfft'],q['cp'];active,pilots,data=dsp.ofdm_indices(n)
+    n,cp=q['nfft'],q['cp'];active,pilots,data=dsp.ofdm_indices(n,q)
     start,_=ofdm_acquire(wave,q);rows=1+math.ceil(count/len(data));length=rows*(n+cp)
     packet=np.pad(wave[start:start+length],(0,max(0,length-len(wave[start:start+length]))))
     grid=np.fft.fft(packet.reshape(rows,n+cp)[:,cp:],axis=1)/math.sqrt(n)

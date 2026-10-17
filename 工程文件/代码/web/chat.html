@@ -264,7 +264,7 @@
         <label>扫描噪声积木<select id="cmSweepNoise"></select></label><label>横轴<select id="cmSweepMode"><option value="native">积木原生 SNR / Es/N₀</option><option value="ebn0">信息比特 Eb/N₀</option></select></label>
         <label>起始 dB<input id="cmSweepStart" type="number" min="-10" max="40" value="0" step="0.25"></label><label>结束 dB<input id="cmSweepStop" type="number" min="-10" max="40" value="12" step="0.25"></label><label>步长 dB<input id="cmSweepStep" type="number" min="0.25" max="20" value="2" step="0.25"></label>
         <label>每点最多帧数<input id="cmSweepFrames" type="number" min="1" max="100" value="10"></label><label>每点目标误比特<input id="cmSweepErrors" type="number" min="1" max="100000" value="100"></label><label>曲线名称<input id="cmSweepName" type="text" maxlength="60" placeholder="当前链路"></label>
-      </div><div class="cm-downloads"><button id="cmSweepRun" type="button" disabled>📈 扫描并加入对比</button><button id="cmSweepClear" type="button">清空曲线</button><button id="cmSweepExport" type="button" disabled>导出扫描 JSON</button><button id="cmSweepCSV" type="button" disabled>导出扫描 CSV</button><label>指标<select id="cmSweepMetric"><option value="ber">BER</option><option value="ser">SER</option><option value="fer">FER</option><option value="rmse">RMSE</option></select></label></div>
+      </div><div class="cm-downloads"><button id="cmSweepRun" type="button" disabled>📈 扫描并加入对比</button><button id="cmSweepClear" type="button">清空曲线</button><button id="cmSweepExport" type="button" disabled>导出扫描 JSON</button><button id="cmSweepCSV" type="button" disabled>导出扫描 CSV</button><label>指标<select id="cmSweepMetric"><option value="ber">BER</option><option value="ser">SER</option><option value="fer">FER</option><option value="rmse">RMSE</option><option value="evm_percent">EVM %</option><option value="papr_db">PAPR dB</option><option value="net_bit_rate">净速率 bit/s</option><option value="spectral_efficiency">频谱效率 bit/s/Hz</option></select></label></div>
       <p id="cmSweepStatus" class="cm-analysis-caption" role="status">按多个随机种子累计错误数；曲线包含 95% 置信区间。</p><canvas id="cmSweepCanvas" width="640" height="290" aria-label="误码率、误符号率或误帧率曲线及 95% 置信区间"></canvas><div id="cmSweepTable" class="cm-trace-scroll"></div></details>
     </section>
     </div>
@@ -310,6 +310,7 @@
   <script src="model-settings.js"></script>
   <script src="ocean.js"></script>
   <script src="report.js"></script>
+  <script src="communication-analysis.js"></script>
   <script src="communication-experience.js"></script>
   <script src="communications.js"></script>
 </body>

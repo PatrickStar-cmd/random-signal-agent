@@ -158,12 +158,14 @@ for key,label,mode,algorithm in [('fixed_dfe','已知响应 DFE',3,1),('linear_n
 
 
 PRESETS.update(communication_catalog.presets(preset))
+from src import communication_v045, communication_rf
+PRESETS.update(communication_v045.presets(preset))
 
 
 def catalog():
     from src.communication_studio import contract
     blocks=[{**v,'inputs':contract(k)[0],'output':contract(k)[1]} for k,v in BLOCKS.items()]
-    return {'schema': CONFIG['schema'], 'defaults': CONFIG['defaults'], 'blocks': blocks, 'presets': PRESETS, 'limits': {k: v for k, v in CONFIG.items() if k.startswith('max_')}}
+    return {'schema': CONFIG['schema'], 'defaults': CONFIG['defaults'], 'blocks': blocks, 'presets': PRESETS, 'tasks': communication_v045.TASKS, 'limits': {k: v for k, v in CONFIG.items() if k.startswith('max_')}}
 
 
 def numeric(value, name, low, high, integer=False):
@@ -212,7 +214,7 @@ def normalize(raw, draft=False):
                 raise ValueError(label + '长度无效。')
             # Omit default-valued recovery extensions to preserve existing
             # schema-1 baseband canonical programs and Build tokens.
-            optional = receiver_recovery.TX_DEFAULT_FIELDS if kind in ('mod_baseband','mod_pam') else receiver_recovery.RX_DEFAULT_FIELDS if kind in ('demod_baseband','demod_pam') else {'automatic_variance'} if kind.startswith('soft_') else set()
+            optional = receiver_recovery.TX_DEFAULT_FIELDS if kind in ('mod_baseband','mod_pam') else receiver_recovery.RX_DEFAULT_FIELDS if kind in ('demod_baseband','demod_pam') else {'automatic_variance'} if kind.startswith('soft_') else {'active_count','pilot_interval'} if kind=='tx_ofdm' else set()
             if name not in optional or v != spec['default']: values[name] = v
         if not draft and kind == 'bit_pattern' and not re.fullmatch('[01]+', values['pattern']): raise ValueError('自定义比特只能包含 0 和 1。')
         if not draft and kind in ('sine', 'square') and values['frequency'] >= p['sample_rate'] / 2: raise ValueError('信源频率须低于采样率的一半。')
@@ -341,6 +343,7 @@ def viterbi_decode(bits):
 
 
 def constellation(scheme):
+    if scheme in ('psk8','qam64','qam256'): return communication_rf.constellation(scheme)
     width = {'bpsk': 1, 'qpsk': 2, 'qam16': 4}[scheme]
     labels = np.array(list(itertools.product([0, 1], repeat=width)), dtype=np.uint8)
     b = labels.astype(float)
@@ -454,4 +457,6 @@ def run(raw, token):
     if not analog and len(texts) == source_count: result['text'] = {'sent': b''.join(texts).decode('utf-8'), 'received': np.packbits(decoded_bits).tobytes().decode('utf-8', errors='replace')}
     # This is also the JSON-export contract: never return NaN/Infinity.
     json.dumps(result, allow_nan=False)
+    result['analysis']=communication_rf.analyze(tx_symbols,channel_symbols,tx_symbols,decision_symbols,p['symbol_rate'],len(reference_bits))
+    metrics.update(net_bit_rate=result['analysis']['net_bit_rate'],spectral_efficiency=result['analysis']['spectral_efficiency'],papr_db=result['analysis']['tx']['papr_db'])
     return result

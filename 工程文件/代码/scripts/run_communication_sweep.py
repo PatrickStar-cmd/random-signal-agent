@@ -45,8 +45,8 @@ def main():
     result=sweep(p,built['token'],settings,progress=progress,resume=checkpoint)
     args.output.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     with args.output.with_suffix('.csv').open('w',encoding='utf-8',newline='') as stream:
-        writer=csv.writer(stream);writer.writerow(['parameter','value','frames','bit_count','bit_errors','BER','BER_low','BER_high','SER','FER','RMSE','stop_reason'])
-        for p in result['points']: writer.writerow([result['parameter'],p['db'],p['frames'],p['bit_count'],p['bit_errors'],p['ber'],*p['ber_interval'],p['ser'],p['fer'],p['rmse'],p['stop_reason']])
+        writer=csv.writer(stream);writer.writerow(['parameter','value','frames','bit_count','bit_errors','BER','BER_low','BER_high','SER','FER','RMSE','EVM_percent','PAPR_dB','net_bit_rate','spectral_efficiency','stop_reason'])
+        for p in result['points']: writer.writerow([result['parameter'],p['db'],p['frames'],p['bit_count'],p['bit_errors'],p['ber'],*p['ber_interval'],p['ser'],p['fer'],p['rmse'],p.get('evm_percent'),p.get('papr_db'),p.get('net_bit_rate'),p.get('spectral_efficiency'),p['stop_reason']])
     message=f"Sweep complete={result['complete']}; points={len(result['points'])}; JSON={args.output}; CSV={args.output.with_suffix('.csv')}\n"
     log=ROOT/'logs/communications/sweep.log';log.parent.mkdir(parents=True,exist_ok=True);log.write_text(message,encoding='utf-8');print(message)
 

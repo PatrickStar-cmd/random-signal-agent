@@ -17,7 +17,7 @@ Diting brings Random Signals and Communication Principles experiments into one o
 
 🎓 Built for **UESTC Random Signals and Communication Principles coursework**, with local computation, seeded reproduction and optional model-assisted dialogue.
 
-[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.4.4](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.4) · [📘 Installation guide](RELEASE.md)
+[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.4.5](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.5) · [📘 Installation guide](RELEASE.md)
 
 ## 🧭 Explore
 
@@ -37,9 +37,9 @@ Diting brings Random Signals and Communication Principles experiments into one o
 | Capability | What you can do |
 | --- | --- |
 | 🐳 Ocean UI | Layered ocean/lilac gradients and AI-generated 3D whale art for desktop, tablet and mobile. |
-| 📡 Communication lab (v0.4.4) | 130 blocks and 54 presets: search, real stepping, named projects, composite blocks, shared-channel branches, resumable sweeps, stateful frames and PDF reports. |
+| 📡 Communication lab (v0.4.5) | 150 blocks and 64 presets: search, real stepping, named projects, composite blocks, shared-channel branches, resumable sweeps, stateful frames and PDF reports. |
 | 🔑 Model API setup | Choose a provider/model, enter a key and test/apply in the UI; optional per-session persistence. |
-| 📄 PDF analysis reports (v0.4.4) | Preview and export Chinese brief/standard reports with vector plots, measured metrics, optional diagnosis and reproduction details. |
+| 📄 PDF analysis reports (v0.4.5) | Preview and export Chinese brief/standard reports with vector plots, measured metrics, optional diagnosis and reproduction details. |
 | 🩺 Diagnostic laboratory | Linked STFT and event timeline, six seeded fault types, blind challenge evaluation, and reversible evidence-based processing trials. |
 | 💾 Experiment workbench | Create from templates, save, reopen, duplicate, search, rename or delete snapshots, and resume after a restart. |
 | 📥 Data import wizard | Preview CSV/TXT, select time and signal columns, convert time units and locate invalid rows. |
@@ -58,7 +58,7 @@ Diting brings Random Signals and Communication Principles experiments into one o
 
 ## 📡 Communication-principles lab · Build a transmitter and receiver with blocks
 
-Drag in blocks, edit their parameters, click **🔨 Build** to check the pipeline, then **▶️ Run** to inspect the transmission. Six block categories provide **130 modules + a fixed sink and 54 presets**.
+Drag in blocks, edit their parameters, click **🔨 Build** to check the pipeline, then **▶️ Run** to inspect the transmission. Six block categories provide **150 modules + a fixed sink and 64 presets**.
 
 **🎲 Sources → 🔀 Transmit converters → 📡 Modulators → 🌊 Channels → 🎛️ Demodulators → 🔄 Receive converters → 📺 Sink**
 
@@ -72,11 +72,16 @@ Drag in blocks, edit their parameters, click **🔨 Build** to check the pipelin
 | 🔄 Receive converters | Line decoding, deinterleaving, descrambling, CRC checks, repetition/Hamming correction, hard/soft Viterbi, iterative LDPC and PCM/companding/DPCM/delta reconstruction. |
 | 📺 Sink | Received bits, text and analog waveforms, with source overlays, bit-error markers and full-sequence browsing. |
 
-- 🆕 **v0.4.4 experience:** search/favorites, typed connections and receiver completion, real stepping, linked scopes, named projects and snapshots, reusable composite blocks, shared-channel branches, resumable generic sweeps, stateful frames and Chinese PDF reports.
+- 🆕 **v0.4.5 RF and analysis:** 8PSK/64QAM/256QAM, I/Q/DC correction, Rapp/Saleh PA, ADC, OFDM clipping, tone interference/notch filtering and punctured convolutional coding; Welch/CCDF/ACLR, carrier EVM, resource grids, automatic alignment and seven guided comparisons.
+- 🧰 **Block programming experience:** search/favorites, typed connections and receiver completion, real stepping, linked scopes, named projects and snapshots, reusable composite blocks, shared-channel branches, resumable generic sweeps, stateful frames and Chinese PDF reports.
 - 🧩 **Build and edit:** an ocean-themed palette, compact connected blocks and a parameter inspector; drag/drop, reordering, undo/redo, draft recovery and project JSON import/export.
 - 📈 **Inspect and save:** processing-stage waveforms, preamble correlation, OFDM grids, eyes and recovery traces; seeded BER/SER/FER sweeps, Eb/N₀ calibration, 95% intervals, curve comparisons and full JSON/CSV export.
 
 ![🧩 Communication lab: palette, pipeline, sink and parameter inspector](docs/images/communications-studio.png)
+
+📘 [v0.4.5 RF and measurement guide](工程文件/代码/docs/communications-v045.md)
+
+![🌊 v0.4.5 RF instruments](docs/images/communications-v045-analysis.png)
 
 🆕 [v0.4.4 algorithms and experiments](工程文件/代码/docs/communications-v044.md)
 
@@ -136,11 +141,11 @@ Reports currently use Chinese. Standard reports include waveform metrics, FFT, W
 
 ## 🚀 Quick start
 
-Use **Python 3.12–3.14** or **Docker Compose v2**. v0.4.4 uses FastAPI; deployment checks cover Python 3.12–3.14 on Windows and Linux, plus Docker on Linux.
+Use **Python 3.12–3.14** or **Docker Compose v2**. v0.4.5 uses FastAPI; deployment checks cover Python 3.12–3.14 on Windows and Linux, plus Docker on Linux.
 
 ### 1. Get the project
 
-Download the v0.4.4 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.4.4/random-signal-agent-v0.4.4-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
+Download the v0.4.5 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.4.5/random-signal-agent-v0.4.5-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
 
 Or clone the repository:
 
@@ -314,7 +319,7 @@ The check covers the application version, ocean assets, model settings API, Agen
 | --- | --- |
 | Why does the online preview not run new experiments? | GitHub Pages serves the saved showcase. Start the backend locally or deploy it with Docker for interactive use. |
 | Do I need an API key? | The local signal tools do not require one. Model-assisted dialogue is optional. |
-| Which Python versions work? | v0.4.4 supports Python 3.12, 3.13 and 3.14. |
+| Which Python versions work? | v0.4.5 supports Python 3.12, 3.13 and 3.14. |
 | Why can I not activate the virtual environment on Windows? | The quick-start commands call `.venv\Scripts\python.exe` directly and do not require activation. |
 | Why is the microphone unavailable? | Open the app on localhost or HTTPS and allow microphone access in the browser. |
 | Why does my uploaded signal have no SNR value? | Reference-based SNR requires a clean signal. Uploaded samples and microphone audio do not provide that reference. |

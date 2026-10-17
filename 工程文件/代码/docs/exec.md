@@ -302,3 +302,8 @@ v0.3.4 发行：运行 `python scripts/build_release.py` 从已提交源码生�
 ### v0.4.4 积木编程体验更新
 
 执行 `python scripts/test_communications_experience.py`（24 项），日志覆盖 logs/communications/experience.log；旧套件和 540 组基准继续执行。启动脚本不变，打开 /#communicationsPanel。新增配置字段、工程库/续跑目录、后台任务 API 详见 [v0.4.4 指南](communications-v044.md)。logs/communications-v044/browser.json 记录 54 个示例与交互、响应式验收；debug/communications-v044/ 放隔离数据、报告渲染与临时材料。发布执行 build_release.py、verify_release.py，新增模块及套件纳入清洁解包验收，实际平台结果随 verification.json 交付。
+
+
+## v0.4.5 启动与测试
+
+沿用原启动脚本和通信配置，打开通信实验室的射频仪表面板。新增测试 scripts/test_communications_rf.py 和可选 Node 数值测试 scripts/test_communications_alignment.js；日志在 logs/communications-rf/。通用扫描 CLI 可直接选择 rf_qam64 等新示例。 参数、公式、接口、验证和日志位置详见 [v0.4.5 指南](communications-v045.md)。

@@ -11,7 +11,7 @@ SOURCE_CODECS = {'compand_encode', 'dpcm_encode', 'delta_encode'}
 PAIRS = {'crc_check': 'crc_append', 'descramble': 'scramble',
          'conv_soft_decode': 'conv_encode', 'ldpc_decode': 'ldpc_encode',
          'compand_decode': 'compand_encode', 'dpcm_decode': 'dpcm_encode',
-         'delta_decode': 'delta_encode'}
+         'delta_decode': 'delta_encode', 'depuncture': 'puncture'}
 
 
 def pn(count, degree=7, seed=1):
@@ -130,6 +130,7 @@ def soft_viterbi(llr):
 
 
 def encoded_count(kind, count, q):
+    if kind == 'puncture': return int(puncture_mask(count,q['rate']).sum())
     if kind == 'crc_append': return count + q['width']
     if kind == 'ldpc_encode': return ((count + 63) // 64) * 128
     if kind in ('compand_encode', 'dpcm_encode'): return count * q['bits']
@@ -137,6 +138,7 @@ def encoded_count(kind, count, q):
 
 
 def encode(kind, data, q):
+    if kind == 'puncture': return data[puncture_mask(len(data),q['rate'])]
     if kind == 'crc_append': return np.r_[data, crc(data, q['width'])]
     if kind == 'scramble': return data ^ pn(len(data), q['degree'], q['initial'])
     if kind == 'ldpc_encode': return ldpc_encode(data)
@@ -179,3 +181,15 @@ def decode(kind, data, q):
     elif kind == 'delta_decode': data = np.cumsum((2 * data.astype(float) - 1) * q['step'])
     else: raise ValueError('未知扩展译码器。')
     return data, info
+
+
+def puncture_mask(count, rate):
+    pattern = [1,1,1,0] if rate == 2 else [1,1,1,0,0,1]
+    return np.resize(np.array(pattern,dtype=bool),count)
+
+
+def depuncture(data, count, rate):
+    mask=puncture_mask(count,rate)
+    if len(data)!=int(mask.sum()): raise ValueError('解打孔长度与母码不匹配。')
+    output=np.zeros(count,dtype=float); output[mask]=data
+    return output

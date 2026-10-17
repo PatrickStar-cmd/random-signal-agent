@@ -209,6 +209,7 @@ def build(program):
         kind, params = b['kind'], b['params']; before = count
         def fail(message): raise ValueError(f'第 {index+1} 块「{c.BLOCKS[kind]["label"]}」：{message}')
         if kind in c.ENCODERS:
+            if kind == 'puncture': fail('打孔卷积码需要 PSK/QAM 软解调链路。')
             if direction != 'tx': fail('发转换器须放在波形形成器前。')
             if kind.startswith('line_'):
                 if domain != '比特': fail('线路编码器需要比特，模拟信源请先 PCM 编码。')
@@ -406,6 +407,9 @@ def run(compiled, source, texts, source_count, rng):
                         'transmitter':waveform,'spectrum':{'frequency_hz':grid.tolist(),'density_db':(10*np.log10(np.maximum(density,1e-20))).tolist()},
                         'line_levels':symbols.tolist(),'decision_levels':decided.tolist(),'before_equalizer':before_equalization.tolist(),'equalizer_coefficients':coefficients.tolist(),
                         'sampled_impulse':{str(i):v for i,v in h.items()},'eye':{'samples_per_symbol':tx['sps'],'traces':eyes,'point_count':2*tx['sps']+1}}}
+    from src import communication_rf as rf
+    result['analysis']=rf.analyze(sent,received,symbols,decided,fs,len(reference))
+    metrics.update(net_bit_rate=result['analysis']['net_bit_rate'],spectral_efficiency=result['analysis']['spectral_efficiency'],papr_db=result['analysis']['tx']['papr_db'])
     if recovery_info: result['baseband']['recovery'] = recovery_info
     if codec_info:
         result['baseband']['codecs']=codec_info

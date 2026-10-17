@@ -64,6 +64,8 @@ def register(block, number, field, blocks):
     block('rx_ofdm_tracking','OFDM 导频跟踪接收','demodulator','训练符号初始化，随后按每个 OFDM 符号的梳状导频更新信道估计。',method=select('导频 LS 方法',1,{0:'频域线性插值',1:'DFT / 有限冲激响应 LS'}),tracking_gain=number('信道更新系数',.8,.01,1),regularization=number('均衡正则 λ',.00001,.000001,.1))
     block('time_multipath','独立路径时变多径','channel','每条路径独立 Rayleigh / 多普勒过程，功率归一化；多帧保留路径相位与延迟历史。',delays=field('各路径采样延迟','0,1,3',max_length=100),powers_db=field('各路径相对功率 / dB','0,-6,-12',max_length=100),doppler=number('最大多普勒 / Hz',10,0,1000))
     block('burst_noise','Markov 突发噪声','channel','好/坏两态 Markov 信道，以不同 SNR 产生连续噪声突发；支持跨帧状态。',good_to_bad=number('好→坏概率 / 点',.005,0,1),bad_to_good=number('坏→好概率 / 点',.1,0,1),good_snr=number('好状态 SNR / dB',30,-10,60),bad_snr=number('坏状态 SNR / dB',-3,-20,60))
+    from src import communication_v045
+    communication_v045.register(block,number,field,blocks)
     KINDS.update(set(blocks)-before)
 
 

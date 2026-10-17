@@ -80,9 +80,11 @@ def sweep(raw,token,settings,progress=None,cancel=None,resume=None):
             for b in candidate['blocks']:
                 if b['kind'].startswith('soft_'): b['params']['noise_variance']=max(.000001,min(100,10**(-actual/10)))
         c.build(candidate);candidates.append(candidate)
+    from src import communication_rf as rf
     allowed={'random_bits','pn_bits','bit_pattern','text','mod_bpsk','mod_qpsk','awgn','ideal','demod_bpsk','demod_qpsk','sink'}
+    allowed |= {'mod_'+s for s in rf.SCHEMES}|{'demod_'+s for s in rf.SCHEMES}
+    scheme=next((b['kind'][4:] for b in p['blocks'] if b['kind'].startswith('mod_')),'bpsk')
     theory=noise and block['kind']=='awgn' and all(b['kind'] in allowed for b in p['blocks']) and sum(b['kind']=='awgn' for b in p['blocks'])==1
-    width=2 if any(b['kind']=='mod_qpsk' for b in p['blocks']) else 1
     rows=copy.deepcopy(resume.get('points',[])) if resume else [];started=time.monotonic();complete=True
     if resume and (resume.get('token')!=token or resume.get('settings')!=settings): raise ValueError('续跑配置与检查点不一致。')
     axis='Eb/N₀ / dB' if mode=='ebn0' else 'Es/N₀ / dB' if noise and key=='esn0_db' else '采样 SNR / dB' if noise else spec['label']
@@ -93,7 +95,7 @@ def sweep(raw,token,settings,progress=None,cancel=None,resume=None):
         old=rows[point_index] if point_index<len(rows) else None
         if old and old['db']==value and old['stop_reason'] in ('target_errors','frame_limit'): continue
         if old and old['db']!=value: raise ValueError('续跑参数点与检查点不一致。')
-        counters={k:(old or {}).get(k,0) for k in ('bit_count','bit_errors','symbol_count','symbol_errors','frames','frame_errors','crc_detected_errors','rmse_sum')}
+        counters={k:(old or {}).get(k,0) for k in ('bit_count','bit_errors','symbol_count','symbol_errors','frames','frame_errors','crc_detected_errors','rmse_sum','evm_sum','papr_sum','rate_sum','efficiency_sum')}
         reason='frame_limit'
         for iteration in range(counters['frames'],frames):
             if cancel is not None and cancel.is_set(): reason='cancelled';complete=False;break
@@ -105,12 +107,15 @@ def sweep(raw,token,settings,progress=None,cancel=None,resume=None):
             for k in ('bit_count','bit_errors','symbol_count','symbol_errors'): counters[k]+=measured.get(k,0)
             counters['frames']+=1;counters['frame_errors']+=measured.get('frame_errors',int(measured.get('bit_errors',0)>0))
             counters['crc_detected_errors']+=measured.get('crc_detected_frame_errors') or 0;counters['rmse_sum']+=measured.get('rmse') or 0.
+            for field,total in [('evm_percent','evm_sum'),('papr_db','papr_sum'),('net_bit_rate','rate_sum'),('spectral_efficiency','efficiency_sum')]: counters[total]+=measured.get(field) or 0.
             reason='target_errors' if counters['bit_errors']>=target else 'frame_limit' if counters['frames']==frames else 'running'
             row={'db':value,'noise_db':value+shift,**counters,'ber':counters['bit_errors']/max(1,counters['bit_count']),'ber_interval':interval(counters['bit_errors'],counters['bit_count']),
                 'ser':counters['symbol_errors']/max(1,counters['symbol_count']),'ser_interval':interval(counters['symbol_errors'],counters['symbol_count']),
                 'fer':counters['frame_errors']/counters['frames'],'fer_interval':interval(counters['frame_errors'],counters['frames']),
-                'rmse':counters['rmse_sum']/counters['frames'],'stop_reason':reason}
-            if theory: row['theory_ber']=.5*math.erfc(math.sqrt(10**((value+shift)/10)/width))
+                'rmse':counters['rmse_sum']/counters['frames'],'evm_percent':counters['evm_sum']/counters['frames'],'papr_db':counters['papr_sum']/counters['frames'],'net_bit_rate':counters['rate_sum']/counters['frames'],'spectral_efficiency':counters['efficiency_sum']/counters['frames'],'stop_reason':reason}
+            if theory:
+                row['theory_ber']=rf.theory_ber(scheme,value+shift)
+                result['theory_label']='相干 AWGN 精确 BER' if scheme in ('bpsk','qpsk') else 'Gray 映射 AWGN 最近邻 BER 近似（中高 SNR）'
             if old is None: rows.append(row);old=row
             else: rows[point_index]=row
             result.update(elapsed_seconds=time.monotonic()-started,completed_frames=sum(r['frames'] for r in rows),total_frames=len(values)*frames)

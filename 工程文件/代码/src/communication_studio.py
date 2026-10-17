@@ -18,6 +18,7 @@ def contract(kind):
     if kind in ('pcm_encode','compand_encode','dpcm_encode','delta_encode'): return ['模拟样本'],'比特'
     if kind in ('pcm_decode','compand_decode','dpcm_decode','delta_decode'): return ['比特'],'模拟样本'
     if kind.startswith('line_'): return (['比特'],'线路电平') if kind.endswith('encode') else (['线路电平'],'比特')
+    if kind=='depuncture': return ['LLR'],'LLR'
     if kind in ('conv_soft_decode','ldpc_decode'): return ['LLR'],'比特'
     if kind in c.ENCODERS: return ['比特'],'比特'
     if kind=='deinterleave': return ['比特','LLR'],'同输入'
@@ -37,6 +38,9 @@ def contract(kind):
         'rx_complete':(['复波形'],'复符号'),'rx_ofdm':(['OFDM 波形'],'复符号'),
         'rx_ofdm_frequency':(['OFDM 波形'],'OFDM 波形'),'rx_ofdm_tracking':(['OFDM 波形'],'复符号'),'resample':(['复波形'],'复波形')}
     if kind in special: return special[kind]
+    if kind in ('tx_pa','iq_imbalance','dc_offset','adc','narrowband','rx_dc','rx_notch'): return ['复符号','复波形','OFDM 波形'],'同输入'
+    if kind=='tx_clip_filter': return ['OFDM 波形'],'OFDM 波形'
+    if kind=='rx_iq': return ['复符号'],'复符号'
     if kind.startswith('tx_') or kind in ('rx_frame','rx_carrier','rx_equalizer','rx_cma','rx_pilots','rx_noise_estimate'): return ['复符号'],'复符号'
     if kind=='rx_frequency': return ['复波形','复符号'],'同输入'
     if kind=='rx_agc': return ['复波形','复符号','OFDM 波形'],'同输入'
@@ -86,18 +90,18 @@ def complete_receiver(raw):
         channel_end=max(i for i,b in enumerate(blocks) if c.BLOCKS[b['kind']]['category'] in ('modulator','tx_converter','source'))+1
         blocks.insert(channel_end,make('ideal'))
     existing={b['kind'] for b in blocks}; steps=[]
-    digital=tx['kind'][4:] in ('bpsk','qpsk','psk8','qam16')
-    if digital and 'frequency_offset' in existing and 'rx_frequency' not in existing and 'tx_ofdm' not in existing: steps.append(make('rx_frequency'))
+    digital=tx['kind'][4:] in ('bpsk','qpsk','psk8','qam16','qam64','qam256')
+    if tx['kind'] in ('mod_bpsk','mod_qpsk') and 'frequency_offset' in existing and 'rx_frequency' not in existing and 'tx_ofdm' not in existing: steps.append(make('rx_frequency'))
     for a,z in [('tx_rrc','rx_matched'),('tx_rrc','rx_timing'),('tx_frame','rx_frame'),('tx_pilots','rx_pilots'),('tx_ofdm','rx_ofdm')]:
         replacement=(z=='rx_timing' and 'rx_fse' in existing) or (z=='rx_ofdm' and 'rx_ofdm_tracking' in existing)
         if a in existing and z not in existing and 'rx_complete' not in existing and not replacement: steps.append(make(z))
     if digital and 'tx_rrc' in existing and 'rx_carrier' not in existing and 'rx_complete' not in existing: steps.append(make('rx_carrier'))
     if 'tx_ofdm' in existing and 'frequency_offset' in existing and 'rx_ofdm_frequency' not in existing: steps.append(make('rx_ofdm_frequency'))
-    order=['rx_frequency','rx_agc','resample','rx_matched','rx_timing','rx_fse','rx_carrier','rx_frame','rx_equalizer','rx_cma','rx_pilots','rx_ofdm_frequency','rx_ofdm','rx_ofdm_tracking','rx_noise_estimate']
+    order=['rx_frequency','rx_agc','resample','rx_matched','rx_timing','rx_fse','rx_carrier','rx_frame','rx_equalizer','rx_cma','rx_pilots','rx_ofdm_frequency','rx_ofdm','rx_ofdm_tracking','rx_noise_estimate','rx_iq','rx_dc','rx_notch']
     for step in sorted(steps,key=lambda b:order.index(b['kind'])):
         rank=order.index(step['kind']);index=next((i for i,b in enumerate(blocks) if i>channel_end and (b['kind'] in order and order.index(b['kind'])>rank or b['kind'].startswith(('demod_','soft_')) or b['kind'] in c.PAIRS or b['kind']=='sink')),len(blocks))
         blocks.insert(index,step)
-    soft=any(b['kind']=='ldpc_encode' for b in blocks)
+    soft=any(b['kind'] in ('ldpc_encode','puncture') for b in blocks)
     demod=next((b for b in blocks if b['kind'].startswith(('demod_','soft_'))),None)
     kind=('soft_' if soft else 'demod_')+tx['kind'][4:]
     if demod is None:

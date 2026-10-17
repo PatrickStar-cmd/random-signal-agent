@@ -30,6 +30,7 @@ def facts(raw):
     if result:
         m=result['metrics']
         if 'ber' in m: summary.append(f"接收 {m['bit_count']} 位，错误 {m['bit_errors']} 位，BER={m['ber']:.5g}。")
+        if m.get('net_bit_rate') is not None: summary.append(f"净信息速率 {m['net_bit_rate']:.5g} bit/s；频谱效率 {m['spectral_efficiency']:.5g} bit/s/Hz（99% 占用带宽）；PAPR {m['papr_db']:.5g} dB。")
         if m.get('rmse') is not None: summary.append(f"信宿 RMSE={m['rmse']:.5g}。")
     for curve in curves:
         if not isinstance(curve,dict) or not isinstance(curve.get('points'),list) or len(curve['points'])>21: raise ValueError('扫描曲线格式无效。')
@@ -102,6 +103,11 @@ def render(raw):
             story.append(paragraph('共享信道接收方案对照','heading'))
             for branch in comparisons['branches']:
                 metrics=branch['result']['metrics'];story.append(paragraph(f"{branch['name']}：BER={metrics.get('ber',0) or 0:.5g}；EVM={metrics.get('evm_percent',0) or 0:.5g}%。"))
+        rf_comparisons=doc.get('rfComparisons') or {}
+        if rf_comparisons.get('variants'):
+            story.append(paragraph('射频实验任务对照','heading'))
+            for variant in rf_comparisons['variants']:
+                m=variant['result']['metrics'];story.append(paragraph(f"{variant['name']}：BER={m['ber']:.5g}，EVM={m['evm_percent']:.5g}%，PAPR={m['papr_db']:.5g} dB，净信息速率={m['net_bit_rate']:.5g} bit/s。"))
         curves=doc.get('sweeps',[])
         for axis in dict.fromkeys(s.get('axis','参数') for s in curves):
             group=[s for s in curves if s.get('axis','参数')==axis and s['points']]
