@@ -30,15 +30,17 @@ window.createCommunicationAnalysis = function(core,extras){
     <canvas id="cmRFChart" height="260" aria-label="射频性能测量曲线"></canvas><p id="cmRFCaption"></p>
     <details><summary>📶 主信道与邻道测量</summary><div class="cm-experience-row"><label>主信道中心 / Hz<input type="number" id="cmRFCenter" value="0"></label><label>主信道带宽 / Hz<input type="number" min="0.001" id="cmRFBand" value="300"></label><label>邻道中心间隔 / Hz<input type="number" min="0.001" id="cmRFSpacing" value="350"></label><label>邻道带宽 / Hz<input type="number" min="0.001" id="cmRFAdjacent" value="200"></label></div><p id="cmRFACLR"></p></details>
     <details id="cmRFGridPanel"><summary>🟦 OFDM 资源栅格</summary><canvas id="cmRFGrid" height="230" aria-label="OFDM 数据导频保护资源分配"></canvas><p id="cmRFGridInfo"></p></details>
-    <div id="cmRFComparisons" class="cm-trace-scroll"></div><canvas id="cmRFCompareChart" height="250" aria-label="实验任务对照曲线"></canvas><p id="cmRFCompareCaption"></p>`;
+    <p id="cmTaskStatus" role="status"></p><p id="cmRFContext"></p><div id="cmRFComparisons" class="cm-trace-scroll"></div><canvas id="cmRFCompareChart" height="250" aria-label="实验任务对照曲线"></canvas><p id="cmRFCompareCaption"></p>`;
   byId('cmForm').after(panel);
   byId('cmRFTask').innerHTML=get().catalog.tasks.map(t=>`<option value="${esc(t.id)}">${esc(t.title)}</option>`).join('');
   function state(){return extras.meta()}
   function selectedTask(){return get().catalog.tasks.find(t=>t.id===byId('cmRFTask').value)||get().catalog.tasks[0]}
-  function goal(){byId('cmRFGoal').textContent=selectedTask().goal}
-  function status(text){byId('cmRFStatus').textContent=text}
+  function goal(){byId('cmRFGoal').textContent=selectedTask().goal;context()}
+  function context(){const value=state().rfComparisons,t=value?.task;byId('cmRFContext').textContent=t?`当前结果：${t.title} · ${value.completed_at?new Date(value.completed_at).toLocaleString():'历史结果（未记录时间）'} · ${value.variants.length} 个方案${value.context?' · '+value.context:''}${t.id!==selectedTask().id?'。待运行任务：'+selectedTask().title:''}`:'尚未运行任务对照。';}
+  function restoreTask(){const id=state().rfTaskId||state().rfComparisons?.task?.id;if(get().catalog.tasks.some(t=>t.id===id))byId('cmRFTask').value=id;goal()}
+  function status(text){byId('cmRFStatus').textContent=text;byId('cmTaskStatus').textContent=text}
   // Keep CSS dimensions independent of the backing-store pixel ratio.
-  function canvas(id){const c=byId(id),width=Math.max(200,c.getBoundingClientRect().width),height=id==='cmRFGrid'?230:260,dpr=Math.min(2,devicePixelRatio||1);c.width=width*dpr;c.height=height*dpr;const x=c.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.fillStyle='#f4f8ff';x.fillRect(0,0,width,height);x.font=chartFont(10);return {x,width,height}}
+  function canvas(id){const c=byId(id),width=Math.max(200,c.getBoundingClientRect().width),height=c.getBoundingClientRect().height||(id==='cmRFGrid'?230:260),dpr=Math.min(2,devicePixelRatio||1);c.width=width*dpr;c.height=height*dpr;const x=c.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.fillStyle='#f4f8ff';x.fillRect(0,0,width,height);x.font=chartFont(10);return {x,width,height}}
   const colors=['#5365cf','#238879','#af5390','#bd7a21','#3797b5'];
   function chart(id,series,xlabel,ylabel,log=false){
     const {x,width,height}=canvas(id),all=series.flatMap(s=>s.x.map((v,i)=>[v,s.y[i]])).filter(p=>p.every(Number.isFinite));
@@ -87,21 +89,21 @@ window.createCommunicationAnalysis = function(core,extras){
     }else{const key=mode==='papr'?'papr_db':'evm_percent';series=[{name:key,x:variants.map((_,i)=>i+1),y:variants.map(v=>v.result.metrics[key])}];xlabel='方案序号';ylabel=key==='papr_db'?'PAPR dB':'EVM %'}
     chart('cmRFCompareChart',series,xlabel,ylabel,mode==='ccdf');byId('cmRFCompareCaption').textContent=state().rfComparisons?.seed_policy||'任务对照会同时绘制各方案测量曲线。';
   }
-  function comparisons(){const v=state().rfComparisons?.variants||[];byId('cmRFComparisons').innerHTML=v.length?'<table><thead><tr><th>方案</th><th>BER</th><th>EVM %</th><th>PAPR dB</th><th>净速率 bit/s</th><th>bit/s/Hz</th></tr></thead><tbody>'+v.map((r,i)=>`<tr><td>${i+1}. ${esc(r.name)}</td><td>${fmt(r.result.metrics.ber)}</td><td>${fmt(r.result.metrics.evm_percent)}</td><td>${fmt(r.result.metrics.papr_db)}</td><td>${fmt(r.result.metrics.net_bit_rate)}</td><td>${fmt(r.result.metrics.spectral_efficiency)}</td></tr>`).join('')+'</tbody></table>':'';compareChart()}
+  function comparisons(){context();const v=state().rfComparisons?.variants||[];byId('cmRFComparisons').innerHTML=v.length?'<table><thead><tr><th>方案</th><th>BER</th><th>EVM %</th><th>PAPR dB</th><th>净速率 bit/s</th><th>bit/s/Hz</th></tr></thead><tbody>'+v.map((r,i)=>`<tr><td>${i+1}. ${esc(r.name)}</td><td>${fmt(r.result.metrics.ber)}</td><td>${fmt(r.result.metrics.evm_percent)}</td><td>${fmt(r.result.metrics.papr_db)}</td><td>${fmt(r.result.metrics.net_bit_rate)}</td><td>${fmt(r.result.metrics.spectral_efficiency)}</td></tr>`).join('')+'</tbody></table>':'';compareChart()}
   function onResult(result){
-    current=result;if(result&&!Number.isInteger(result.experience?.frame))state().rfFrames=[];const old=byId('cmRFPoint').value;byId('cmRFPoint').innerHTML=locations().map((p,i)=>`<option value="${i}">${esc(p.name)}</option>`).join('');if(Number(old)<locations().length)byId('cmRFPoint').value=old;
+    current=result;restoreTask();if(result&&!Number.isInteger(result.experience?.frame))state().rfFrames=[];const old=byId('cmRFPoint').value;byId('cmRFPoint').innerHTML=locations().map((p,i)=>`<option value="${i}">${esc(p.name)}</option>`).join('');byId('cmRFPoint').value=old!==''&&Number(old)<locations().length?old:'0';
     const a=result?.analysis;byId('cmRFMetrics').innerHTML=a?[['净信息速率',fmt(a.net_bit_rate,'bit/s')],['频谱效率',fmt(a.spectral_efficiency,'bit/s/Hz')],['99% 占用带宽',fmt(a.tx.occupied_bandwidth_hz,'Hz')],['发送峰均比',fmt(a.tx.papr_db,'dB')],['判决前 EVM',fmt(result.metrics.evm_percent,'%')],['ADC 饱和样本',String(result.advanced?.adc?.clipped_samples??'—')]].map(([title,value])=>`<div><span>${title}</span><strong>${esc(value)}</strong></div>`).join(''):'';
     if(!a)status('运行链路后查看完整帧测量。');
     if(a){const fs=a.tx.sample_rate,prefs=state().rfSettings;if(prefs&&prefs.fs===fs)for(const [id,value] of Object.entries(prefs.bands))byId(id).value=value;else{byId('cmRFCenter').value=0;byId('cmRFBand').value=fs*.3;byId('cmRFSpacing').value=fs*.35;byId('cmRFAdjacent').value=fs*.2}status(a.net_bit_rate===null?'模拟调制按复包络统计功率、频谱和峰均比。':'速率包含实际发送的编码、前导、导频、CP 与填充开销；频谱效率以发送 99% 占用带宽计算。')}
     draw();comparisons();
   }
   function changed(){state().rfSettings={fs:current?.analysis?.tx.sample_rate,bands:Object.fromEntries(['cmRFCenter','cmRFBand','cmRFSpacing','cmRFAdjacent'].map(id=>[id,Number(byId(id).value)]))};extras.persist();draw()}
-  byId('cmRFTask').onchange=goal;goal();
-  byId('cmRFLoad').onclick=()=>{if(get().busy)return;core.setProgram(core.clone(get().catalog.presets[selectedTask().preset].program),'已载入 '+selectedTask().title);status(selectedTask().goal)};
-  byId('cmRFCompare').onclick=async()=>{if(get().busy)return;core.setBusy(true);try{const b=await core.api('build',{program:get().program});const value=await extras.runJob('rf-task',{program:b.program,token:b.token,task_id:selectedTask().id});state().rfComparisons=value;if(value.baseline)core.restoreResult(b,value.baseline);extras.persist();comparisons();status(`${value.complete?'对照完成':'已停止'} · ${value.variants.length} 个方案`)}catch(e){status(e.message)}finally{core.setBusy(false)}};
+  byId('cmRFTask').onchange=()=>{state().rfTaskId=selectedTask().id;goal();extras.persist()};goal();
+  byId('cmRFLoad').onclick=()=>{if(get().busy)return;core.setProgram(core.clone(get().catalog.presets[selectedTask().preset].program),'已载入 '+selectedTask().title);state().rfTaskId=selectedTask().id;extras.persist();status(selectedTask().goal);root.dispatchEvent(new Event('cm-task-loaded'))};
+  byId('cmRFCompare').onclick=async()=>{if(get().busy)return;core.setBusy(true);try{const b=await core.api('build',{program:get().program});const value=await extras.runJob('rf-task',{program:b.program,token:b.token,task_id:selectedTask().id});value.completed_at=new Date().toISOString();value.context=`源种子 ${b.program.seed} · 符号率 ${b.program.symbol_rate} Baud · ${b.program.blocks.length} 块积木 · ${value.variants.map(v=>v.name).join(' / ')}`;state().rfTaskId=value.task.id;state().rfComparisons=value;if(value.baseline)core.restoreResult(b,value.baseline);extras.persist();comparisons();status(`${value.complete?'对照完成':'已停止'} · ${value.variants.length} 个方案`)}catch(e){status(e.message)}finally{core.setBusy(false)}};
   byId('cmRFExport').onclick=()=>core.download('communication-rf-analysis.json',JSON.stringify({analysis:current?.analysis,metrics:current?.metrics,frames:state().rfFrames||[],comparison:state().rfComparisons,settings:state().rfSettings},null,2),'application/json');
   for(const id of ['cmRFPoint','cmRFMode'])byId(id).onchange=draw;
   for(const id of ['cmRFCenter','cmRFBand','cmRFSpacing','cmRFAdjacent'])byId(id).onchange=changed;
   panel.addEventListener('toggle',draw);byId('cmRFGridPanel').addEventListener('toggle',grid);window.addEventListener('resize',draw);
-  return {onResult,draw,frames:value=>{state().rfFrames=value.frames;draw()},invalidate:()=>{current=null;state().rfFrames=[];state().rfComparisons=null;onResult(null)},buttons:busy=>{byId('cmRFLoad').disabled=busy;byId('cmRFCompare').disabled=busy;byId('cmRFExport').disabled=!current?.analysis&&!state().rfComparisons}};
+  return {onResult,draw,frames:value=>{state().rfFrames=value.frames;draw()},invalidate:()=>{current=null;state().rfFrames=[];state().rfComparisons=null;onResult(null)},buttons:busy=>{byId('cmRFTask').disabled=busy;byId('cmRFLoad').disabled=busy;byId('cmRFCompare').disabled=busy;byId('cmRFExport').disabled=!current?.analysis&&!state().rfComparisons}};
 };

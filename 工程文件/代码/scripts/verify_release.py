@@ -60,6 +60,8 @@ def main():
         assert (code / 'web/communications.css').is_file()
         assert (code / 'web/communication-experience.js').is_file()
         assert (code / 'web/communication-analysis.js').is_file()
+        assert (code / 'web/communication-layout.js').is_file()
+        assert (code / 'web/communication-layout.css').is_file()
         assert (code / 'src/communication_rf.py').is_file()
         assert (code / 'src/communication_v045.py').is_file()
         assert (code / 'config/communications.json').is_file()

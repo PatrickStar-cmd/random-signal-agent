@@ -22,7 +22,7 @@
     byId('cmDownloadCSV').disabled=busy||!result;byId('cmDownloadResult').disabled=busy||!result;
     byId('cmBuildBadge').classList.toggle('ready',!!compiled);
     byId('cmBuildBadge').textContent=busy?'处理中…':compiled?'Build 已通过':'等待构建';
-    studio?.buttons(busy);
+    studio?.buttons(busy);root.dispatchEvent(new Event('cm-state'));
   }
   function persist(){try{localStorage.setItem(storageKey,JSON.stringify(program))}catch{status('当前浏览器无法保存草稿，可使用“导出工程 JSON”。',true)}studio?.persist()}
   function invalidate(message='配置已改变，请重新 Build，再 Run。'){
@@ -52,7 +52,7 @@
   }
   function parameterHTML(b,entries=Object.entries(definitions[b.kind].params)){
     return entries.map(([key,spec])=>{
-      const val=Object.hasOwn(b.params,key)?b.params[key]:spec.default,data=`data-block-id="${esc(b.id)}" data-param="${key}"`,id=esc(`cm-${b.id}-${key}`),label=esc(spec.label);
+      const val=Object.hasOwn(b.params,key)?b.params[key]:spec.default,data=`form="cmForm" data-block-id="${esc(b.id)}" data-param="${key}"`,id=esc(`cm-${b.id}-${key}`),label=esc(spec.label);
       if(spec.type==='boolean')return `<label class="cm-boolean" for="${id}"><input id="${id}" ${data} type="checkbox" ${val?'checked':''}>${label}</label>`;
       if(spec.type==='select')return `<label for="${id}">${label}<select id="${id}" ${data}>${spec.choices.map(v=>`<option value="${v}" ${v===val?'selected':''}>${esc(String(spec.choice_labels?.[v]??v))}</option>`).join('')}</select></label>`;
       if(spec.type==='text')return `<label class="cm-wide" for="${id}">${label}<textarea id="${id}" ${data} maxlength="${spec.max_length}" required>${esc(val)}</textarea></label>`;
@@ -84,11 +84,11 @@
   function selectBlock(id){
     if(!program.blocks.some(b=>b.id===id))return;selectedId=id;
     byId('cmProgram').querySelectorAll('[data-cm-select]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.cmSelect===id)));
-    byId('cmProgram').querySelectorAll('[data-cm-id]').forEach(card=>card.classList.toggle('cm-selected',card.dataset.cmId===id));renderInspector();studio?.selection();
+    byId('cmProgram').querySelectorAll('[data-cm-id]').forEach(card=>card.classList.toggle('cm-selected',card.dataset.cmId===id));renderInspector();studio?.selection();root.dispatchEvent(new Event('cm-select'));
   }
   function validateFields(){
     const global=root.querySelector('[data-global]:invalid');
-    if(global){global.closest('details').open=true;global.reportValidity();return false}
+    if(global){for(let e=global.parentElement;e&&e!==root;e=e.parentElement)if(e.tagName==='DETAILS')e.open=true;global.reportValidity();return false}
     for(const b of program.blocks){
       const fields=document.createElement('div');fields.innerHTML=parameterHTML(b);const invalid=fields.querySelector(':invalid');
       if(invalid){selectBlock(b.id);const input=byId(invalid.id);input.closest('details')?.setAttribute('open','');status(`${definitions[b.kind].label}：请检查${definitions[b.kind].params[invalid.dataset.param].label}。`,true);input.reportValidity();return false}
@@ -116,7 +116,7 @@
   function add(kind,index=program.blocks.length-1){
     if(arguments.length<2&&studio)index=studio.insertionIndex(index);
     if(program.blocks.length>=catalog.limits.max_blocks){status(`最多放置 ${catalog.limits.max_blocks} 个积木，请移除不需要的模块。`,true);return}
-    change(()=>{selectedId=uid();program.blocks.splice(Math.max(0,Math.min(index,program.blocks.length-1)),0,{id:selectedId,kind,params:Object.fromEntries(Object.entries(definitions[kind].params).map(([k,v])=>[k,v.default]))});studio?.used(kind)});
+    change(()=>{selectedId=uid();program.blocks.splice(Math.max(0,Math.min(index,program.blocks.length-1)),0,{id:selectedId,kind,params:Object.fromEntries(Object.entries(definitions[kind].params).map(([k,v])=>[k,v.default]))});studio?.used(kind)});root.dispatchEvent(new Event('cm-block-added'));
   }
   function move(id,index){
     const from=program.blocks.findIndex(b=>b.id===id);if(from<0||program.blocks[from].kind==='sink')return;

@@ -307,3 +307,8 @@ v0.3.4 发行：运行 `python scripts/build_release.py` 从已提交源码生�
 ## v0.4.5 启动与测试
 
 沿用原启动脚本和通信配置，打开通信实验室的射频仪表面板。新增测试 scripts/test_communications_rf.py 和可选 Node 数值测试 scripts/test_communications_alignment.js；日志在 logs/communications-rf/。通用扫描 CLI 可直接选择 rf_qam64 等新示例。 参数、公式、接口、验证和日志位置详见 [v0.4.5 指南](communications-v045.md)。
+
+
+## v0.4.6 界面布局与交互优化
+
+沿用 scripts/start_server.ps1、scripts/start_server.sh 和 config/communications.json；config/release.json 标注 0.4.6。执行 `.venv/Scripts/python.exe -m unittest discover -s scripts -p "test_*.py"` 回归；浏览器验收记录在 logs/communications-v046/，隔离数据和截图在 debug/v046/。 详细操作和实现见 [v0.4.6 布局指南](communications-v046.md)。

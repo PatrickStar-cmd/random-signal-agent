@@ -33,6 +33,7 @@ window.createCommunicationExperience = function (core) {
   const reportDialog=document.createElement('dialog');reportDialog.id='cmReportDialog';reportDialog.className='cm-replace-dialog';reportDialog.innerHTML='<h3>📄 通信实验报告</h3><div id="cmReportPreview"></div><div class="cm-experience-row"><button id="cmReportDownload" type="button">下载 PDF</button><button id="cmReportClose" type="button">关闭</button></div>';root.append(reportDialog);
 
   const rf=window.createCommunicationAnalysis(core,{meta:()=>meta,persist,runJob});
+  window.createCommunicationLayout(core);
 
   function documentValue(){
     syncBranches();return {document_schema:2,...clone(meta),program:clone(get().program),sweeps:clone(get().sweeps),result:clone(get().result||meta.result)};

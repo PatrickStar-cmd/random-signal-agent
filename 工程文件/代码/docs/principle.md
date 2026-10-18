@@ -235,3 +235,8 @@ ContextVar 将观察器、取消事件、单步门和算法状态传入原执行
 ## v0.4.5 射频与测量原理
 
 新增广义线性 I/Q 训练校正、Rapp/Saleh 无记忆功放、均匀 ADC、复数 IIR 陷波、四倍插值 OFDM 削峰、打孔 LLR 恢复，以及完整帧 Welch、CCDF、99% 占用带宽、ACLR、净速率和频谱效率。A/B 对齐使用有界归一化复互相关；高阶调制理论 BER 明确为最近邻近似。 参数、公式、接口、验证和日志位置详见 [v0.4.5 指南](communications-v045.md)。
+
+
+## v0.4.6 界面布局与交互优化
+
+布局模块移动现有 DOM 控件并复用原处理器；宽屏三栏、窄屏单工作区切换，dialog 管理参数和大图焦点。显示尺寸改变后重绘 Canvas。任务选择保存在 rfTaskId，结果追加 completed_at/context；旧结果从 task.id 恢复且注明历史时间缺失。 详细操作和实现见 [v0.4.6 布局指南](communications-v046.md)。

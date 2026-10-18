@@ -23,6 +23,8 @@ from src.workbench import VERSION
 
 def decorate_preview(page):
     """Keep the checked-in static preview consistent when regenerating results."""
+    if 'id="layout-preview"' not in page:
+        page=page.replace('<main>','<main>'+'<section id="layout-preview"><h2>v0.4.6 · 界面布局与交互优化 🌊</h2><p>紧凑工程工具栏、统一实验库、参数与信宿切换、四类分析标签与大图模式。手机和平板通过底部参数抽屉编辑链路，保留 150 模块、64 示例和 7 项任务。</p><p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.6">下载 v0.4.6</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v046.md">界面布局指南</a></p></section>',1)
     if 'href="showcase.css"' not in page:
         page = page.replace('</head>', '  <link rel="stylesheet" href="showcase.css">\n</head>', 1)
     header = '''<header><div><span class="eyebrow">YOUR LITTLE SIGNAL LAB</span>
@@ -69,8 +71,7 @@ def decorate_preview(page):
         <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.4">下载 v0.4.4</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v044.md">体验与算法指南</a></p></section>''',1)
     if 'id="rf-analysis-preview"' not in page:
         page=page.replace('<main>','<main>'+'<section id="rf-analysis-preview"><h2>v0.4.5 · 真实收发链路与实验分析更新 🌊</h2><p>150 个可添加模块、64 个示例、7 项实验任务。高阶调制、I/Q 校正、功放、ADC、OFDM 削峰、窄带干扰和打孔编码，配合 Welch、CCDF、ACLR、资源栅格、自动对齐与效率分析。</p><a href="images/communications-v045-analysis.png"><img class="preview-image" src="images/communications-v045-analysis.png" alt="v0.4.5 海洋射频测量仪表" loading="lazy"></a><p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.5">下载 v0.4.5</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v045.md">射频与测量指南</a></p></section>',1)
-    page = page.replace('「通信原理积木编程」已包含通信实验室。', '「积木编程体验更新」包含完整通信实验室。')
-    return page.replace('v0.4.0', f'v{VERSION}')
+    return page
 
 
 def main():
