@@ -170,10 +170,27 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
 
     @app.get('/api/communications/catalog')
     def communication_catalog():
-        return communications.catalog()
+        from src import communication_learning
+        return {**communications.catalog(), 'learning': communication_learning.catalog()}
 
     @app.post('/api/communications/{action}')
     async def communication_action(action: str, request: Request):
+        learning_actions = {'learning-resolve', 'learning-diff', 'learning-check', 'learning-export', 'learning-explain'}
+        if action in learning_actions:
+            if request.headers.get('content-type', '').split(';')[0] != 'application/json':
+                raise ValueError('通信实验请求须使用 JSON。')
+            payload = await body(request)
+            session_key(payload.get('session_id'))
+            from src import communication_learning as learning
+            if action == 'learning-resolve':
+                return await run_in_threadpool(learning.resolve_program, payload.get('program'), payload.get('variables'), payload.get('bindings'))
+            if action == 'learning-diff':
+                return await run_in_threadpool(learning.difference, payload.get('before'), payload.get('after'))
+            if action == 'learning-check':
+                return await run_in_threadpool(learning.check, payload.get('program'), payload.get('result'), payload.get('challenge_id'), payload.get('goals'))
+            if action == 'learning-export':
+                return await run_in_threadpool(learning.export_python, payload.get('program'), payload.get('variables'), payload.get('bindings'))
+            return await run_in_threadpool(learning.explain, payload.get('algorithm'), payload.get('seed', 42), payload.get('snr_db', 2), payload.get('scheme', 'qpsk'))
         studio_actions={'describe','receiver','pair','document-check','project-list','project-save','project-load','job-start','job-status','job-control','window','report-preview','report-pdf'}
         if action in studio_actions:
             if request.headers.get('content-type','').split(';')[0]!='application/json': raise ValueError('通信实验请求须使用 JSON。')

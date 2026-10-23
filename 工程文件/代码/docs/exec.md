@@ -312,3 +312,36 @@ v0.3.4 发行：运行 `python scripts/build_release.py` 从已提交源码生�
 ## v0.4.6 界面布局与交互优化
 
 沿用 scripts/start_server.ps1、scripts/start_server.sh 和 config/communications.json；config/release.json 标注 0.4.6。执行 `.venv/Scripts/python.exe -m unittest discover -s scripts -p "test_*.py"` 回归；浏览器验收记录在 logs/communications-v046/，隔离数据和截图在 debug/v046/。 详细操作和实现见 [v0.4.6 布局指南](communications-v046.md)。
+
+## v0.4.7 业务传输与教学实验增强
+
+沿用启动脚本并打开 `/#communicationsPanel`。实验库加入音频、图像、文件、Huffman、BCH/RS、分包、DSSS、RAKE 与多天线示例。选择业务信源积木后上传素材，Build / Run 后在信宿播放音频、比较图像、下载文件。点击工具栏“🎓 教学实验”，依次访问引导实验、工程变量、二维扫描、协议与速率、算法演示和工程比较。完整操作及参数见 [v0.4.7 指南](communications-v047.md)。
+
+工程变量每行采用 `名称 = 算式`，在“绑定参数”选择目标并输入公式，然后应用或 Build。二维扫描每轴填写逗号分隔的数值列表，网格点保存对应工程，点击即可恢复。包级实验读取当前数字信源，设置参考物理层及反馈参数；ARQ/HARQ 的反馈延迟和超时单位为毫秒，AMC 的反馈参数为额外延迟帧数。运行后查看实际收发链路、时间线、吞吐率与逐包/逐帧表格。
+
+新增接口均沿用 JSON 与 `session_id`：
+
+| 接口 | 输入与输出 |
+|---|---|
+| GET `/api/communications/catalog` | `learning` 包含挑战、预设入口、算法及 AMC 档位 |
+| POST `learning-resolve` | `program, variables, bindings` → 数值工程与求值后的变量；路径为 `sample_rate` 或 `blocks.<id>.<参数>` |
+| POST `learning-diff` | `before, after` 两个 `{program,result}` 快照 → 参数差异、指标及差值 |
+| POST `learning-check` | `program,result,challenge_id` → 各目标实测值与达成状态；也可传 `goals` 自定义阈值 |
+| POST `learning-explain` | `algorithm,seed,snr_db,scheme` → Viterbi、LDPC 或星座演示数据 |
+| POST `learning-export` | `program,variables,bindings` → 可下载的 Python 文件名及源码 |
+| POST `job-start` | `kind=sweep2d/protocol/amc`，`payload={program,token,settings}` → 后台任务；复用 `job-status` 与 `job-control` |
+
+表中 POST 名称均接在 `/api/communications/` 后。`sweep2d.settings` 的 `x/y` 均为 `{block_id,parameter,values}`；全局轴使用 `block_id="global"`。`frames` 设置每点帧数，`target_errors` 设置每点提前完成的错误数。协议设置包括 `mode,packet_bytes,packets,max_retries,snr_db,symbol_rate,feedback_delay,timeout,feedback_loss`；AMC 设置包括 `packet_bytes,frames,snr_start,snr_stop,symbol_rate,feedback_delay,hysteresis`。
+
+`config/communications.json` 当前支持最多 32 个积木、32,768 位数字信源、8,192 个模拟样本、262,144 位编码序列和 262,144 个波形样本；二维扫描沿用每轴 21 点、总计 300 帧和 40 秒计算预算。上传图像为最多 64×64 灰度像素，文件为最多 4 KiB，音频转换为 8 kHz 单声道并保留最多 8,192 个样本。工程文档的 `learning` 字段保存公式、扫描、协议结果、算法演示、对照基线与实验笔记。
+
+在运行目录执行：
+
+```powershell
+.venv/Scripts/python.exe -m unittest scripts.test_communications_business scripts.test_communications_wireless scripts.test_communications_learning -v
+.venv/Scripts/python.exe -m unittest discover -s scripts -p "test_*.py"
+```
+
+专项验收日志覆盖 `logs/communications-v047/`，其中 `learning-tests.log` 覆盖参数公式、二维恢复、CRC 分包、ARQ/HARQ、AMC、挑战、API、工程持久化与导出脚本。临时材料和修订前文档备份保存于 `debug/v047/`。发布继续执行 `scripts/build_release.py` 与 `scripts/verify_release.py`；清洁解包验收包含全部新增模块、页面资产及三个专项套件。
+
+“🐍 导出 Python 实验”生成 `communication_experiment.py`，将其放在部署包的代码运行目录，执行 `python communication_experiment.py`，得到完整结果 `communication_experiment_result.json` 与海洋配色图 `communication_experiment_plot.svg`。JSON 包含链路、种子、变量定义和全部仿真结果；SVG 展示信宿波形与星座。

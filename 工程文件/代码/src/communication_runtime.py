@@ -64,7 +64,8 @@ class Observer:
             if cached.shape!=array.shape or cached.dtype!=array.dtype: raise ValueError('共享分支的信号形状发生变化。')
             array=cached.copy()
         domain=self.plan.get(block['id'],{}).get('output','模拟样本' if array.dtype.kind=='f' else '比特')
-        if rate is None:
+        if domain=='模拟样本': rate=self.compiled['program']['sample_rate']
+        elif rate is None:
             rate=self.compiled['program']['sample_rate'] if '模拟样本' in domain else self.compiled['program']['symbol_rate']
         if domain in ('比特','LLR'): unit='index'; sample_rate=None
         else: unit='s'; sample_rate=float(rate)

@@ -16,6 +16,8 @@ import re
 import numpy as np
 from src import analog_modulation, baseband, receiver_recovery
 from src import communication_catalog, communication_codecs, advanced_communications
+from src import communication_business as business
+from src import communication_wireless as wireless
 from src import communication_runtime as runtime
 
 CONFIG = json.loads((Path(__file__).resolve().parents[1] / 'config/communications.json').read_text(encoding='utf-8'))
@@ -123,6 +125,8 @@ block('clock_drift','采样时钟漂移','channel','实基带采样时钟偏差�
 block('sink', '信宿', 'sink', '显示接收端译码后的信号。固定在链路末端。')
 
 communication_catalog.register(block, number, field, BLOCKS)
+business.register(block, number, field, BLOCKS)
+wireless.register(block, number, field, BLOCKS)
 PAIRS = {'pcm_decode': 'pcm_encode', 'repeat_decode': 'repeat_encode', 'hamming_decode': 'hamming_encode', 'conv_decode': 'conv_encode', 'deinterleave': 'interleave'}
 PAIRS.update(communication_codecs.PAIRS)
 PAIRS.update({'line_'+scheme+'_decode':'line_'+scheme+'_encode' for scheme in baseband.LINE_CODES})
@@ -160,6 +164,8 @@ for key,label,mode,algorithm in [('fixed_dfe','已知响应 DFE',3,1),('linear_n
 PRESETS.update(communication_catalog.presets(preset))
 from src import communication_v045, communication_rf
 PRESETS.update(communication_v045.presets(preset))
+PRESETS.update(business.presets(preset))
+PRESETS.update(wireless.presets(preset))
 
 
 def catalog():
@@ -204,6 +210,7 @@ def normalize(raw, draft=False):
         values = {}
         for name, spec in BLOCKS[kind]['params'].items():
             v = params.get(name, spec['default']); label = spec['label']
+            if not draft and kind=='file_source' and name=='data' and v=='': raise ValueError('文件需要至少一个字节，请选择文件。')
             if spec['type'] in ('number', 'integer'):
                 v = value_number(v, label, spec['min'], spec['max'], spec['type'] == 'integer')
             elif spec['type'] == 'boolean':
@@ -224,7 +231,9 @@ def normalize(raw, draft=False):
 
 def build(raw):
     p = normalize(raw); items = p['blocks']; sources = []
-    if any(b['kind'] in communication_catalog.KINDS for b in items) and not any(b['kind'].startswith('line_') or b['kind'] in ('mod_baseband','mod_pam') for b in items):
+    extended=communication_catalog.KINDS | business.KINDS | wireless.KINDS
+    analog_audio=any(b['kind'] in {'mod_'+scheme for scheme in analog_modulation.LABELS} for b in items) and not any(b['kind'] in extended-{'audio_source'} for b in items)
+    if any(b['kind'] in extended for b in items) and not analog_audio and not any(b['kind'].startswith('line_') or b['kind'] in ('mod_baseband','mod_pam') for b in items):
         return advanced_communications.build(p)
     if any(b['kind'].startswith('line_') or b['kind'] in ('mod_baseband','demod_baseband','mod_pam','demod_pam') or b['kind'] in baseband.WAVE_CHANNELS for b in items):
         return baseband.build(p)
@@ -232,12 +241,13 @@ def build(raw):
         if b['kind'] in SOURCES: sources.append(b)
         else: break
     if not sources: raise ValueError('从积木箱添加至少一个信源，再连接发送端。')
-    analog = sources[0]['kind'] in ('sine', 'square', 'gaussian')
-    if any((b['kind'] in ('sine', 'square', 'gaussian')) != analog for b in sources): raise ValueError('模拟信源可以叠加，数字信源可以拼接；两类信源不能直接混合。')
-    count = p['sample_count'] if analog else sum(b['params']['count'] if b['kind'] == 'random_bits' else len(b['params']['pattern']) if b['kind'] == 'bit_pattern' else len(b['params']['text'].encode('utf-8')) * 8 for b in sources)
+    analog = sources[0]['kind'] in ('sine', 'square', 'gaussian','audio_source')
+    if any((b['kind'] in ('sine', 'square', 'gaussian','audio_source')) != analog for b in sources): raise ValueError('模拟信源可以叠加，数字信源可以拼接；两类信源不能直接混合。')
+    if any(b['kind'] in business.SOURCES-{'discrete_source'} for b in sources) and len(sources)!=1: raise ValueError('媒体信源使用独立链路，以保持文件和样本边界。')
+    count = p['sample_count'] if analog else sum(advanced_communications.source_count(b,p) for b in sources)
     if count > CONFIG['max_source_bits'] and not analog: raise ValueError(f'合并后的数字信源超过 {CONFIG["max_source_bits"]} 位。')
     domain = '模拟样本' if analog else '比特'; direction = 'tx'; stack = []; scheme = None; channels = 0; attenuation = 0; analog_transmit = None
-    plan = [{'id': b['id'], 'label': BLOCKS[b['kind']]['label'], 'output': domain, 'count': p['sample_count'] if analog else (b['params'].get('count') or len(b['params'].get('pattern', '')) or len(b['params']['text'].encode('utf-8')) * 8)} for b in sources]
+    plan = [{'id': b['id'], 'label': BLOCKS[b['kind']]['label'], 'output': domain, 'count': advanced_communications.source_count(b,p)} for b in sources]
     for index, b in enumerate(items[len(sources):], len(sources)):
         k = b['kind']; params = b['params']; before = count
         def fail(message): raise ValueError(f'第 {index + 1} 块「{BLOCKS[k]["label"]}」：{message}')
@@ -327,8 +337,8 @@ def conv_encode(bits):
     return np.array(output, dtype=np.uint8)
 
 
-def viterbi_decode(bits):
-    pairs = bits.reshape(-1, 2); scores = [0, math.inf, math.inf, math.inf]; path = np.zeros((len(pairs), 4), dtype=np.uint8)
+def viterbi_decode(bits, trace=False):
+    pairs = bits.reshape(-1, 2); scores = [0, math.inf, math.inf, math.inf]; path = np.zeros((len(pairs), 4), dtype=np.uint8);history=[]
     for i, pair in enumerate(pairs):
         updated = [math.inf] * 4
         for prev in range(4):
@@ -337,9 +347,13 @@ def viterbi_decode(bits):
                 score = scores[prev] + int(pair[0] != expected[0]) + int(pair[1] != expected[1])
                 if score < updated[dest]: updated[dest] = score; path[i, dest] = prev
         scores = updated
-    decoded = np.zeros(len(pairs), dtype=np.uint8); state = 0
-    for i in range(len(pairs) - 1, -1, -1): decoded[i] = state >> 1; state = int(path[i, state])
-    return decoded[:-2]
+        if i<64: history.append({'step':i+1,'received':pair.tolist(),'scores':[float(v) if math.isfinite(v) else None for v in scores],'predecessors':path[i].tolist()})
+    decoded = np.zeros(len(pairs), dtype=np.uint8); state = 0;survivors=[]
+    for i in range(len(pairs) - 1, -1, -1):
+        decoded[i] = state >> 1
+        if i<64: survivors.append({'step':i+1,'state':state,'bit':int(decoded[i])})
+        state = int(path[i, state])
+    return (decoded[:-2],{'kind':'viterbi','mode':'hard','history':history,'survivor':survivors[::-1]}) if trace else decoded[:-2]
 
 
 def constellation(scheme):
@@ -374,7 +388,8 @@ def source_data(p):
     for b in p['blocks']:
         k, q = b['kind'], b['params']
         if k not in SOURCES: break
-        if k == 'random_bits': y = source_rng.integers(0, 2, q['count'], dtype=np.uint8)
+        if k in business.SOURCES: y=business.generate(k,q,p,source_rng)
+        elif k == 'random_bits': y = source_rng.integers(0, 2, q['count'], dtype=np.uint8)
         elif k == 'pn_bits': y = communication_codecs.pn(q['count'], q['degree'], q['initial'])
         elif k == 'bit_pattern': y = np.array([int(c) for c in q['pattern']], dtype=np.uint8)
         elif k == 'text':
@@ -387,7 +402,7 @@ def source_data(p):
         if ctx and getattr(ctx,'source_active',False):
             runtime.enter(b); y=runtime.record(b,y,p['sample_rate'])
         signals.append(y)
-    analog = p['blocks'][0]['kind'] in ('sine', 'square', 'gaussian')
+    analog = p['blocks'][0]['kind'] in ('sine', 'square', 'gaussian', 'audio_source')
     source = np.sum(signals, axis=0) if analog else np.concatenate(signals)
     return source, texts, len(signals)
 
@@ -410,10 +425,12 @@ def run(raw, token):
         return result
     if compiled.get('transport') == 'analog':
         result = analog_modulation.run(compiled, source, noise_rng, CONFIG)
+        media=business.media_result(p,source,np.asarray(result['sink']['values']))
+        if media: result['sink']['media']=media
         json.dumps(result, allow_nan=False)
         return result
     data = source.copy(); reference_bits = None if analog else source.copy(); encoded_bits = None; stack = []; gain = 1 + 0j
-    channel_symbols = None; decision_symbols = None; tx_symbols = None; demapped = None; decided_indices = None; clipped = 0; corrections = 0
+    channel_symbols = None; decision_symbols = None; tx_symbols = None; demapped = None; decided_indices = None; clipped = 0; corrections = 0;learning=[]
     for b in p['blocks'][source_count:]:
         runtime.enter(b)
         k, q = b['kind'], b['params']; before = len(data)
@@ -441,7 +458,7 @@ def run(raw, token):
             encoder, params, size = stack.pop()
             if k == 'repeat_decode': data = (data.reshape(-1, q['factor']).sum(axis=1) > q['factor'] // 2).astype(np.uint8)
             elif k == 'hamming_decode': data, n = hamming_decode(data); corrections += n
-            elif k == 'conv_decode': data = viterbi_decode(data)
+            elif k == 'conv_decode': data,lesson = viterbi_decode(data,True);learning.append(lesson)
             elif k == 'deinterleave': data = data.reshape(q['columns'], -1).T.ravel()
             else:
                 decoded_bits = data.copy(); values = data.reshape(-1, q['bits']).dot(2 ** np.arange(q['bits'] - 1, -1, -1))
@@ -455,6 +472,7 @@ def run(raw, token):
     labels, points = constellation(scheme)
     result = {'token': compiled['token'], 'seed': p['seed'], 'summary': compiled['summary'], 'model': compiled['model'], 'metrics': metrics, 'plan': compiled['plan'], 'sink': {'kind': compiled['source_kind'], 'values': data.tolist(), 'reference': source.tolist(), 'sample_rate': p['sample_rate'] if analog else None, 'count': full_count, 'plot_count': shown}, 'channel': {'count': len(channel_symbols), 'plot_count': min(len(channel_symbols), CONFIG['plot_points']), 'symbol_rate': p['symbol_rate'], 'i': channel_symbols[:CONFIG['plot_points']].real.tolist(), 'q': channel_symbols[:CONFIG['plot_points']].imag.tolist()}, 'constellation': {'scheme': scheme, 'count': scatter, 'i': decision_symbols[:scatter].real.tolist(), 'q': decision_symbols[:scatter].imag.tolist(), 'ideal_i': points.real.tolist(), 'ideal_q': points.imag.tolist(), 'labels': [''.join(map(str, v)) for v in labels]}, 'text': None}
     if not analog and len(texts) == source_count: result['text'] = {'sent': b''.join(texts).decode('utf-8'), 'received': np.packbits(decoded_bits).tobytes().decode('utf-8', errors='replace')}
+    if learning: result['learning']=learning
     # This is also the JSON-export contract: never return NaN/Infinity.
     json.dumps(result, allow_nan=False)
     result['analysis']=communication_rf.analyze(tx_symbols,channel_symbols,tx_symbols,decision_symbols,p['symbol_rate'],len(reference_bits))

@@ -50,7 +50,7 @@ window.createCommunicationLayout = function(core) {
   const dock=make('section','cm-analysis-dock','<header><h3>📊 实验分析</h3><div><button type="button" id="cmAnalysisExpand">⛶ 展开大图</button><button type="button" id="cmAnalysisCollapse" aria-expanded="true">收起分析</button></div></header><div class="cm-dock-body"><div role="tablist" aria-label="分析视图"></div><div class="cm-dock-panels"></div></div>');
   dock.id='cmAnalysisDock';byId('cmForm').after(dock);
   const tabs=dock.querySelector('[role=tablist]'),panels=dock.querySelector('.cm-dock-panels');
-  const names={overview:'结果总览',signals:'信号观察',rf:'射频测量',compare:'性能对照'},panes={};
+  const names={overview:'结果总览',signals:'信号观察',rf:'射频测量',compare:'性能对照',learning:'🎓 业务与教学'},panes={};
   for(const [id,label] of Object.entries(names)){const b=make('button','',label);b.type='button';b.id='cmTab-'+id;b.dataset.analysis=id;b.setAttribute('role','tab');b.setAttribute('aria-controls','cmPane-'+id);tabs.append(b);const p=make('div','cm-analysis-pane');p.id='cmPane-'+id;p.setAttribute('role','tabpanel');p.setAttribute('aria-labelledby',b.id);panels.append(p);panes[id]=p;}
   const results=find('.cm-results'),scopes=find('.cm-scopes'),sweep=find('.cm-sweep'),rf=byId('cmRFPanel');
   panes.overview.append(results);panes.signals.append(scopes);panes.rf.append(rf);rf.open=true;
@@ -74,7 +74,7 @@ window.createCommunicationLayout = function(core) {
 
   const library=make('dialog','cm-experiment-library','<header><h3>🧭 实验库</h3><button type="button" id="cmLibraryClose">关闭</button></header><div class="cm-library-filter"><label>搜索实验<input id="cmExperimentSearch" type="search" placeholder="名称、算法、通信环节"></label><label>通信主题<select id="cmExperimentTopic"><option value="all">全部主题</option><option value="tasks">🔬 任务对照（7）</option></select></label></div><p id="cmExperimentCount" role="status"></p><div id="cmExperimentCards"></div>');
   library.setAttribute('aria-label','搜索与选择通信实验');root.append(library);
-  const topic=(label,key)=>/^rf_(iq|dc|adc|notch)$/.test(key)?'射频与硬件':/线路码|^基带/.test(label)?'线路编码与基带':/同步|接收估计|重采样/.test(label)?'同步与接收':/均衡|衰落|突发/.test(label)?'信道与均衡':/OFDM|多载波|削峰|功放/.test(label)?'OFDM 与射频':/编码|译码|检错|打孔/.test(label)?'编码与纠错':/线性|模拟|PCM/.test(label)?'模拟通信':'数字调制与传输';
+  const topic=(label,key)=>/音频|图像|文件|Huffman|ADPCM/.test(label)?'业务与信源编码':/DSSS|RAKE|扩频|MIMO|Alamouti|分集/.test(label)?'扩频与多天线':/^rf_(iq|dc|adc|notch)$/.test(key)?'射频与硬件':/线路码|^基带/.test(label)?'线路编码与基带':/同步|接收估计|重采样/.test(label)?'同步与接收':/均衡|衰落|突发/.test(label)?'信道与均衡':/OFDM|多载波|削峰|功放/.test(label)?'OFDM 与射频':/编码|译码|检错|打孔/.test(label)?'编码与纠错':/线性|模拟|PCM/.test(label)?'模拟通信':'数字调制与传输';
   const entries=Object.entries(get().catalog.presets).map(([key,p])=>({key,label:p.label,topic:topic(p.label,key),task:get().catalog.tasks.find(t=>t.preset===key)}));
   for(const name of [...new Set(entries.map(e=>e.topic))]){const o=document.createElement('option');o.value=name;o.textContent=name;byId('cmExperimentTopic').append(o)}
   function libraryList(){const words=byId('cmExperimentSearch').value.trim().toLowerCase().split(/\s+/),group=byId('cmExperimentTopic').value,items=entries.filter(e=>(group==='all'||group===e.topic||group==='tasks'&&e.task)&&words.every(w=>(e.label+' '+e.topic+' '+(e.task?.goal||'')).toLowerCase().includes(w)));byId('cmExperimentCount').textContent=`${items.length} / ${entries.length} 个示例 · 含 ${get().catalog.tasks.length} 项任务对照`;byId('cmExperimentCards').innerHTML=items.length?items.map(e=>`<button type="button" data-experiment="${esc(e.key)}"><small>${esc(e.topic)}</small><strong>${esc(e.label)}</strong><span>${e.task?'🔬 含任务对照':'载入示例链路'}</span></button>`).join(''):'没有匹配的实验，试试其他名称或主题。'}
@@ -90,5 +90,5 @@ window.createCommunicationLayout = function(core) {
   root.addEventListener('keydown',e=>{if(e.key==='Escape')tools.querySelectorAll('.cm-command-menu[open]').forEach(d=>{d.open=false;d.querySelector('summary').focus()})});
   document.addEventListener('click',e=>{if(!tools.contains(e.target))tools.querySelectorAll('.cm-command-menu').forEach(d=>d.open=false)});
   new MutationObserver(()=>{if(!root.hidden)redraw();else{if(drawer.open)drawer.close();if(enlarged.open)enlarged.close()}}).observe(root,{attributes:true,attributeFilter:['hidden']});
-  return {analysis,edit};
+  return {analysis,edit,showAnalysis:id=>{analysis(id);if(small.matches)mobilePane('results');openAnalysis()}};
 };

@@ -172,9 +172,9 @@
   };
   byId('cmReset').onclick=async()=>{if(program.blocks.length>1&&!await confirmReplace('清空当前链路？信宿将保留，可通过“撤销”恢复。'))return;byId('cmPreset').value='';setProgram(empty(),'信宿已就位，从积木箱添加信源。')};
   byId('cmForm').onsubmit=async event=>{
-    event.preventDefault();if(busy||!catalog||!validateFields())return;
+    event.preventDefault();if(busy||!catalog)return;
     busy=true;compiled=null;result=null;showResult();buttons();status('Build：正在检查信号类型、参数与收发配对…');
-    try{compiled=await api('build',{program:clone(program)});program=compiled.program;persist();renderProgram();showTrace();status(`Build 完成：${compiled.summary}。点击 Run 开始传输。`)}
+    try{const resolved=await studio?.prepare();if(resolved){program=resolved;renderProgram()}if(!validateFields())return;compiled=await api('build',{program:clone(program)});program=compiled.program;persist();renderProgram();showTrace();status(`Build 完成：${compiled.summary}。点击 Run 开始传输。`)}
     catch(error){compiled=null;status(error.message,true);studio?.markError(error.message)}finally{busy=false;buttons()}
   };
   byId('cmRun').onclick=async()=>{

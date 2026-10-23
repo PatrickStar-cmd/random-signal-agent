@@ -74,7 +74,7 @@ class Jobs:
         for old in sorted(p.parent.glob('*.json'),key=lambda q:q.stat().st_mtime,reverse=True)[30:]: old.unlink()
     def start(self,session,kind,payload):
         from src import communications as c
-        if kind not in ('debug','run','sweep','continuous','branches','experiments','rf-task'): raise ValueError('未知通信任务类型。')
+        if kind not in ('debug','run','sweep','continuous','branches','experiments','rf-task','sweep2d','protocol','amc'): raise ValueError('未知通信任务类型。')
         if not isinstance(payload,dict): raise ValueError('任务参数无效。')
         if kind not in ('branches','experiments'):
             built=c.build(payload.get('program'))
@@ -139,6 +139,13 @@ class Jobs:
                 def progress(value):
                     job.update(progress=value);self.persist(job,value)
                 result=sweep(p['program'],p['token'],p['settings'],progress,job.cancel,p.get('resume'))
+            elif job.kind=='sweep2d':
+                from src.communication_learning import sweep2d
+                result=sweep2d(p['program'],p['token'],p['settings'],lambda v:job.update(progress=v),job.cancel)
+            elif job.kind in ('protocol','amc'):
+                from src import communication_protocols
+                operation=communication_protocols.protocol if job.kind=='protocol' else communication_protocols.amc
+                result=operation(c.build(p['program'])['program'],p.get('settings',{}),lambda v:job.update(progress=v),job.cancel)
             elif job.kind=='branches': result=studio.compare_branches(p['programs'],p.get('names'),job.cancel,lambda v:job.update(progress=v),job.contexts)
             elif job.kind=='experiments':
                 from src.communication_sweep import sweep

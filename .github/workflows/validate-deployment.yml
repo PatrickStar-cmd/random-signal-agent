@@ -30,6 +30,13 @@ jobs:
       - uses: actions/setup-python@v7.0.0
         with:
           python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v7.1.0
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
+        with:
+          node-version: '24'
+      - name: Validate communication browser scripts
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
+        run: node scripts/verify_communications_ui.js
       - name: Build deployment archive
         run: python scripts/build_release.py
       - name: Install and verify extracted archive
@@ -40,6 +47,8 @@ jobs:
           name: release-validation-${{ runner.os }}-${{ matrix.python }}
           path: |
             工程文件/代码/logs/release/
+            工程文件/代码/logs/communications-v047/node-tests.log
+            工程文件/代码/logs/communications-v047/verification-ui.json
             工程文件/代码/outputs/release/verification-*.json
 
   docker:

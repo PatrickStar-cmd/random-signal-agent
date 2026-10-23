@@ -6,12 +6,14 @@ The LDPC code is an explicitly defined educational (128,64) IRA code.
 """
 from functools import lru_cache
 import numpy as np
+from src import communication_business as business
 
-SOURCE_CODECS = {'compand_encode', 'dpcm_encode', 'delta_encode'}
+SOURCE_CODECS = {'compand_encode', 'dpcm_encode', 'delta_encode', 'adpcm_encode'}
 PAIRS = {'crc_check': 'crc_append', 'descramble': 'scramble',
          'conv_soft_decode': 'conv_encode', 'ldpc_decode': 'ldpc_encode',
          'compand_decode': 'compand_encode', 'dpcm_decode': 'dpcm_encode',
          'delta_decode': 'delta_encode', 'depuncture': 'puncture'}
+PAIRS.update(business.PAIRS)
 
 
 def pn(count, degree=7, seed=1):
@@ -88,7 +90,7 @@ def ldpc_decode(llr, iterations=30, scale=.8):
     channel = np.clip(np.asarray(llr, dtype=float).reshape(-1, 128), -60, 60)
     h = ldpc_matrix(); rows, cols = np.nonzero(h)
     outgoing = channel[:, cols].copy(); incoming = np.zeros_like(outgoing)
-    posterior = channel.copy(); used = 0
+    posterior = channel.copy(); used = 0; history=[]
     for used in range(1, iterations + 1):
         for row in range(64):
             edges = np.flatnonzero(rows == row); values = outgoing[:, edges]
@@ -103,16 +105,17 @@ def ldpc_decode(llr, iterations=30, scale=.8):
             posterior[:, col] += incoming[:, edge]
         hard = (posterior < 0).astype(np.uint8)
         syndrome = (hard @ h.T) % 2
+        history.append({'iteration':used,'unsatisfied_checks':int(syndrome.sum()),'posterior':posterior[0,:32].tolist(),'hard_bits':hard[0,:32].tolist()})
         if not np.any(syndrome):
             break
         outgoing = np.clip(posterior[:, cols] - incoming, -60, 60)
-    return hard[:, :64].ravel(), {'iterations': used, 'failed_codewords': int(np.count_nonzero(np.any(syndrome, axis=1)))}
+    return hard[:, :64].ravel(), {'iterations': used, 'failed_codewords': int(np.count_nonzero(np.any(syndrome, axis=1))), 'learning':{'kind':'ldpc','history':history}}
 
 
-def soft_viterbi(llr):
+def soft_viterbi(llr, trace=False):
     from src.communications import transition
     pairs = np.asarray(llr).reshape(-1, 2)
-    scores = np.array([0., np.inf, np.inf, np.inf]); paths = np.zeros((len(pairs), 4), dtype=np.uint8)
+    scores = np.array([0., np.inf, np.inf, np.inf]); paths = np.zeros((len(pairs), 4), dtype=np.uint8);history=[]
     for i, pair in enumerate(pairs):
         updated = np.full(4, np.inf)
         for previous in range(4):
@@ -123,13 +126,17 @@ def soft_viterbi(llr):
                 if cost < updated[dest]:
                     updated[dest] = cost; paths[i, dest] = previous
         scores = updated - np.min(updated)
-    bits = np.zeros(len(pairs), dtype=np.uint8); state = 0
+        if i<64: history.append({'step':i+1,'received':pair.tolist(),'scores':[float(v) if np.isfinite(v) else None for v in scores],'predecessors':paths[i].tolist()})
+    bits = np.zeros(len(pairs), dtype=np.uint8); state = 0;survivors=[]
     for i in range(len(pairs) - 1, -1, -1):
-        bits[i] = state >> 1; state = int(paths[i, state])
-    return bits[:-2]
+        bits[i] = state >> 1
+        if i<64: survivors.append({'step':i+1,'state':state,'bit':int(bits[i])})
+        state = int(paths[i, state])
+    return (bits[:-2],{'kind':'viterbi','mode':'soft','history':history,'survivor':survivors[::-1]}) if trace else bits[:-2]
 
 
 def encoded_count(kind, count, q):
+    if kind in business.PAIRS.values(): return business.encoded_count(kind,count,q)
     if kind == 'puncture': return int(puncture_mask(count,q['rate']).sum())
     if kind == 'crc_append': return count + q['width']
     if kind == 'ldpc_encode': return ((count + 63) // 64) * 128
@@ -138,6 +145,7 @@ def encoded_count(kind, count, q):
 
 
 def encode(kind, data, q):
+    if kind in business.PAIRS.values(): return business.encode(kind,data,q)
     if kind == 'puncture': return data[puncture_mask(len(data),q['rate'])]
     if kind == 'crc_append': return np.r_[data, crc(data, q['width'])]
     if kind == 'scramble': return data ^ pn(len(data), q['degree'], q['initial'])
@@ -162,12 +170,13 @@ def encode(kind, data, q):
 
 
 def decode(kind, data, q):
+    if kind in business.PAIRS: return business.decode(kind,data,q)
     info = {}
     if kind == 'crc_check':
         width = q['width']; info = {'crc_pass': bool(np.array_equal(data[-width:], crc(data[:-width], width))), 'crc_width': width}
         data = data[:-width]
     elif kind == 'descramble': data = data ^ pn(len(data), q['degree'], q['initial'])
-    elif kind == 'conv_soft_decode': data = soft_viterbi(data)
+    elif kind == 'conv_soft_decode': data,lesson = soft_viterbi(data,True);info={'learning':lesson}
     elif kind == 'ldpc_decode': data, info = ldpc_decode(data, q['iterations'], q['scale'])
     elif kind == 'compand_decode':
         y = 2 * bits_to_words(data, q['bits']) / (2 ** q['bits'] - 1) - 1

@@ -33,7 +33,8 @@ window.createCommunicationExperience = function (core) {
   const reportDialog=document.createElement('dialog');reportDialog.id='cmReportDialog';reportDialog.className='cm-replace-dialog';reportDialog.innerHTML='<h3>📄 通信实验报告</h3><div id="cmReportPreview"></div><div class="cm-experience-row"><button id="cmReportDownload" type="button">下载 PDF</button><button id="cmReportClose" type="button">关闭</button></div>';root.append(reportDialog);
 
   const rf=window.createCommunicationAnalysis(core,{meta:()=>meta,persist,runJob});
-  window.createCommunicationLayout(core);
+  const layout=window.createCommunicationLayout(core);
+  const learning=window.createCommunicationLearning(core,{meta:()=>meta,persist,runJob,documentValue,request,layout});
 
   function documentValue(){
     syncBranches();return {document_schema:2,...clone(meta),program:clone(get().program),sweeps:clone(get().sweeps),result:clone(get().result||meta.result)};
@@ -44,11 +45,11 @@ window.createCommunicationExperience = function (core) {
     clearTimeout(saveTimer);
     if(meta.projectId&&!get().busy)saveTimer=setTimeout(()=>save(false).catch(e=>message(e.message)),1800);
   }
-  function invalidate(){if(!restoring){rf.invalidate();meta.result=null;meta.comparisons=null;observations=[];windowA=windowB=null;byId('cmProbeA').innerHTML='';byId('cmProbeB').innerHTML='';byId('cmExecutionSummary').textContent='链路已更新，运行后选择积木输出';byId('cmBranchResults').innerHTML='';drawScopes()}scheduleDescribe()}
+  function invalidate(){if(!restoring){rf.invalidate();learning.invalidate();meta.result=null;meta.comparisons=null;observations=[];windowA=windowB=null;byId('cmProbeA').innerHTML='';byId('cmProbeB').innerHTML='';byId('cmExecutionSummary').textContent='链路已更新，运行后选择积木输出';byId('cmBranchResults').innerHTML='';drawScopes()}scheduleDescribe()}
   function editSnapshot(){return clone(meta)}
   function restoreEdit(value){meta={...defaults(),...clone(value)}}
   function loadState(doc){meta={...defaults(),...clone(doc)};delete meta.program;delete meta.sweeps;delete meta.document_schema;restoring=true}
-  function replaceProgram(){meta.groups=[];meta.branches=[];meta.activeBranch=0;meta.comparisons=null;meta.scope={};selected.clear()}
+  function replaceProgram(){meta.groups=[];meta.branches=[];meta.activeBranch=0;meta.comparisons=null;meta.scope={};learning.replaceProgram();selected.clear()}
   function restoreDraft(){
     try{const saved=JSON.parse(localStorage.getItem(storage)||'null');if(saved?.document_schema===2){restoring=true;core.applyDocument(saved);restoring=false}}
     catch{message('已打开链路草稿；完整工程草稿无法读取。')}
@@ -101,7 +102,7 @@ window.createCommunicationExperience = function (core) {
   function parameterChanged(){
     if(!byId('cmLinkedParams').checked)return;
     const p=get().program,stack=[],definitions=get().definitions;
-    const pairs={pcm_decode:'pcm_encode',repeat_decode:'repeat_encode',hamming_decode:'hamming_encode',conv_decode:'conv_encode',conv_soft_decode:'conv_encode',ldpc_decode:'ldpc_encode',deinterleave:'interleave',crc_check:'crc_append',descramble:'scramble',compand_decode:'compand_encode',dpcm_decode:'dpcm_encode',delta_decode:'delta_encode'};
+    const pairs={pcm_decode:'pcm_encode',repeat_decode:'repeat_encode',hamming_decode:'hamming_encode',conv_decode:'conv_encode',conv_soft_decode:'conv_encode',ldpc_decode:'ldpc_encode',deinterleave:'interleave',crc_check:'crc_append',descramble:'scramble',compand_decode:'compand_encode',dpcm_decode:'dpcm_encode',delta_decode:'delta_encode',huffman_decode:'huffman_encode',adpcm_decode:'adpcm_encode',bch_decode:'bch_encode',rs_decode:'rs_encode',packet_decode:'packet_encode',rx_despread:'tx_dsss'};
     for(const b of p.blocks)if(b.kind.startsWith('line_')&&b.kind.endsWith('_decode'))pairs[b.kind]=b.kind.replace('_decode','_encode');
     const encoders=new Set(Object.values(pairs));
     for(const b of p.blocks){if(encoders.has(b.kind))stack.push(b);else if(pairs[b.kind]&&stack.length){const tx=stack.pop();if(pairs[b.kind]===tx.kind)for(const name of Object.keys(definitions[b.kind].params))if(Object.hasOwn(tx.params,name))b.params[name]=tx.params[name]}}
@@ -144,7 +145,7 @@ window.createCommunicationExperience = function (core) {
     byId('cmLibrary').innerHTML=meta.library.length?meta.library.map((g,i)=>`<button type="button" data-cm-library="${i}">🧩 ${esc(g.name)} · ${g.blocks.length} 块</button>`).join(''):'勾选相邻积木，封装后即可复用。';
     byId('cmGroupExpose').innerHTML=blocks.filter(b=>selected.has(b.id)).flatMap(b=>Object.entries(get().definitions[b.kind].params).map(([key,spec])=>`<option value="${esc(b.id+':'+key)}">${esc(get().definitions[b.kind].label+' · '+spec.label)}</option>`)).join('');
     byId('cmBranchSelect').innerHTML=meta.branches.length?meta.branches.map((b,i)=>`<option value="${i}">${esc(b.name)}</option>`).join(''):'<option value="0">主链路</option>';byId('cmBranchSelect').value=String(meta.activeBranch);
-    renderFlow();renderSweepParameters();selection();scheduleDescribe();
+    renderFlow();renderSweepParameters();selection();scheduleDescribe();learning.render();
   }
   function renderFlow(){
     const blocks=get().program.blocks,split=blocks.findIndex(b=>['demodulator','rx_converter'].includes(get().definitions[b.kind].category));
@@ -156,7 +157,7 @@ window.createCommunicationExperience = function (core) {
     const candidates=get().program.blocks.filter(b=>Object.values(get().definitions[b.kind].params).some(numeric));
     byId('cmSweepNoise').innerHTML=candidates.map(b=>`<option value="${esc(b.id)}">${esc(get().definitions[b.kind].label)}</option>`).join('')+'<option value="@global">全局参数</option>';
     byId('cmSweepNoise').value=candidates.some(b=>b.id===selectedBlock)||selectedBlock==='@global'?selectedBlock:(candidates.find(b=>noiseKeys[b.kind])?.id||candidates[0]?.id||'@global');
-    const block=get().program.blocks.find(b=>b.id===byId('cmSweepNoise').value),specs=block?get().definitions[block.kind].params:{seed:{label:'随机种子',type:'integer',min:0,max:4294967294,default:42},sample_rate:{label:'模拟采样率 / Hz',type:'number',min:16,max:48000,default:256},sample_count:{label:'模拟样本数',type:'integer',min:32,max:1024,default:256},symbol_rate:{label:'码元率 / OFDM 子载波间隔',type:'number',min:1,max:100000,default:1000}};
+    const block=get().program.blocks.find(b=>b.id===byId('cmSweepNoise').value),specs=block?get().definitions[block.kind].params:{seed:{label:'随机种子',type:'integer',min:0,max:4294967294,default:42},sample_rate:{label:'模拟采样率 / Hz',type:'number',min:16,max:48000,default:256},sample_count:{label:'模拟样本数',type:'integer',min:32,max:get().catalog.limits.max_samples,default:256},symbol_rate:{label:'码元率 / OFDM 子载波间隔',type:'number',min:1,max:100000,default:1000}};
     const old=changed?'':byId('cmSweepParameter').value||previous.parameter;
     byId('cmSweepParameter').innerHTML=Object.entries(specs).filter(([,s])=>numeric(s)).map(([key,s])=>`<option value="${key}">${esc(s.label)}</option>`).join('');
     const key=old&&Object.hasOwn(specs,old)?old:block&&noiseKeys[block.kind]||Object.keys(specs).find(k=>numeric(specs[k]));byId('cmSweepParameter').value=key;
@@ -172,7 +173,7 @@ window.createCommunicationExperience = function (core) {
     const text=byId('cmSweepValues').value.trim();if(text)extra.values=text.split(',').map(v=>Number(v.trim()));meta.sweepSettings={block_id:block,parameter:param};return extra;
   }
   function buttons(busy){
-    rf.buttons(busy);
+    rf.buttons(busy);learning.buttons(busy);
     if(wasBusy&&!busy)persist();wasBusy=busy;
     const built=!!get().compiled;
     for(const id of ['cmDebugStart','cmContinuous','cmBranchesRun','cmContrastRun'])byId(id).disabled=busy||!built;
@@ -200,7 +201,7 @@ window.createCommunicationExperience = function (core) {
     return job.result;
   }
   async function runJob(kind,payload){const job=await request('job-start',{kind,payload});return watch(job)}
-  function onResult(result){rf.onResult(result);if(result){meta.result=clone(result);if(result.experience)setObservations(result.experience.observations,result.experience.job_id||result.job_id);persist()}}
+  function onResult(result){rf.onResult(result);learning.onResult(result);if(result){meta.result=clone(result);if(result.experience)setObservations(result.experience.observations,result.experience.job_id||result.job_id);persist()}}
   function setObservations(values,jobId){
     observations=values.map(v=>({...v,job_id:jobId}));const a=byId('cmProbeA').value,b=byId('cmProbeB').value;
     const options=observations.map((v,i)=>`<option value="${i}">${meta.probes.includes(v.id)?'📌 ':''}${esc(v.label)} · ${esc(v.domain)} · ${v.count}</option>`).join('');byId('cmProbeA').innerHTML=options;byId('cmProbeB').innerHTML=options;
@@ -328,5 +329,5 @@ window.createCommunicationExperience = function (core) {
   const hint=document.createElement('p');hint.id='cmConnectionHint';hint.className='cm-connection-hint';byId('cmInspector').after(hint);
   window.addEventListener('resize',drawScopes);document.addEventListener('visibilitychange',()=>{if(!document.hidden)drawScopes()});
   async function ready(){receipt=meta.sweepReceipt||null;renderComparisons();try{await refreshProjects()}catch(e){message(e.message)}if(meta.result){try{const b=await api('build',{program:get().program});core.restoreResult(b,meta.result)}catch{}}const saved=meta.scope||{};for(const [key,id] of [['a','cmProbeA'],['b','cmProbeB'],['plot','cmProbePlot'],['offset','cmProbeOffset'],['cursor','cmScopeCursor']])if(saved[key]!==undefined)byId(id).value=saved[key];if(saved.align!==undefined)byId('cmScopeAlign').checked=saved.align;if(saved.scale!==undefined)byId('cmScopeScale').checked=saved.scale;if(saved.difference!==undefined)byId('cmScopeDifference').checked=saved.difference;buttons(get().busy);if(observations.length)loadWindows()}
-  return {matches,decoratePalette,render,selection,insertionIndex,used,parameterChanged,persist,invalidate,editSnapshot,restoreEdit,loadState,restoreDraft,replaceProgram,ready,buttons,runJob,onResult,markError,sweepSettings,importDocument};
+  return {matches,decoratePalette,render,selection,insertionIndex,used,parameterChanged,persist,invalidate,editSnapshot,restoreEdit,loadState,restoreDraft,replaceProgram,ready,buttons,runJob,onResult,markError,sweepSettings,importDocument,prepare:learning.prepare};
 };

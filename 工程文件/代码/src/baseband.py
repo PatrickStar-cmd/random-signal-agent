@@ -12,6 +12,7 @@ import math
 import numpy as np
 from src import receiver_recovery as recovery
 from src import communication_codecs as codec
+from src import communication_business as business
 from src import communication_runtime as runtime
 
 LINE_CODES = {
@@ -196,13 +197,15 @@ def build(program):
         if item['kind'] not in c.SOURCES: break
         sources.append(item)
     if not sources: raise ValueError('基带链路需要开头的信源。')
-    analog = sources[0]['kind'] in ('sine', 'square', 'gaussian')
-    if any((b['kind'] in ('sine', 'square', 'gaussian')) != analog for b in sources): raise ValueError('两类信源不能混合。')
-    source_counts = [program['sample_count'] if analog else b['params']['count'] if b['kind'] in ('random_bits','pn_bits') else len(b['params']['pattern']) if b['kind'] == 'bit_pattern' else len(b['params']['text'].encode()) * 8 for b in sources]
+    analog = sources[0]['kind'] in ('sine', 'square', 'gaussian','audio_source')
+    if any((b['kind'] in ('sine', 'square', 'gaussian','audio_source')) != analog for b in sources): raise ValueError('两类信源不能混合。')
+    if any(b['kind'] in business.SOURCES-{'discrete_source'} for b in sources) and len(sources)!=1: raise ValueError('媒体信源使用独立链路，以保持文件和样本边界。')
+    source_counts = [c.advanced_communications.source_count(b,program) for b in sources]
     for b in sources:
         if b['kind']=='pn_bits': codec.pn(1,b['params']['degree'],b['params']['initial'])
     count = program['sample_count'] if analog else sum(source_counts)
     if not analog and count > c.CONFIG['max_source_bits']: raise ValueError('合并数字信源超过上限。')
+    preview=c.source_data(program)[0] if any(b['kind']=='huffman_encode' for b in items) else None
     domain = '模拟样本' if analog else '比特'; direction = 'tx'; stack = []; modulator = None; channels = 0; attenuation = 0; line = None
     plan = [{'id': b['id'], 'label': c.BLOCKS[b['kind']]['label'], 'output': domain, 'count': size} for b, size in zip(sources, source_counts)]
     for index, b in enumerate(items[len(sources):], len(sources)):
@@ -211,6 +214,7 @@ def build(program):
         if kind in c.ENCODERS:
             if kind == 'puncture': fail('打孔卷积码需要 PSK/QAM 软解调链路。')
             if direction != 'tx': fail('发转换器须放在波形形成器前。')
+            if preview is not None: preview=business.preview_encode(kind,preview,params)
             if kind.startswith('line_'):
                 if domain != '比特': fail('线路编码器需要比特，模拟信源请先 PCM 编码。')
                 line = kind; count *= expansion(line_scheme(kind), params); domain = '线路电平'
@@ -223,7 +227,8 @@ def build(program):
             else:
                 if domain != '比特': fail('信道编码/交织需要比特，须位于线路编码之前。')
                 if kind == 'ldpc_encode': fail('LDPC 请连接 PSK/QAM 软解调链路。')
-                if kind in ('crc_append','scramble'):
+                if kind=='huffman_encode': count=len(preview)
+                elif kind in ('crc_append','scramble','bch_encode','rs_encode','packet_encode'):
                     count=codec.encoded_count(kind,count,params)
                     if kind=='scramble': codec.pn(1,params['degree'],params['initial'])
                 elif kind == 'repeat_encode': count *= params['factor']
@@ -278,7 +283,7 @@ def build(program):
 def run(compiled, source, texts, source_count, rng):
     from src import communications as c
     p = compiled['program']; data = source.copy(); reference = source.copy() if compiled['source_kind'] == 'digital' else None
-    stack = []; clipped = corrections = violations = 0; gain = 1.; warnings = []; line_params = None; recovery_info = {}; codec_info=[]
+    stack = []; clipped = corrections = violations = 0; gain = 1.; warnings = []; line_params = None; recovery_info = {}; codec_info=[];learning=[]
     for block in p['blocks'][source_count:]:
         runtime.enter(block)
         kind, params = block['kind'], block['params']
@@ -287,7 +292,8 @@ def run(compiled, source, texts, source_count, rng):
             if kind.startswith('line_'):
                 coded = data.copy(); line_params = params; scheme = line_scheme(kind); data = line_encode(data, scheme, params)
             elif kind in set(codec.PAIRS.values())-{'conv_encode'}:
-                data=codec.encode(kind,data,params)
+                if kind=='huffman_encode': data,lesson=business.huffman_encode(data,True);learning.append(lesson)
+                else: data=codec.encode(kind,data,params)
                 if kind in codec.SOURCE_CODECS: reference=data.copy()
             elif kind == 'pcm_encode':
                 clipped = int(np.count_nonzero(abs(data) > params['full_scale']))
@@ -373,9 +379,11 @@ def run(compiled, source, texts, source_count, rng):
             if kind.startswith('line_'): data, violations = line_decode(data, line_scheme(kind), params); demapped = data.copy()
             elif kind in codec.PAIRS:
                 data,details=codec.decode(kind,data,params); codec_info.append({'kind':kind,**details})
+                if kind=='adpcm_decode': learning.append(details)
+                if 'learning' in details: learning.append(details['learning'])
             elif kind == 'repeat_decode': data = (data.reshape(-1, params['factor']).sum(axis=1) > params['factor']//2).astype(np.uint8)
             elif kind == 'hamming_decode': data, n = c.hamming_decode(data); corrections += n
-            elif kind == 'conv_decode': data = c.viterbi_decode(data)
+            elif kind == 'conv_decode': data,lesson = c.viterbi_decode(data,True);learning.append(lesson)
             elif kind == 'deinterleave': data = data.reshape(params['columns'], -1).T.ravel()
             else:
                 decoded_bits = data.copy(); quantized = data.reshape(-1, params['bits']).dot(2 ** np.arange(params['bits'] - 1, -1, -1))
@@ -416,4 +424,7 @@ def run(compiled, source, texts, source_count, rng):
         checks=[v['crc_pass'] for v in codec_info if 'crc_pass' in v]
         metrics.update(crc_pass=all(checks) if checks else None,crc_detected_frame_errors=int(not all(checks)) if checks else None)
     if not analog and len(texts)==source_count: result['text']={'sent':b''.join(texts).decode(),'received':np.packbits(decoded_bits).tobytes().decode('utf-8',errors='replace')}
+    media=business.media_result(p,source,data)
+    if media: result['sink']['media']=media
+    if learning: result['learning']=learning
     return result

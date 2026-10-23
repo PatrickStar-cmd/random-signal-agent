@@ -111,7 +111,7 @@ class CommunicationTests(unittest.TestCase):
 
     def test_parameters_reject_nonfinite_wrong_types_unknown_fields_and_ids(self):
         original=c.PRESETS['digital']['program']
-        for key,value in [('seed',True),('sample_rate',float('nan')),('sample_count',1025),('symbol_rate',float('inf')),('schema',True),('schema',2),('unknown',1)]:
+        for key,value in [('seed',True),('sample_rate',float('nan')),('sample_count',c.CONFIG['max_samples']+1),('symbol_rate',float('inf')),('schema',True),('schema',2),('unknown',1)]:
             p=copy.deepcopy(original);p[key]=value
             with self.subTest(key=key),self.assertRaises(ValueError):c.build(p)
         p=copy.deepcopy(original);p['blocks'][0]['params']['surprise']=1
@@ -521,7 +521,7 @@ class ReceiverRecoveryTests(unittest.TestCase):
         self.assertEqual(c.build(p),c.build(legacy))
         cases=[c.preset(['random_bits','mod_pam','ideal','demod_pam','sink'],{3:{'equalizer':5}}),
                c.preset(['random_bits','mod_pam','ideal','demod_pam','sink'],{1:{'training_symbols':32},3:{'equalizer':5,'half_taps':8}}),
-               c.preset(['random_bits','mod_pam','ideal','demod_pam','sink'],{1:{'training_symbols':2048,'sps':32}}),
+               c.preset(['random_bits','mod_pam','ideal','demod_pam','sink'],{0:{'count':c.CONFIG['max_source_bits']},1:{'training_symbols':2048,'sps':32}}),
                c.preset(['random_bits','mod_pam','clock_drift','clock_drift','clock_drift','demod_pam','sink'],{2:{'ppm':500},3:{'ppm':500},4:{'ppm':500}})]
         for case in cases:
             with self.assertRaises(ValueError):c.build(case)

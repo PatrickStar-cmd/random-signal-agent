@@ -41,7 +41,7 @@ class ExperienceTests(unittest.TestCase):
             self.assertEqual([v['id'] for v in ctx.observations],[v['id'] for v in b['program']['blocks']],name)
             self.assertTrue(all(np.isfinite(v['rms']) for v in ctx.observations))
     def test_new_presets_and_catalog_contracts(self):
-        catalog=c.catalog();self.assertEqual(len(catalog['blocks']),151)
+        catalog=c.catalog();self.assertEqual(len(catalog['blocks']),179)
         for block in catalog['blocks']:self.assertIn('inputs',block);self.assertIn('output',block)
         for name in ('agc_soft','resample_receiver','fractional_equalizer','ofdm_cfo_tracking','burst_interleave'):
             r=execute(c.PRESETS[name]['program']);self.assertLess(r['metrics']['ber'],.02,name)

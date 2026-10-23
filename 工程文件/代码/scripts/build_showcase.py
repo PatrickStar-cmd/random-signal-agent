@@ -71,6 +71,16 @@ def decorate_preview(page):
         <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.4">下载 v0.4.4</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v044.md">体验与算法指南</a></p></section>''',1)
     if 'id="rf-analysis-preview"' not in page:
         page=page.replace('<main>','<main>'+'<section id="rf-analysis-preview"><h2>v0.4.5 · 真实收发链路与实验分析更新 🌊</h2><p>150 个可添加模块、64 个示例、7 项实验任务。高阶调制、I/Q 校正、功放、ADC、OFDM 削峰、窄带干扰和打孔编码，配合 Welch、CCDF、ACLR、资源栅格、自动对齐与效率分析。</p><a href="images/communications-v045-analysis.png"><img class="preview-image" src="images/communications-v045-analysis.png" alt="v0.4.5 海洋射频测量仪表" loading="lazy"></a><p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.5">下载 v0.4.5</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v045.md">射频与测量指南</a></p></section>',1)
+    if 'id="business-learning-preview"' not in page:
+        page=page.replace('<main>','''<main><section id="business-learning-preview"><h2>v0.4.7 · 业务传输与教学实验增强 🐬</h2>
+        <p><strong>178 个可添加积木 · 78 个实验示例 · 9 项教学挑战</strong>。海洋风格工作区将真实业务传输、扩频多天线与逐步教学连接起来。</p>
+        <p>🎙️ 传输音频、灰度图像和文件，播放接收声音、比较 PSNR、核验文件 SHA256。🗜️ Huffman、IMA ADPCM、BCH、RS 与分包 / 组包组成压缩、纠错和重建链路。</p>
+        <p>📡 DSSS、码相位捕获、解扩与 RAKE；SIMO SC/MRC、Alamouti 2×1、2×2 MIMO ZF/MMSE。观察真实相关峰、路径增益、各天线数据和公共训练估计。</p>
+        <p>🎓 工程变量与公式、二维扫描热图、Huffman/Viterbi/LDPC/星座过程、挑战验收和工程差异；ARQ/HARQ 与五档 AMC 反馈实验；导出可运行 Python、结果 JSON 和海洋配色 SVG。</p>
+        <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.7">📦 下载 v0.4.7</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v047.md">📘 业务与教学指南</a></p>
+        <a href="images/communications-v047-learning.png"><img class="preview-image" src="images/communications-v047-learning.png" alt="v0.4.7 海洋风格教学实验、算法演示与实验分析" loading="lazy"></a>
+        <a href="images/communications-v047-media.png"><img class="preview-image" src="images/communications-v047-media.png" alt="v0.4.7 业务信源、传输链路与接收内容对照" loading="lazy"></a>
+        </section>''',1)
     return page
 
 

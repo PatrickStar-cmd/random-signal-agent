@@ -7,6 +7,8 @@ from src import communication_codecs as codec, communication_dsp as dsp
 from src import communication_runtime as runtime
 from src import communication_algorithms as algorithms
 from src import communication_rf as rf
+from src import communication_business as business
+from src import communication_wireless as wireless
 
 SYMBOL_SCHEMES=set(rf.SCHEMES)|{'ook','dbpsk','dqpsk'}
 WAVE_SCHEMES={'fsk2','msk','gmsk'}
@@ -18,6 +20,7 @@ EXT_ENCODERS=set(codec.PAIRS.values())-{'conv_encode'}
 
 def source_count(block, p):
     k,q=block['kind'],block['params']
+    if k in business.SOURCES: return business.source_count(k,q,p)
     if k in ('random_bits','pn_bits'): return q['count']
     if k=='bit_pattern': return len(q['pattern'])
     if k=='text': return len(q['text'].encode('utf-8'))*8
@@ -31,18 +34,29 @@ def build(p):
         if b['kind'] not in c.SOURCES: break
         sources.append(b)
     if not sources: raise ValueError('链路开头需要信源。')
-    analog=sources[0]['kind'] in ('sine','square','gaussian')
-    if any((b['kind'] in ('sine','square','gaussian'))!=analog for b in sources): raise ValueError('模拟与数字信源不能直接混合。')
+    analog=sources[0]['kind'] in ('sine','square','gaussian','audio_source')
+    if any((b['kind'] in ('sine','square','gaussian','audio_source'))!=analog for b in sources): raise ValueError('模拟与数字信源不能直接混合。')
+    if any(b['kind'] in business.SOURCES-{'discrete_source'} for b in sources) and len(sources)!=1: raise ValueError('媒体信源使用独立链路，以保持文件和样本边界。')
     count=p['sample_count'] if analog else sum(source_count(b,p) for b in sources)
     if not analog and count>c.CONFIG['max_source_bits']: raise ValueError('合并信源超过比特上限。')
     for b in sources:
         if b['kind']=='pn_bits': codec.pn(1,b['params']['degree'],b['params']['initial'])
+    preview=c.source_data(p)[0] if any(b['kind']=='huffman_encode' for b in items) else None
     domain='模拟样本' if analog else '比特'; direction='tx'; stack=[]; channels=0; scheme=None; features={}; consumed=set(); attenuation=0;receive_sps=1
     plan=[{'id':b['id'],'label':c.BLOCKS[b['kind']]['label'],'kind':b['kind'],'output':domain,'count':source_count(b,p)} for b in sources]
     for index,b in enumerate(items[len(sources):],len(sources)):
         k,q=b['kind'],b['params']; before=count
         def fail(message): raise ValueError(f'第 {index+1} 块「{c.BLOCKS[k]["label"]}」：{message}')
-        if k in c.ENCODERS:
+        if domain=='多天线符号' and k not in wireless.KINDS: fail('多天线数据先经过多天线信道与配对合并，再连接其他处理。')
+        if domain=='扩频码片' and k in RX_PROCESS: fail('扩频码片先经过码捕获与解扩，再连接符号处理。')
+        if k in wireless.KINDS:
+            if k in wireless.TX and direction!='signal_tx': fail('无线发送处理放在数字映射之后、信道之前。')
+            if k in wireless.CHANNEL and direction not in ('signal_tx','channel'): fail('无线信道放在发送处理之后。')
+            if k in wireless.RX and direction not in ('channel','signal_rx'): fail('无线接收处理放在信道之后。')
+            domain,count=wireless.build_stage(k,q,domain,count,features)
+            if k in wireless.CHANNEL: channels+=1;direction='channel'
+            elif k in wireless.RX: consumed.add(k);direction='signal_rx'
+        elif k in c.ENCODERS:
             if direction!='tx': fail('编码器须位于调制映射之前。')
             if k.startswith('line_'): fail('线路编码请连接实基带形成器。')
             if k in codec.SOURCE_CODECS or k=='pcm_encode':
@@ -51,7 +65,9 @@ def build(p):
             elif domain!='比特': fail('先将模拟信源编码成比特。')
             if k=='puncture' and (not stack or stack[-1][0]!='conv_encode'): fail('打孔须紧接卷积编码器。')
             stack.append((k,q,count))
-            if k in EXT_ENCODERS: count=codec.encoded_count(k,count,q)
+            if preview is not None: preview=business.preview_encode(k,preview,q)
+            if k=='huffman_encode': count=len(preview)
+            elif k in EXT_ENCODERS: count=codec.encoded_count(k,count,q)
             elif k=='pcm_encode': count*=q['bits']
             elif k=='repeat_encode': count*=q['factor']
             elif k=='hamming_encode': count=math.ceil(count/4)*7
@@ -87,7 +103,8 @@ def build(p):
             if k=='tx_clip_filter' and domain!='OFDM 波形': fail('削峰滤波需要发送 OFDM 波形。')
         elif k in c.CHANNELS:
             if direction not in ('signal_tx','channel') and not (k=='adc' and direction=='signal_rx'): fail('信道须放在发送处理之后、接收处理之前。')
-            if domain not in ('复符号','复采样波形','OFDM 波形'): fail('信道输入须为复符号或波形。')
+            if domain not in ('复符号','复采样波形','OFDM 波形','扩频码片'): fail('信道输入须为复符号或波形；多天线信号使用多天线信道。')
+            if domain=='扩频码片' and k not in {'ideal','complex_awgn','narrowband','attenuation','phase_shift','complex_multipath'}: fail('扩频码片使用复噪声、多径、窄带干扰或增益相位信道。')
             allowed={'ideal','awgn','complex_awgn','attenuation','phase_shift','dropout','frequency_offset','phase_noise','sample_delay','complex_multipath','rayleigh','rician','clock_drift','timing_offset','time_multipath','burst_noise'}
             allowed |= rf.CHANNEL
             if k=='adc' and direction=='signal_rx' and consumed-{'rx_agc','rx_dc','rx_notch'}: fail('ADC 放在接收前端、重采样和匹配滤波之前。')
@@ -104,7 +121,7 @@ def build(p):
             if k=='attenuation':
                 attenuation+=q['db']
                 if attenuation>100: fail('总衰减须不超过 100 dB。')
-            fs=p['symbol_rate']*features.get('tx_rrc',{}).get('params',{}).get('sps',features.get('tx_ofdm',{}).get('params',{}).get('nfft',features['modulator']['params'].get('sps',1)))
+            fs=p['symbol_rate']*features.get('wireless',{}).get('rate_factor',1)*features.get('tx_rrc',{}).get('params',{}).get('sps',features.get('tx_ofdm',{}).get('params',{}).get('nfft',features['modulator']['params'].get('sps',1)))
             if k in ('frequency_offset','narrowband') and abs(q['hz'])>=fs/2: fail('频偏须小于采样率的一半。')
             if k in ('rayleigh','rician','time_multipath') and q['doppler']>=fs/2: fail('多普勒须小于采样率的一半。')
             channels+=1; direction='signal_rx' if direction=='signal_rx' else 'channel'
@@ -161,6 +178,7 @@ def build(p):
                 if domain!='OFDM 波形' or 'tx_ofdm' not in features: fail('OFDM 接收需要配对的发送 OFDM。')
                 count=features['tx_ofdm']['input_count']; domain='复符号';consumed.add('rx_ofdm')
         elif k.startswith('demod_') or k.startswith('soft_'):
+            wireless.validate_receiver(features)
             requested=k.split('_',1)[1]
             if direction not in ('channel','signal_rx') or not channels or requested!=scheme: fail('解调方式须与发送映射匹配。')
             if scheme in SYMBOL_SCHEMES and domain!='复符号': fail('先完成波形接收滤波 / 抽样或 OFDM 解调。')
@@ -203,16 +221,26 @@ def run(compiled, source, texts, source_count, rng):
     p=compiled['program']; f=compiled['features']; data=source.copy(); analog=compiled['source_kind']=='analog'
     reference=None if analog else source.copy(); stack=[]; info={}; snapshots=[]; recovery={}; gain=1+0j; prefix=0
     fs=p['symbol_rate']; tx=None; channel=None; tx_power=1.; in_channel=False; decoded_bits=None; clipped=corrections=0; eye=None;noise_estimate=None
-    rf_stages=[]
+    rf_stages=[];learning=[];wireless_state={}
     receive_sps=f.get('receiver_sps',f.get('tx_rrc',{}).get('params',{}).get('sps',1))
     for b in p['blocks'][source_count:]:
         runtime.enter(b)
         k,q=b['kind'],b['params']; before=len(data)
-        if k in c.ENCODERS:
+        if k in wireless.KINDS:
+            if k in wireless.CHANNEL and not in_channel:
+                tx=data.copy();tx_power=float(np.mean(abs(tx)**2));in_channel=True
+            data,details,fs=wireless.run_stage(k,data,q,wireless_state,rng,fs)
+            info.setdefault('wireless',{})[k]=details
+            if k in wireless.CHANNEL: channel=data.copy()
+            if k in wireless.RX:
+                snapshots.append({'id':b['id'],'label':c.BLOCKS[k]['label'],**view(data,c.CONFIG['plot_points'],fs)})
+                if k!='rx_code_acquire': gain=1+0j
+        elif k in c.ENCODERS:
             stack.append((k,q,before))
             if k in EXT_ENCODERS:
                 if k=='compand_encode': clipped=int(np.count_nonzero(abs(data)>q['full_scale']))
-                data=codec.encode(k,data,q)
+                if k=='huffman_encode': data,lesson=business.huffman_encode(data,True);learning.append(lesson)
+                else: data=codec.encode(k,data,q)
                 if k in codec.SOURCE_CODECS: reference=data.copy()
             elif k=='pcm_encode':
                 clipped=int(np.count_nonzero(abs(data)>q['full_scale']))
@@ -321,9 +349,11 @@ def run(compiled, source, texts, source_count, rng):
             if k=='depuncture': data=codec.depuncture(data,size,q['rate'])
             elif k in codec.PAIRS:
                 data,details=codec.decode(k,data,q); info.setdefault('codecs',[]).append({'kind':k,**details})
+                if k=='adpcm_decode': learning.append(details)
+                if 'learning' in details: learning.append(details['learning'])
             elif k=='repeat_decode': data=(data.reshape(-1,q['factor']).sum(axis=1)>q['factor']//2).astype(np.uint8)
             elif k=='hamming_decode': data,n=c.hamming_decode(data); corrections+=n
-            elif k=='conv_decode': data=c.viterbi_decode(data)
+            elif k=='conv_decode': data,lesson=c.viterbi_decode(data,True);learning.append(lesson)
             elif k=='deinterleave': data=data.reshape(q['columns'],-1).T.ravel()
             elif k=='pcm_decode': data=codec.bits_to_words(data,q['bits'])/(2**q['bits']-1)*2*q['full_scale']-q['full_scale']
             data=data[:size]
@@ -339,12 +369,13 @@ def run(compiled, source, texts, source_count, rng):
              'rmse':float(np.sqrt(np.mean((data-source)**2))) if analog else None,'clipped_samples':clipped,'hamming_syndromes':corrections,
              'frame_errors':frame_error,'frame_count':1,'fer':float(frame_error),'crc_pass':all(crc_results) if crc_results else None,
              'crc_detected_frame_errors':int(not all(crc_results)) if crc_results else None,'tx_energy':float(np.sum(abs(tx)**2)), 'tx_sample_count':len(tx)}
+    if 'spatial' in wireless_state: metrics['tx_energy']=float(np.sum(abs(wireless_state['spatial']['tx'])**2))
     scatter=min(len(decision_symbols),c.CONFIG['scatter_points']); n=min(len(tx),1024)
     spectrum=abs(np.fft.fftshift(np.fft.fft(tx)))**2/(len(tx)*channel_fs(compiled))
     frequency=np.fft.fftshift(np.fft.fftfreq(len(tx),1/channel_fs(compiled)))
     selected=np.linspace(0,len(tx)-1,min(1024,len(tx)),dtype=int); spectrum=spectrum[selected]; frequency=frequency[selected]
     shown=c.CONFIG['plot_points']
-    advanced={'scheme':scheme.upper(),'sample_rate':channel_fs(compiled),'transmitter':view(tx,shown,channel_fs(compiled)), 'warnings':[], 'spectrum':{'frequency_hz':frequency.tolist(),'density_db':(10*np.log10(np.maximum(spectrum,1e-12))).tolist()},'recovery':recovery,'stages':snapshots,**info}
+    advanced={'scheme':scheme.upper(),'sample_rate':channel_fs(compiled),'transmitter':view(tx,shown,channel_fs(compiled)), 'warnings':[], 'spectrum':{'frequency_hz':frequency.tolist(),'density_db':(10*np.log10(np.maximum(spectrum,1e-12))).tolist()},'recovery':recovery,'stages':snapshots,'learning':learning,**info}
     if eye is not None: advanced['eye']=eye
     if any(b['kind']=='pn_bits' for b in p['blocks']):
         bits=2*source.astype(float)-1; autocorr=np.fft.ifft(abs(np.fft.fft(bits))**2).real/len(bits)
@@ -354,6 +385,8 @@ def run(compiled, source, texts, source_count, rng):
             'channel':view(channel,shown,channel_fs(compiled)), 'advanced':advanced,
             'constellation':{'scheme':scheme,'count':scatter,'i':decision_symbols[:scatter].real.tolist(),'q':decision_symbols[:scatter].imag.tolist(),'ideal_i':points.real.tolist(),'ideal_q':points.imag.tolist(),'labels':[]},'text':None}
     if not analog and len(texts)==source_count: result['text']={'sent':b''.join(texts).decode('utf-8'),'received':np.packbits(decoded_bits).tobytes().decode('utf-8',errors='replace')}
+    media=business.media_result(p,source,data)
+    if media: result['sink']['media']=media
     result['analysis']=rf.analyze(tx,channel,mapped,decision_symbols,channel_fs(compiled),bit_count,info.get('ofdm'),rf_stages)
     metrics.update(net_bit_rate=result['analysis']['net_bit_rate'],spectral_efficiency=result['analysis']['spectral_efficiency'],papr_db=result['analysis']['tx']['papr_db'])
     json.dumps(result,allow_nan=False)
@@ -361,7 +394,7 @@ def run(compiled, source, texts, source_count, rng):
 
 
 def channel_fs(compiled):
-    f=compiled['features']; return compiled['program']['symbol_rate']*f.get('tx_rrc',{}).get('params',{}).get('sps',f.get('tx_ofdm',{}).get('params',{}).get('nfft',f['modulator']['params'].get('sps',1)))
+    f=compiled['features']; return compiled['program']['symbol_rate']*f.get('wireless',{}).get('rate_factor',1)*f.get('tx_rrc',{}).get('params',{}).get('sps',f.get('tx_ofdm',{}).get('params',{}).get('nfft',f['modulator']['params'].get('sps',1)))
 
 
 def eye_view(wave,q):
