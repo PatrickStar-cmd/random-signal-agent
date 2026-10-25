@@ -345,3 +345,16 @@ v0.3.4 发行：运行 `python scripts/build_release.py` 从已提交源码生�
 专项验收日志覆盖 `logs/communications-v047/`，其中 `learning-tests.log` 覆盖参数公式、二维恢复、CRC 分包、ARQ/HARQ、AMC、挑战、API、工程持久化与导出脚本。临时材料和修订前文档备份保存于 `debug/v047/`。发布继续执行 `scripts/build_release.py` 与 `scripts/verify_release.py`；清洁解包验收包含全部新增模块、页面资产及三个专项套件。
 
 “🐍 导出 Python 实验”生成 `communication_experiment.py`，将其放在部署包的代码运行目录，执行 `python communication_experiment.py`，得到完整结果 `communication_experiment_result.json` 与海洋配色图 `communication_experiment_plot.svg`。JSON 包含链路、种子、变量定义和全部仿真结果；SVG 展示信宿波形与星座。
+
+## v0.4.8 闭环链路与空间通信
+
+先选择自建链路进行闭环协议，再把接收部分封装为子工程；随后依次运行 SIC、动态 MIMO、MIMO-OFDM、OFDMA 和 FHSS 预设。空间图表、子工程库与 I/Q 录波位于「🛰️ 空间与子工程」，任务编辑和实验队列位于「🎓 教学实验」。完整操作与 API 见 [v0.4.8 指南](communications-v048.md)。
+
+```powershell
+.venv/Scripts/python.exe -m unittest discover -s scripts -p "test_*.py"
+node scripts/verify_communications_ui.js
+.venv/Scripts/python.exe scripts/benchmark_algorithms.py
+.venv/Scripts/python.exe scripts/verify_reproduction.py
+```
+
+验证日志覆盖 `logs/communications-v048/`，发布验证覆盖 `logs/release/`；临时材料与修订前文档保存在 `debug/v048/`。提交后执行 `scripts/build_release.py` 和 `scripts/verify_release.py`，再核对 Windows/Linux Python 3.12–3.14、Docker 与 Pages。

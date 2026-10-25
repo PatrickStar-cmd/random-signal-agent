@@ -30,6 +30,13 @@ def record(block,data,rate=None):
     return ctx.record(block,data,rate) if ctx else data
 
 
+def decision(block, symbols, scheme, data, noise_variance=None):
+    """Apply a packet receiver's soft-combining hook at the actual demodulator."""
+    ctx = CURRENT.get()
+    callback = getattr(ctx, 'on_decision', None)
+    return callback(block, symbols, scheme, data, noise_variance) if callback else data
+
+
 def state(name,initial):
     ctx=CURRENT.get()
     if ctx is None or ctx.states is None: return initial()

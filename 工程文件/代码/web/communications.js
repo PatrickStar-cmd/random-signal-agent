@@ -52,6 +52,7 @@
   }
   function parameterHTML(b,entries=Object.entries(definitions[b.kind].params)){
     return entries.map(([key,spec])=>{
+      if(b.kind==='iq_source'&&key==='data')return '';
       const val=Object.hasOwn(b.params,key)?b.params[key]:spec.default,data=`form="cmForm" data-block-id="${esc(b.id)}" data-param="${key}"`,id=esc(`cm-${b.id}-${key}`),label=esc(spec.label);
       if(spec.type==='boolean')return `<label class="cm-boolean" for="${id}"><input id="${id}" ${data} type="checkbox" ${val?'checked':''}>${label}</label>`;
       if(spec.type==='select')return `<label for="${id}">${label}<select id="${id}" ${data}>${spec.choices.map(v=>`<option value="${v}" ${v===val?'selected':''}>${esc(String(spec.choice_labels?.[v]??v))}</option>`).join('')}</select></label>`;
@@ -60,7 +61,7 @@
     }).join('');
   }
   function summaryHTML(b){
-    const def=definitions[b.kind],preferred=b.kind.startsWith('demod_')&&Object.hasOwn(def.params,'equalizer')?['equalizer','adaptive_algorithm']:b.kind==='mod_baseband'?['pulse','sps']:b.kind==='mod_pam'?['order','pulse']:Object.keys(def.params).slice(0,2);
+    const def=definitions[b.kind],preferred=b.kind==='iq_source'?['name','rate_hz']:b.kind.startsWith('demod_')&&Object.hasOwn(def.params,'equalizer')?['equalizer','adaptive_algorithm']:b.kind==='mod_baseband'?['pulse','sps']:b.kind==='mod_pam'?['order','pulse']:Object.keys(def.params).slice(0,2);
     return preferred.map(key=>{const spec=def.params[key],value=Object.hasOwn(b.params,key)?b.params[key]:spec.default;
       const label=spec.type==='boolean'?(value?'开启':'关闭'):spec.type==='select'?(spec.choice_labels?.[value]??value):value;
       const text=label===null||label===''?'待填写':String(label);
@@ -179,7 +180,7 @@
   };
   byId('cmRun').onclick=async()=>{
     if(busy||!compiled)return;busy=true;result=null;showResult();buttons();const rev=revision,built=compiled;status('Run：正在生成信源、传输并译码…');
-    try{const received=studio?await studio.runJob('run',{program:built.program,token:built.token}):await api('run',{program:built.program,token:built.token});if(rev!==revision)return;result=received;showResult();status(result.transport==='analog'?`Run 完成：${result.analog.scheme} 恢复 ${result.sink.count} 个模拟样本，RMSE ${result.metrics.rmse.toPrecision(4)}。`:`Run 完成：信宿收到 ${result.sink.count} ${result.sink.kind==='analog'?'个样本':'个比特'}，错误比特 ${result.metrics.bit_errors} / ${result.metrics.bit_count}。`)}
+    try{const received=studio?await studio.runJob('run',{program:built.program,token:built.token}):await api('run',{program:built.program,token:built.token});if(rev!==revision)return;result=received;showResult();status(result.transport==='iq'?`Run 完成：已回放 ${result.advanced.iq.samples} 个复采样，恢复 ${result.sink.count} 个比特。`:result.transport==='analog'?`Run 完成：${result.analog.scheme} 恢复 ${result.sink.count} 个模拟样本，RMSE ${result.metrics.rmse.toPrecision(4)}。`:`Run 完成：信宿收到 ${result.sink.count} ${result.sink.kind==='analog'?'个样本':'个比特'}，错误比特 ${result.metrics.bit_errors} / ${result.metrics.bit_count}。`)}
     catch(error){status(error.message,true)}finally{busy=false;buttons()}
   };
   function download(name,content,mime){const url=URL.createObjectURL(new Blob([content],{type:mime})),link=document.createElement('a');link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000)}
@@ -202,6 +203,7 @@
   };
   byId('cmDownloadCSV').onclick=()=>{
     if(!result)return;const s=result.sink,analog=s.kind==='analog';
+    if(result.transport==='iq'){download('iq-received-bits.csv','bit_index,received\n'+s.values.map((v,i)=>`${i},${v}`).join('\n')+'\n','text/csv');return}
     const lines=[analog?'sample_index,time_s,source,received':'bit_index,source,received,bit_error'];
     for(let i=0;i<s.count;i++)lines.push(analog?`${i},${i/s.sample_rate},${s.reference[i]},${s.values[i]}`:`${i},${s.reference[i]},${s.values[i]},${s.reference[i]!==s.values[i]?1:0}`);
     download('communication-sink.csv',lines.join('\n')+'\n','text/csv');
@@ -237,6 +239,7 @@
     byId('cmTrace').innerHTML=plan.length?`<table><thead><tr><th>积木</th><th>输出类型</th><th>数量</th></tr></thead><tbody>${plan.map(row=>`<tr><td>${esc(row.label)}</td><td>${esc(row.output)}</td><td>${row.count}</td></tr>`).join('')}</tbody></table>`:'Build 后显示逐级信号类型和数据量。';
     if(!result){byId('cmDetails').textContent='';return}
     const m=result.metrics;
+    if(result.transport==='iq'){byId('cmDetails').textContent=`I/Q 录波：${result.advanced.iq.name} · ${result.advanced.iq.samples} 点 · ${result.advanced.sample_rate} Hz · 恢复 ${result.sink.count} 个比特`;return;}
     if(result.advanced){
       const a=result.advanced,r=a.recovery,f=r.frame;
       byId('cmDetails').textContent=`${a.scheme}；SER ${(100*m.ser).toFixed(3)}%；${m.crc_pass===null?'':`CRC ${m.crc_pass?'通过':'未通过'}；`}${r.frequency?`估计频偏 ${r.frequency.estimated_hz.toFixed(3)} Hz；`:''}${f?`帧同步${f.detected?'成功':'未锁定'}，相关峰 ${f.peak.toFixed(3)}，起点 ${f.start_symbol}；`:''}${a.ofdm?`OFDM ${a.ofdm.nfft} 点，CP ${a.ofdm.cp}，PAPR ${a.ofdm.papr_db.toFixed(2)} dB；`:''}${(a.codecs||[]).filter(v=>v.kind==='ldpc_decode').map(v=>`LDPC ${v.iterations} 次迭代，${v.failed_codewords} 个码字校验未通过。`).join('')}`;return;
@@ -255,7 +258,7 @@
     byId('cmNoSignal').hidden=!!result;byId('cmSignalLed').classList.toggle('on',!!result);byId('cmSignalStatus').textContent=result?'信号已抵达':'无信号';byId('cmLegend').hidden=!result;
     byId('cmTextResult').hidden=!result?.text;byId('cmReceivedText').textContent=result?.text?.received||'';
     const m=result?.metrics,analog=result?.sink.kind==='analog',direct=result?.transport==='analog',wave=result?.analog||result?.baseband||result?.advanced;
-    const rows=direct?[
+    const rows=result?.transport==='iq'?[['录波采样数',String(result.advanced.iq.samples),'完整复数 I/Q 采样'],['接收比特数',String(result.sink.count),result.advanced.scheme],['采样率',result.advanced.sample_rate+' Hz','录波元数据'],['接收功率',m.rx_power.toPrecision(4),'判决前平均复功率']]:direct?[
       ['信宿 RMSE',m.rmse.toPrecision(4),'相对原始模拟信源'],
       ['恢复样本数',String(result.sink.count),`${result.analog.scheme} · ${result.analog.sample_rate} Hz`],
       ['输出信误比',m.rmse<=1e-12?'无误差':m.output_snr_db===null?'—':m.output_snr_db.toFixed(2)+' dB','原始信源功率 / 全段误差功率'],
@@ -316,7 +319,7 @@
     byId('cmSinkCaption').textContent=`${analog?'接收模拟波形':'接收比特序列'} · 第 ${start+1}–${start+n} / ${s.count} ${analog?'点':'位'}`;
     if(byId('cmReference').checked)line(view,reference,axis,'#c8adfa',!analog,1.3);
     line(view,values,axis,'#70ead0',!analog,1.8);
-    if(!analog){view.x.fillStyle='#ff9cae';values.forEach((v,i)=>{if(v!==reference[i]){view.x.beginPath();view.x.arc(axis.px(i),axis.py(v),3,0,2*Math.PI);view.x.fill()}})}
+    if(!analog&&reference.length){view.x.fillStyle='#ff9cae';values.forEach((v,i)=>{if(v!==reference[i]){view.x.beginPath();view.x.arc(axis.px(i),axis.py(v),3,0,2*Math.PI);view.x.fill()}})}
   }
   function drawAnalysis(){
     if(root.hidden)return;const view=surface('cmAnalysisCanvas'),{x,width,height}=view;

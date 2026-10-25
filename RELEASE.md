@@ -1,10 +1,10 @@
-# v0.4.7 · Installation and deployment
+# v0.4.8 · Installation and deployment
 
-**v0.4.7 · 业务传输与教学实验增强 / Business transmission and teaching experiments** adds audio/image/file payloads, Huffman/ADPCM/BCH/RS and packet coding, DSSS/RAKE and multi-antenna reception, shared parameter formulas, 2D sweeps, algorithm traces, nine challenges, experiment differences and Python/SVG export. ARQ/HARQ and five-profile AMC experiments expose actual feedback and decoding. The ocean workspace includes **178 addable blocks and 78 presets**. See the [v0.4.7 guide](工程文件/代码/docs/communications-v047.md).
+**v0.4.8 · 闭环链路与空间通信增强 / Closed-loop links and spatial communication** runs ARQ/HARQ and AMC through user-built physical chains, adds versioned subprojects, SIC, dynamic MIMO, MIMO-OFDM, independent-user OFDMA, FHSS and SigMF/raw I/Q replay. Teaching tasks, multi-project batches and minimum-SNR search extend the ocean workspace to **193 addable blocks and 90 presets**. See the [v0.4.8 guide](工程文件/代码/docs/communications-v048.md).
 
-Download `random-signal-agent-v0.4.7-deploy.zip` from the [v0.4.7 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.7) and extract it; the archive contains source, Web assets, configuration, documentation and example data. Use **Python 3.12–3.14** or **Docker**. The [previous v0.4.6 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.6) remains available.
+Download `random-signal-agent-v0.4.8-deploy.zip` from the [v0.4.8 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.8) and extract it; the archive contains source, Web assets, configuration, documentation and example data. Use **Python 3.12–3.14** or **Docker**. The [previous v0.4.7 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.7) remains available.
 
-Open a terminal in `random-signal-agent/工程文件/代码` (or `random-signal-agent-v0.4.7/工程文件/代码` in a deployment archive).
+Open a terminal in `random-signal-agent/工程文件/代码` (or `random-signal-agent-v0.4.8/工程文件/代码` in a deployment archive).
 
 ## Windows
 
@@ -47,7 +47,7 @@ The check covers health, Web assets, Agent mode, streaming responses, CSV upload
 
 ## 中文说明
 
-下载 v0.4.7 部署包并解压，进入 `工程文件/代码` 后按上方命令启动。支持 Python 3.12–3.14，依赖版本在 `requirements-repro.txt` 固定。也可使用 Docker Compose；默认地址为 <http://127.0.0.1:8000>。实验可导出 ZIP，升级前停止服务并备份整个 `data/` 目录。
+下载 v0.4.8 部署包并解压，进入 `工程文件/代码` 后按上方命令启动。支持 Python 3.12–3.14，依赖版本在 `requirements-repro.txt` 固定。也可使用 Docker Compose；默认地址为 <http://127.0.0.1:8000>。实验可导出 ZIP，升级前停止服务并备份整个 `data/` 目录。
 
 完整应用包含对话、分析、上传及音频处理，不需要外部模型密钥即可使用本地工具链。服务器部署、模型配置与日志查看见[部署说明](工程文件/代码/DEPLOY.md)。
 
@@ -75,9 +75,9 @@ Keys are held in server memory by default. Opting into **记住配置** stores t
 
 The package includes the seven-view ocean interface, transparent AI-generated whale artwork, responsive charts and all local styles/scripts. GitHub Pages is a static preview; API configuration and interactive experiments require the Python backend.
 
-打开“模型与设置 → 模型 API 配置”，选择服务、输入自己的 Key、读取模型列表并“测试并应用”，无需重启。默认只在服务内存保存；勾选“记住配置”后会将 Key 明文写入 `data/model-settings.sqlite3`，需保护该文件及数据备份。可随时切回本地模式或清除配置。v0.4.7 部署包已包含海洋界面及所有图片资源；GitHub Pages 仍为静态预览。
+打开“模型与设置 → 模型 API 配置”，选择服务、输入自己的 Key、读取模型列表并“测试并应用”，无需重启。默认只在服务内存保存；勾选“记住配置”后会将 Key 明文写入 `data/model-settings.sqlite3`，需保护该文件及数据备份。可随时切回本地模式或清除配置。v0.4.8 部署包已包含海洋界面及所有图片资源；GitHub Pages 仍为静态预览。
 
-## PDF analysis reports (v0.4.7)
+## PDF analysis reports (v0.4.8)
 
 In **模板与实验 → PDF 分析报告**, enter report details, choose brief/standard, preview the summary, then download. Reports currently use Chinese and include measured results, vector plots and reproduction information; existing comparison and diagnosis sections appear when available. No model key is required. Blind experiments must be revealed first; true SNR/RMSE need a clean reference.
 
@@ -142,8 +142,8 @@ From v0.4.0, stop the service, retain the existing data/ and needed uploads/outp
 从 v0.4.1 升级：停止服务，保留 data/ 和需要的 uploads/outputs/，替换源码并重启或重建 Docker，再刷新浏览器；没有新增依赖或数据迁移。
 
 
-## v0.4.7 升级与验证
+## v0.4.8 升级与验证
 
 保留 data/、uploads/、outputs/，替换源码后重启服务并刷新浏览器。旧 schema 1 通信工程继续导入；新 schema 2 保存组合、分支、结果和曲线。新增工程库和扫描检查点使用当前会话标识，无数据库迁移或新增生产依赖。备份 data/ 时一并保留 communication-projects/ 和 communication-jobs/。
 
-运行 `scripts/test_communications_business.py`、`scripts/test_communications_wireless.py` 和 `scripts/test_communications_learning.py` 验证本次业务、无线与教学功能；`scripts/verify_release.py` 执行完整回归、540 组基准和部署冒烟。远端检查覆盖 Windows/Linux Python 3.12–3.14 与 Docker 启动及重启持久化。发布附件包含 ZIP、SHA256SUMS.txt 和实际验证汇总 verification.json。
+运行 `scripts/test_communications_closedloop.py`、`scripts/test_communications_spatial.py`、`scripts/test_communications_iq.py`、`scripts/test_communications_experiments.py` 和 `scripts/test_communications_v048_integration.py` 验证本次闭环、空间通信、录波与教学功能；`node scripts/verify_communications_ui.js` 检查前端脚本及交互状态；`scripts/verify_release.py` 执行完整回归、540 组基准和部署冒烟。远端检查覆盖 Windows/Linux Python 3.12–3.14 与 Docker 启动及重启持久化。发布附件包含 ZIP、SHA256SUMS.txt 和实际验证汇总 verification.json。

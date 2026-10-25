@@ -1,0 +1,16 @@
+/* Experiments extend the existing blue/lilac ocean panel and border system. */
+.cm-experiments{margin-top:16px}
+.cm-experiments>section{min-width:0}
+.cm-experiment-details{border:2px solid #a4bedb;border-radius:12px;padding:11px;margin:12px 0;background:#f8fcff;min-width:0}
+.cm-experiment-details>summary{font-size:13px;font-weight:650;color:#405d83;cursor:pointer}
+.cm-task-parameters{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px;margin-top:12px;max-height:260px;overflow:auto}
+.cm-task-parameters>label{display:flex;align-items:center;gap:8px;padding:5px}
+.cm-task-parameters input[type=checkbox]{width:17px;height:17px;flex:0 0 17px;accent-color:#7972bc}
+.cm-task-parameters span{overflow-wrap:anywhere}
+.cm-task-stage{margin-top:12px}
+.cm-task-stage header{margin-bottom:8px}
+.cm-experiment-queue{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0;padding:9px 12px;border:2px solid #a9c4df;border-radius:12px;background:#f8fcff;font-size:13px}
+.cm-experiment-queue>span{overflow-wrap:anywhere;min-width:0}
+.cm-experiments #cmExperimentStop{border-color:#a899c8;background:#f5effa}
+.cm-experiments td{font-variant-numeric:tabular-nums}
+@media(max-width:700px){.cm-task-parameters{grid-template-columns:1fr}.cm-experiment-queue{align-items:start;flex-direction:column}.cm-experiments>.cm-learning-nav{grid-template-columns:1fr}.cm-experiments .cm-learn-actions>label{width:100%}}

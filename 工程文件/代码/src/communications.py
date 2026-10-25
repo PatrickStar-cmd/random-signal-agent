@@ -18,6 +18,7 @@ from src import analog_modulation, baseband, receiver_recovery
 from src import communication_catalog, communication_codecs, advanced_communications
 from src import communication_business as business
 from src import communication_wireless as wireless
+from src import communication_iq as iq
 from src import communication_runtime as runtime
 
 CONFIG = json.loads((Path(__file__).resolve().parents[1] / 'config/communications.json').read_text(encoding='utf-8'))
@@ -127,6 +128,7 @@ block('sink', '信宿', 'sink', '显示接收端译码后的信号。固定在�
 communication_catalog.register(block, number, field, BLOCKS)
 business.register(block, number, field, BLOCKS)
 wireless.register(block, number, field, BLOCKS)
+iq.register(block, number, field, BLOCKS)
 PAIRS = {'pcm_decode': 'pcm_encode', 'repeat_decode': 'repeat_encode', 'hamming_decode': 'hamming_encode', 'conv_decode': 'conv_encode', 'deinterleave': 'interleave'}
 PAIRS.update(communication_codecs.PAIRS)
 PAIRS.update({'line_'+scheme+'_decode':'line_'+scheme+'_encode' for scheme in baseband.LINE_CODES})
@@ -166,6 +168,7 @@ from src import communication_v045, communication_rf
 PRESETS.update(communication_v045.presets(preset))
 PRESETS.update(business.presets(preset))
 PRESETS.update(wireless.presets(preset))
+PRESETS.update(iq.presets(preset))
 
 
 def catalog():
@@ -231,6 +234,7 @@ def normalize(raw, draft=False):
 
 def build(raw):
     p = normalize(raw); items = p['blocks']; sources = []
+    if any(b['kind'] == 'iq_source' for b in items): return iq.build(p)
     extended=communication_catalog.KINDS | business.KINDS | wireless.KINDS
     analog_audio=any(b['kind'] in {'mod_'+scheme for scheme in analog_modulation.LABELS} for b in items) and not any(b['kind'] in extended-{'audio_source'} for b in items)
     if any(b['kind'] in extended for b in items) and not analog_audio and not any(b['kind'].startswith('line_') or b['kind'] in ('mod_baseband','mod_pam') for b in items):
@@ -388,6 +392,7 @@ def source_data(p):
     for b in p['blocks']:
         k, q = b['kind'], b['params']
         if k not in SOURCES: break
+        if k == 'iq_source': raise ValueError('I/Q 录波通过接收回放运行；包级业务实验请选择数字信源。')
         if k in business.SOURCES: y=business.generate(k,q,p,source_rng)
         elif k == 'random_bits': y = source_rng.integers(0, 2, q['count'], dtype=np.uint8)
         elif k == 'pn_bits': y = communication_codecs.pn(q['count'], q['degree'], q['initial'])
@@ -410,6 +415,7 @@ def source_data(p):
 def run(raw, token):
     compiled = build(raw)
     if not isinstance(token, str) or token != compiled['token']: raise ValueError('配置已改变或尚未 Build，请重新构建后再 Run。')
+    if compiled.get('transport') == 'iq': return iq.run(compiled)
     p = compiled['program']; analog = compiled['source_kind'] == 'analog'
     noise_rng = np.random.default_rng(np.random.SeedSequence(p['seed']).spawn(2)[1])
     ctx=runtime.CURRENT.get()
@@ -453,7 +459,9 @@ def run(raw, token):
         elif k == 'dropout': data = data * (noise_rng.random(len(data)) >= q['probability'])
         elif k.startswith('demod_'):
             channel_symbols = data.copy(); decision_symbols = data / gain if q['compensate'] else data.copy()
-            data, decided_indices = demodulate(decision_symbols, scheme); data = data[:len(encoded_bits)]; demapped = data.copy()
+            data, decided_indices = demodulate(decision_symbols, scheme); data = data[:len(encoded_bits)]
+            data = runtime.decision(b, decision_symbols, scheme, data)
+            demapped = data.copy()
         elif k in PAIRS:
             encoder, params, size = stack.pop()
             if k == 'repeat_decode': data = (data.reshape(-1, q['factor']).sum(axis=1) > q['factor'] // 2).astype(np.uint8)

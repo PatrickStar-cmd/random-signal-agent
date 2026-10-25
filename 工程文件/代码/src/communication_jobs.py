@@ -74,12 +74,16 @@ class Jobs:
         for old in sorted(p.parent.glob('*.json'),key=lambda q:q.stat().st_mtime,reverse=True)[30:]: old.unlink()
     def start(self,session,kind,payload):
         from src import communications as c
-        if kind not in ('debug','run','sweep','continuous','branches','experiments','rf-task','sweep2d','protocol','amc'): raise ValueError('未知通信任务类型。')
+        if kind not in ('debug','run','sweep','continuous','branches','experiments','rf-task','sweep2d','protocol','amc','classroom','batch','target-search'): raise ValueError('未知通信任务类型。')
         if not isinstance(payload,dict): raise ValueError('任务参数无效。')
-        if kind not in ('branches','experiments'):
+        if kind not in ('branches','experiments','batch'):
             built=c.build(payload.get('program'))
             if payload.get('token')!=built['token']: raise ValueError('配置已改变，请重新 Build。')
         elif kind=='branches': studio.shared_prefix(payload.get('programs',[]))
+        elif kind=='batch':
+            programs=payload.get('programs',[])
+            if not isinstance(programs,list) or not 1<=len(programs)<=12: raise ValueError('批量实验需要 1–12 个工程。')
+            for program in programs: c.build(program)
         else:
             programs=payload.get('programs',[])
             if not isinstance(programs,list) or not 2<=len(programs)<=4: raise ValueError('自动对照需要 2–4 个方案。')
@@ -146,6 +150,12 @@ class Jobs:
                 from src import communication_protocols
                 operation=communication_protocols.protocol if job.kind=='protocol' else communication_protocols.amc
                 result=operation(c.build(p['program'])['program'],p.get('settings',{}),lambda v:job.update(progress=v),job.cancel)
+            elif job.kind in ('classroom','batch','target-search'):
+                from src import communication_experiments as experiments
+                progress=lambda v:job.update(progress=v)
+                if job.kind=='classroom': result=experiments.classroom(p['task'],p['program'],p.get('settings',{}),progress,job.cancel)
+                elif job.kind=='batch': result=experiments.batch(p['programs'],p.get('settings',{}),progress,job.cancel)
+                else: result=experiments.target_search(p['program'],p.get('settings',{}),progress,job.cancel)
             elif job.kind=='branches': result=studio.compare_branches(p['programs'],p.get('names'),job.cancel,lambda v:job.update(progress=v),job.contexts)
             elif job.kind=='experiments':
                 from src.communication_sweep import sweep

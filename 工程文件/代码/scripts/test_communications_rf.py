@@ -143,7 +143,9 @@ class RFTests(unittest.TestCase):
     def test_all_presets_and_complete_receiver(self):
         for name,value in c.PRESETS.items():
             result=execute(value['program']);json.dumps(result,allow_nan=False)
-            self.assertTrue(np.isfinite(result['metrics'].get('ber',0)),name)
+            if result.get('transport') == 'iq':
+                self.assertIsNone(result['metrics']['ber']);self.assertGreater(result['sink']['count'],0)
+            else: self.assertTrue(np.isfinite(result['metrics'].get('ber',0)),name)
         for name in ('rf_qam64','rf_qam256','rf_puncture'):
             p=copy.deepcopy(c.PRESETS[name]['program']);p['blocks']=[b for b in p['blocks'] if c.BLOCKS[b['kind']]['category'] not in ('demodulator','rx_converter')]
             p=studio.complete_receiver(p);self.assertLess(execute(p)['metrics']['ber'],.1,name)

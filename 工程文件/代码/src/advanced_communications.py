@@ -42,13 +42,14 @@ def build(p):
     for b in sources:
         if b['kind']=='pn_bits': codec.pn(1,b['params']['degree'],b['params']['initial'])
     preview=c.source_data(p)[0] if any(b['kind']=='huffman_encode' for b in items) else None
-    domain='模拟样本' if analog else '比特'; direction='tx'; stack=[]; channels=0; scheme=None; features={}; consumed=set(); attenuation=0;receive_sps=1
+    domain='模拟样本' if analog else '比特'; direction='tx'; stack=[]; channels=0; scheme=None; features={'source_counts':[source_count(b,p) for b in sources],'symbol_rate':p['symbol_rate']}; consumed=set(); attenuation=0;receive_sps=1
     plan=[{'id':b['id'],'label':c.BLOCKS[b['kind']]['label'],'kind':b['kind'],'output':domain,'count':source_count(b,p)} for b in sources]
     for index,b in enumerate(items[len(sources):],len(sources)):
         k,q=b['kind'],b['params']; before=count
         def fail(message): raise ValueError(f'第 {index+1} 块「{c.BLOCKS[k]["label"]}」：{message}')
-        if domain=='多天线符号' and k not in wireless.KINDS: fail('多天线数据先经过多天线信道与配对合并，再连接其他处理。')
+        if domain in ('多天线符号','多用户波形') and k not in wireless.KINDS: fail('多天线和多用户数据先经过对应信道与配对接收，再连接其他处理。')
         if domain=='扩频码片' and k in RX_PROCESS: fail('扩频码片先经过码捕获与解扩，再连接符号处理。')
+        if domain=='跳频波形' and k in RX_PROCESS: fail('跳频波形先经过跳频同步与解跳，再连接符号处理。')
         if k in wireless.KINDS:
             if k in wireless.TX and direction!='signal_tx': fail('无线发送处理放在数字映射之后、信道之前。')
             if k in wireless.CHANNEL and direction not in ('signal_tx','channel'): fail('无线信道放在发送处理之后。')
@@ -58,6 +59,7 @@ def build(p):
             elif k in wireless.RX: consumed.add(k);direction='signal_rx'
         elif k in c.ENCODERS:
             if direction!='tx': fail('编码器须位于调制映射之前。')
+            features.setdefault('encoding_kinds',[]).append(k)
             if k.startswith('line_'): fail('线路编码请连接实基带形成器。')
             if k in codec.SOURCE_CODECS or k=='pcm_encode':
                 if domain!='模拟样本': fail('该信源编码需要模拟样本。')
@@ -103,14 +105,15 @@ def build(p):
             if k=='tx_clip_filter' and domain!='OFDM 波形': fail('削峰滤波需要发送 OFDM 波形。')
         elif k in c.CHANNELS:
             if direction not in ('signal_tx','channel') and not (k=='adc' and direction=='signal_rx'): fail('信道须放在发送处理之后、接收处理之前。')
-            if domain not in ('复符号','复采样波形','OFDM 波形','扩频码片'): fail('信道输入须为复符号或波形；多天线信号使用多天线信道。')
+            if domain not in ('复符号','复采样波形','OFDM 波形','扩频码片','跳频波形'): fail('信道输入须为复符号或波形；多天线信号使用多天线信道。')
             if domain=='扩频码片' and k not in {'ideal','complex_awgn','narrowband','attenuation','phase_shift','complex_multipath'}: fail('扩频码片使用复噪声、多径、窄带干扰或增益相位信道。')
+            if domain=='跳频波形' and k not in {'ideal','complex_awgn','narrowband','attenuation','phase_shift','sample_delay'}: fail('跳频波形使用复噪声、窄带干扰、样本延迟或增益相位信道。')
             allowed={'ideal','awgn','complex_awgn','attenuation','phase_shift','dropout','frequency_offset','phase_noise','sample_delay','complex_multipath','rayleigh','rician','clock_drift','timing_offset','time_multipath','burst_noise'}
             allowed |= rf.CHANNEL
             if k=='adc' and direction=='signal_rx' and consumed-{'rx_agc','rx_dc','rx_notch'}: fail('ADC 放在接收前端、重采样和匹配滤波之前。')
             if k not in allowed: fail('该信道用于实基带或模拟链路。')
             if k=='awgn' and domain!='复符号': fail('过采样波形请选择复波形白噪声。')
-            if k in ('clock_drift','timing_offset','sample_delay') and 'tx_rrc' not in features and 'tx_ofdm' not in features: fail('未知定时请使用 RRC 成形或 OFDM。')
+            if k in ('clock_drift','timing_offset','sample_delay') and not any(t in features for t in ('tx_rrc','tx_ofdm','tx_fhss')): fail('未知定时请使用 RRC 成形、OFDM 或 FHSS。')
             if k in ('clock_drift','timing_offset','sample_delay') and 'tx_rrc' in features and 'tx_frame' not in features: fail('未知定时接收需要公共前导组帧与帧同步。')
             if 'tx_ofdm' in features and k in ('clock_drift','timing_offset'): fail('OFDM 暂使用帧延迟，时钟漂移实验请选择 RRC。')
             if k=='complex_multipath': count+=len(dsp.complex_taps(q))-1
@@ -221,7 +224,7 @@ def run(compiled, source, texts, source_count, rng):
     p=compiled['program']; f=compiled['features']; data=source.copy(); analog=compiled['source_kind']=='analog'
     reference=None if analog else source.copy(); stack=[]; info={}; snapshots=[]; recovery={}; gain=1+0j; prefix=0
     fs=p['symbol_rate']; tx=None; channel=None; tx_power=1.; in_channel=False; decoded_bits=None; clipped=corrections=0; eye=None;noise_estimate=None
-    rf_stages=[];learning=[];wireless_state={}
+    rf_stages=[];learning=[];wireless_state={'source_counts':f['source_counts']}
     receive_sps=f.get('receiver_sps',f.get('tx_rrc',{}).get('params',{}).get('sps',1))
     for b in p['blocks'][source_count:]:
         runtime.enter(b)
@@ -251,6 +254,7 @@ def run(compiled, source, texts, source_count, rng):
             elif k=='interleave': data=np.pad(data,(0,-len(data)%q['columns'])).reshape(-1,q['columns']).T.ravel()
         elif k.startswith('mod_'):
             encoded=data.copy(); scheme=k[4:]; modulation=q
+            wireless_state['scheme']=scheme
             if scheme in WAVE_SCHEMES:
                 data=dsp.frequency_modulate(data,scheme,q); transmitted_indices=encoded.copy(); mapped=data.copy(); fs*=q['sps']
             else: data,transmitted_indices=dsp.map_bits(data,scheme); mapped=data.copy()
@@ -342,7 +346,10 @@ def run(compiled, source, texts, source_count, rng):
                 received=np.pad(received[:len(mapped)],(0,max(0,len(mapped)-len(received))))
                 hard,decided_indices=dsp.decisions(received,scheme); decision_symbols=received; _,points=dsp.constellation(scheme)
                 data=dsp.soft_demod(received,scheme,noise_estimate if q.get('automatic_variance') else q['noise_variance']) if k.startswith('soft_') else hard
-            data=data[:len(encoded)]; demapped=(data<0).astype(np.uint8) if k.startswith('soft_') else data.copy()
+            data=data[:len(encoded)]
+            if scheme not in WAVE_SCHEMES:
+                data=runtime.decision(b,received,scheme,data,noise_estimate if noise_estimate is not None else q.get('noise_variance'))
+            demapped=(data<0).astype(np.uint8) if k.startswith('soft_') else data.copy()
         elif k in c.PAIRS:
             encoder,params,size=stack.pop()
             if encoder in codec.SOURCE_CODECS or encoder=='pcm_encode': decoded_bits=data.copy()
@@ -362,7 +369,8 @@ def run(compiled, source, texts, source_count, rng):
     errors=int(np.count_nonzero(reference!=decoded_bits)); coded_errors=int(np.count_nonzero(encoded!=demapped))
     bit_count=len(reference); symbol_errors=int(np.count_nonzero(transmitted_indices!=decided_indices))
     crc_results=[v['crc_pass'] for v in info.get('codecs',[]) if 'crc_pass' in v]
-    frame_error=int(errors>0 or not recovery.get('frame',{}).get('detected',True))
+    wireless_detected=all(v.get('detected',True) and v.get('sync',{}).get('detected',True) for v in info.get('wireless',{}).values())
+    frame_error=int(errors>0 or not recovery.get('frame',{}).get('detected',True) or not wireless_detected)
     metrics={'bit_count':bit_count,'bit_errors':errors,'ber':errors/bit_count,'coded_bit_count':len(encoded),'coded_bit_errors':coded_errors,'coded_ber':coded_errors/len(encoded),
              'symbol_count':len(transmitted_indices),'symbol_errors':symbol_errors,'ser':symbol_errors/len(transmitted_indices),'effective_rate':bit_count/len(encoded),
              'evm_percent':float(100*np.linalg.norm(decision_symbols-mapped)/max(np.linalg.norm(mapped),1e-12)),

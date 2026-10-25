@@ -5,6 +5,8 @@ transmit and receive antenna arrays are retained in the JSON experiment result.
 """
 import math
 import numpy as np
+from src import communication_spatial as spatial_ext
+from src import communication_ofdma as ofdma_ext, communication_hopping as hopping_ext
 
 TX = {'tx_dsss', 'tx_simo', 'tx_alamouti', 'tx_mimo'}
 CHANNEL = {'dsss_multipath', 'spatial_channel'}
@@ -13,9 +15,16 @@ RX = {'rx_code_acquire', 'rx_despread', 'rx_rake', 'rx_selection', 'rx_mrc',
 KINDS = TX | CHANNEL | RX
 SPATIAL_TX = {'tx_simo', 'tx_alamouti', 'tx_mimo'}
 SPATIAL_RX = {'rx_selection', 'rx_mrc', 'rx_alamouti', 'rx_mimo_zf', 'rx_mimo_mmse'}
+EXTENSIONS=(spatial_ext,ofdma_ext,hopping_ext)
+for extension in EXTENSIONS:
+    TX |= extension.TX
+    CHANNEL |= extension.CHANNEL
+    RX |= extension.RX
+KINDS = TX | CHANNEL | RX
 
 
 def register(block, number, field, blocks):
+    for extension in EXTENSIONS: extension.register(block, number, field, blocks)
     block('tx_dsss', 'DSSS 直接序列扩频', 'tx_converter',
           '使用 m 序列扩频并插入公共训练前导；每个数据符号的总能量保持为 1。',
           degree=field('PN 阶数 / 扩频倍率', 5, 'select', choices=[5, 6, 7],
@@ -63,7 +72,7 @@ def register(block, number, field, blocks):
 def presets(preset):
     def entry(label, kinds, changes=None):
         return {'label':label, 'program':preset(kinds, changes)}
-    return {
+    return {**{k:v for extension in EXTENSIONS for k,v in extension.presets(preset).items()},
         'dsss_interference':entry('扩频 · 码捕获与抗窄带干扰',
             ['random_bits','mod_bpsk','tx_dsss','narrowband','ideal','rx_code_acquire','rx_despread','demod_bpsk','sink'],
             {2:{'phase':11,'training':32},3:{'amplitude':1.5,'hz':31},5:{'threshold':.05}}),
@@ -109,6 +118,8 @@ def pn_code(degree, initial):
 
 def build_stage(kind, q, domain, count, features):
     """Validate a stage; enclosing engine handles direction and channel count."""
+    for extension in EXTENSIONS:
+        if kind in extension.KINDS: return extension.build_stage(kind,q,domain,count,features)
     w=features.setdefault('wireless', {})
     if kind in TX:
         if domain!='复符号' or 'tx' in w: raise ValueError('无线发送处理需要一条复符号流，每条链路选择一种无线发送结构。')
@@ -169,9 +180,8 @@ def spread(symbols, q):
 
 def acquire(signal, state, q):
     x=np.asarray(signal,complex); code=state['code']; pilot=state['pilot']; length=len(code); size=len(pilot)*length
-    last=min(q['search'],len(x)-size)
-    if last<0: raise ValueError('接收码片不足一个训练前导。')
-    window=x[:size+last]; energies=np.convolve(abs(window)**2,np.ones(size),mode='valid')
+    last=max(0,min(q['search'],len(x)-size))
+    window=np.pad(x[:size+last],(0,max(0,size+last-len(x)))); energies=np.convolve(abs(window)**2,np.ones(size),mode='valid')
     best=(-1,0,0,0j); phase_scores=[]; phase_profiles=[]
     for phase in range(length):
         template=(pilot[:,None]*np.roll(code,phase)[None,:]/math.sqrt(length)).ravel()
@@ -180,9 +190,9 @@ def acquire(signal, state, q):
         offset=int(np.argmax(score)); phase_scores.append(float(score[offset])); phase_profiles.append(score)
         if score[offset]>best[0]: best=(float(score[offset]),offset,phase,correlation[offset]/len(pilot))
     peak,offset,phase,gain=best
-    if peak<q['threshold']: raise ValueError(f'码捕获相关峰 {peak:.3f} 低于阈值，请调整训练长度、搜索范围或信道。')
-    state.update(offset=offset, phase=phase, gain=gain)
-    return {'code_phase':phase,'delay_chips':offset,'correlation_peak':peak,
+    detected=peak>=q['threshold'] and len(x)>=size
+    state.update(offset=offset, phase=phase, gain=gain,detected=detected)
+    return {'code_phase':phase,'delay_chips':offset,'correlation_peak':peak,'detected':detected,
             'phase_scores':phase_scores,'delay_scores':phase_profiles[phase].tolist(),
             'processing_gain_db':10*math.log10(length),'spreading_factor':length}
 
@@ -275,11 +285,16 @@ def spatial_decode(received, state, kind):
         decoded=(data@weights.T*math.sqrt(2)).ravel()
         details.update(singular_values=singular.tolist(),condition_number=float(singular[0]/max(singular[-1],1e-15)),detector_weights=arrays(weights))
     details['recovered_symbols']=arrays(decoded[:state['count']])
+    if kind in ('rx_mimo_zf','rx_mimo_mmse'):
+        details['stream_symbols']=arrays(decoded.reshape(-1,2))
+        details['stream_counts']=[math.ceil(state['count']/2),state['count']//2]
     return decoded[:state['count']],details
 
 
 def run_stage(kind, data, q, state, rng, fs):
     """Return 1-D stage display, JSON details and current sample rate."""
+    for extension in EXTENSIONS:
+        if kind in extension.KINDS: return extension.run_stage(kind,data,q,state,rng,fs)
     details={}
     if kind=='tx_dsss':
         data,dsss=spread(data,q); state['dsss']=dsss; fs*=len(dsss['code'])
@@ -292,8 +307,9 @@ def run_stage(kind, data, q, state, rng, fs):
     elif kind=='rx_despread':
         d=state['dsss']; symbols=despread_at(data,d,d['offset']); pilot=d['pilot']
         gain=np.vdot(pilot,symbols[:len(pilot)])/len(pilot)
-        if abs(gain)<1e-10: raise ValueError('解扩训练增益过低。')
-        data=symbols[len(pilot):]/gain; fs/=len(d['code']); details={'estimated_gain':arrays([gain])}
+        valid=bool(abs(gain)>=1e-10)
+        data=symbols[len(pilot):]/gain if valid else np.zeros(d['count'],complex)
+        fs/=len(d['code']); details={'estimated_gain':arrays([gain]),'detected':d.get('detected',True) and valid}
     elif kind=='rx_rake':
         data,details=rake(data,state['dsss'],q); fs/=len(state['dsss']['code'])
     elif kind in SPATIAL_TX:

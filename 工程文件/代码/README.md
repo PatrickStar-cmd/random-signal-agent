@@ -2,23 +2,27 @@
 
 本项目面向“随机信号”与“通信原理”课程，通过 Web 工作区完成 💬 对话式信号分析与 🧩 积木式通信实验。支持本地计算、固定种子复现和可选模型辅助对话。
 
-## 📡 通信原理实验室（v0.4.4）
+## 📡 通信原理实验室（v0.4.8）
 
-六类积木提供 **130 个模块 + 固定信宿、54 个示例**。拖入模块、选中编辑参数，先 **🔨 Build**，再 **▶️ Run**。
+六类积木提供 **193 个可添加模块 + 固定信宿、90 个示例**。拖入模块、选中编辑参数，先 **🔨 Build**，再 **▶️ Run**。
 
-| 模块 | 技术概览 |
+| 模块 | 包含的技术 |
 | --- | --- |
-| 🎲 信源 | 随机/自定义比特、UTF-8 文本、正弦、方波、高斯信号；新增 PRBS7/9/15 m 序列与相关观察。 |
-| 🔀 发转换器 | 均匀/压扩 PCM、DPCM、增量调制；重复码、Hamming、卷积码、LDPC、CRC、扰码与交织；十种线路编码。 |
+| 🎲 信源 | 随机/自定义比特、UTF-8 文本、正弦、方波、高斯信号；新增 PRBS7/9/15 m 序列与相关观察。音频、图像、文件、离散概率信源与 SigMF / 原始 I/Q 录波。 |
+| 🔀 发转换器 | 均匀/压扩 PCM、DPCM、增量调制；重复码、Hamming、卷积码、LDPC、CRC、扰码与交织；十种线路编码。Huffman、ADPCM、BCH、RS、分包；DSSS、SIMO 训练、Alamouti 与 MIMO 空间复用。 |
 | 📡 调制器 | BPSK/QPSK/16QAM、OOK/2ASK、2FSK、DBPSK/DQPSK、MSK/GMSK；AM/DSB-SC/SSB/VSB/FM/PM、PAM；实/复基带成形、前导与导频、OFDM/IFFT/CP。 |
-| 🌊 信道 | 白噪声、带限、衰减、相移、丢失、交流耦合、ISI、定时/时钟漂移；新增频偏、相位噪声、未知帧延迟、复多径、Rayleigh/Rician 衰落。 |
-| 🎛️ 解调器 | 各制式配对解调与 PSK/QAM 软解调；匹配滤波、符号/载波/帧同步，ZF/MMSE/DFE、实/复 LMS/NLMS/RLS、CMA、导频 LS、OFDM/FFT/频域均衡。 |
-| 🔄 收转换器 | 线路译码、解交织、解扰、CRC 校验、重复码/Hamming 纠错、硬/软 Viterbi、LDPC 迭代，以及 PCM/压扩/DPCM/增量重构。 |
-| 📺 信宿 | 接收比特、文本和模拟波形；参考叠加、错误位标记及完整序列浏览。 |
+| 🌊 信道 | 白噪声、带限、衰减、相移、丢失、交流耦合、ISI、定时/时钟漂移；新增频偏、相位噪声、未知帧延迟、复多径、Rayleigh/Rician 衰落、独立时变路径与 Markov 突发噪声。扩频码片多径、多天线固定/块 Rayleigh 信道与独立接收噪声；移动相关 MIMO、频率选择性 MIMO 与 OFDMA 独立用户信道。 |
+| 🎛️ 解调器 | 各制式配对解调与 PSK/QAM 软解调；匹配滤波、符号/载波/帧同步，ZF/MMSE/DFE、实/复 LMS/NLMS/RLS、CMA、导频 LS、OFDM/FFT/频域均衡；新增 AGC、自动 N0、重采样、T/2 均衡、OFDM 频偏与导频跟踪。 |
+| 🔄 收转换器 | 线路译码、解交织、解扰、CRC 校验、重复码/Hamming 纠错、硬/软 Viterbi、LDPC 迭代，以及 PCM/压扩/DPCM/增量重构。Huffman/ADPCM/BCH/RS 译码、组包；码捕获、解扩、RAKE、SC/MRC、Alamouti、MIMO ZF/MMSE、ZF-SIC/MMSE-SIC、周期导频跟踪、MIMO-OFDM、OFDMA 分用户恢复与 FHSS 解跳。 |
+| 📺 信宿 | 显示接收比特、文本与模拟波形，支持叠加原始信源、标记错误位和浏览完整接收序列。音频播放、图像重建与 PSNR、文件下载和 SHA256 核验。 |
 
-🧩 海洋风格积木工坊、紧凑拼接链路与独立参数面板，支持拖放/排序、撤销重做、草稿恢复和工程 JSON 导入导出。📈 查看 BER/EVM/RMSE、码率、波形、频谱、星座、眼图、时钟和收敛曲线，下载完整信宿 CSV 与结果 JSON。
+- 🔁 **v0.4.8 闭环链路**：当前积木工程直接执行 ARQ、Chase HARQ 和 AMC；统计实际 ACK/NACK、重传、软合并、空口时长与吞吐。
+- 🛰️ **v0.4.8 空间通信**：ZF-SIC/MMSE-SIC、动态相关 MIMO 与导频跟踪、MIMO-OFDM、独立用户 OFDMA、FHSS；观察天线波形、空间流星座、矩阵与逐层消除。
+- 🧩 **v0.4.8 工程与教学**：带类型端口和公开参数的版本化子工程、教学任务编辑器、跨工程多种子队列、最低信噪比搜索；导入 SigMF/原始 I/Q，连接接收积木回放并导出录波。
 
-📚 [通信指南](docs/communications-lab.md) · [模拟调制](docs/analog-modulation.md) · [线路码与信道](docs/baseband-coding.md) · [同步与均衡](docs/receiver-recovery.md)
+🧩 沿用海洋风格积木工坊、拼接链路与参数面板；保留拖放排序、撤销重做、草稿恢复、工程快照、逐块调试、分支对照、参数扫描、连续多帧和 PDF 报告。
+
+📚 [v0.4.8 闭环与空间通信指南](docs/communications-v048.md) · [通信指南](docs/communications-lab.md) · [业务与教学](docs/communications-v047.md) · [射频与测量](docs/communications-v045.md)
 
 ## 功能概览
 

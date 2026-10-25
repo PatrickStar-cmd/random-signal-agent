@@ -47,8 +47,8 @@ jobs:
           name: release-validation-${{ runner.os }}-${{ matrix.python }}
           path: |
             工程文件/代码/logs/release/
-            工程文件/代码/logs/communications-v047/node-tests.log
-            工程文件/代码/logs/communications-v047/verification-ui.json
+            工程文件/代码/logs/communications-v048/node-tests.log
+            工程文件/代码/logs/communications-v048/verification-ui.json
             工程文件/代码/outputs/release/verification-*.json
 
   docker:

@@ -35,6 +35,8 @@ window.createCommunicationExperience = function (core) {
   const rf=window.createCommunicationAnalysis(core,{meta:()=>meta,persist,runJob});
   const layout=window.createCommunicationLayout(core);
   const learning=window.createCommunicationLearning(core,{meta:()=>meta,persist,runJob,documentValue,request,layout});
+  const experiments=window.createCommunicationExperiments(core,{meta:()=>meta,persist,runJob,documentValue,request,layout});
+  const spatial=window.createCommunicationSpatial(core,{meta:()=>meta,persist,request,layout,selected:()=>[...selected],insertionIndex,selectMembers:ids=>{selected=new Set(ids);render()},jobId:()=>get().result?.experience?.job_id});
 
   function documentValue(){
     syncBranches();return {document_schema:2,...clone(meta),program:clone(get().program),sweeps:clone(get().sweeps),result:clone(get().result||meta.result)};
@@ -45,11 +47,11 @@ window.createCommunicationExperience = function (core) {
     clearTimeout(saveTimer);
     if(meta.projectId&&!get().busy)saveTimer=setTimeout(()=>save(false).catch(e=>message(e.message)),1800);
   }
-  function invalidate(){if(!restoring){rf.invalidate();learning.invalidate();meta.result=null;meta.comparisons=null;observations=[];windowA=windowB=null;byId('cmProbeA').innerHTML='';byId('cmProbeB').innerHTML='';byId('cmExecutionSummary').textContent='链路已更新，运行后选择积木输出';byId('cmBranchResults').innerHTML='';drawScopes()}scheduleDescribe()}
+  function invalidate(){if(!restoring){rf.invalidate();learning.invalidate();experiments.invalidate();spatial.invalidate();meta.result=null;meta.comparisons=null;observations=[];windowA=windowB=null;byId('cmProbeA').innerHTML='';byId('cmProbeB').innerHTML='';byId('cmExecutionSummary').textContent='链路已更新，运行后选择积木输出';byId('cmBranchResults').innerHTML='';drawScopes()}scheduleDescribe()}
   function editSnapshot(){return clone(meta)}
   function restoreEdit(value){meta={...defaults(),...clone(value)}}
   function loadState(doc){meta={...defaults(),...clone(doc)};delete meta.program;delete meta.sweeps;delete meta.document_schema;restoring=true}
-  function replaceProgram(){meta.groups=[];meta.branches=[];meta.activeBranch=0;meta.comparisons=null;meta.scope={};learning.replaceProgram();selected.clear()}
+  function replaceProgram(){meta.groups=[];meta.branches=[];meta.activeBranch=0;meta.comparisons=null;meta.scope={};learning.replaceProgram();experiments.replaceProgram();spatial.replaceProgram();selected.clear()}
   function restoreDraft(){
     try{const saved=JSON.parse(localStorage.getItem(storage)||'null');if(saved?.document_schema===2){restoring=true;core.applyDocument(saved);restoring=false}}
     catch{message('已打开链路草稿；完整工程草稿无法读取。')}
@@ -145,7 +147,7 @@ window.createCommunicationExperience = function (core) {
     byId('cmLibrary').innerHTML=meta.library.length?meta.library.map((g,i)=>`<button type="button" data-cm-library="${i}">🧩 ${esc(g.name)} · ${g.blocks.length} 块</button>`).join(''):'勾选相邻积木，封装后即可复用。';
     byId('cmGroupExpose').innerHTML=blocks.filter(b=>selected.has(b.id)).flatMap(b=>Object.entries(get().definitions[b.kind].params).map(([key,spec])=>`<option value="${esc(b.id+':'+key)}">${esc(get().definitions[b.kind].label+' · '+spec.label)}</option>`)).join('');
     byId('cmBranchSelect').innerHTML=meta.branches.length?meta.branches.map((b,i)=>`<option value="${i}">${esc(b.name)}</option>`).join(''):'<option value="0">主链路</option>';byId('cmBranchSelect').value=String(meta.activeBranch);
-    renderFlow();renderSweepParameters();selection();scheduleDescribe();learning.render();
+    renderFlow();renderSweepParameters();selection();scheduleDescribe();learning.render();experiments.render();spatial.render();
   }
   function renderFlow(){
     const blocks=get().program.blocks,split=blocks.findIndex(b=>['demodulator','rx_converter'].includes(get().definitions[b.kind].category));
@@ -173,7 +175,7 @@ window.createCommunicationExperience = function (core) {
     const text=byId('cmSweepValues').value.trim();if(text)extra.values=text.split(',').map(v=>Number(v.trim()));meta.sweepSettings={block_id:block,parameter:param};return extra;
   }
   function buttons(busy){
-    rf.buttons(busy);learning.buttons(busy);
+    rf.buttons(busy);learning.buttons(busy);experiments.buttons(busy);spatial.buttons(busy);
     if(wasBusy&&!busy)persist();wasBusy=busy;
     const built=!!get().compiled;
     for(const id of ['cmDebugStart','cmContinuous','cmBranchesRun','cmContrastRun'])byId(id).disabled=busy||!built;
@@ -201,7 +203,7 @@ window.createCommunicationExperience = function (core) {
     return job.result;
   }
   async function runJob(kind,payload){const job=await request('job-start',{kind,payload});return watch(job)}
-  function onResult(result){rf.onResult(result);learning.onResult(result);if(result){meta.result=clone(result);if(result.experience)setObservations(result.experience.observations,result.experience.job_id||result.job_id);persist()}}
+  function onResult(result){rf.onResult(result);learning.onResult(result);experiments.onResult(result);spatial.onResult(result);if(result){meta.result=clone(result);if(result.experience)setObservations(result.experience.observations,result.experience.job_id||result.job_id);persist()}}
   function setObservations(values,jobId){
     observations=values.map(v=>({...v,job_id:jobId}));const a=byId('cmProbeA').value,b=byId('cmProbeB').value;
     const options=observations.map((v,i)=>`<option value="${i}">${meta.probes.includes(v.id)?'📌 ':''}${esc(v.label)} · ${esc(v.domain)} · ${v.count}</option>`).join('');byId('cmProbeA').innerHTML=options;byId('cmProbeB').innerHTML=options;

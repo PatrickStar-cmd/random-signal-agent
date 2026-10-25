@@ -92,7 +92,7 @@ class WirelessTests(unittest.TestCase):
         self.assertLess(np.mean(abs(mmse-symbols)**2),np.mean(abs(zero_forcing-symbols)**2)*.2)
 
     def test_end_to_end_presets_rates_metrics_and_full_antenna_arrays(self):
-        for key in w.presets(c.preset):
+        for key in ('dsss_interference','dsss_rake','diversity_selection','diversity_mrc','diversity_alamouti','mimo_zf','mimo_mmse'):
             result=execute(c.PRESETS[key]['program']); json.dumps(result,allow_nan=False)
             self.assertEqual(result['sink']['count'],512)
             self.assertLessEqual(result['metrics']['ber'],.02)

@@ -12,6 +12,7 @@ from src import communication_runtime as runtime
 
 def contract(kind):
     from src import communications as c
+    if kind == 'iq_source': return ['起点'], '复符号'
     if kind in ('sine','square','gaussian','audio_source'): return ['起点'],'模拟样本'
     if kind in c.SOURCES: return ['起点'],'比特'
     if kind=='sink': return ['比特','模拟样本'],'信宿'
@@ -36,14 +37,16 @@ def contract(kind):
     special={'tx_rrc':(['复符号'],'复波形'),'tx_ofdm':(['复符号'],'OFDM 波形'),
         'tx_dsss':(['复符号'],'扩频码片'),'dsss_multipath':(['扩频码片'],'扩频码片'),'rx_code_acquire':(['扩频码片'],'扩频码片'),
         'rx_despread':(['扩频码片'],'复符号'),'rx_rake':(['扩频码片'],'复符号'),
-        **{k:(['复符号'],'多天线符号') for k in ('tx_simo','tx_alamouti','tx_mimo')},
-        'spatial_channel':(['多天线符号'],'多天线符号'),
-        **{k:(['多天线符号'],'复符号') for k in ('rx_selection','rx_mrc','rx_alamouti','rx_mimo_zf','rx_mimo_mmse')},
+        **{k:(['复符号'],'多天线符号') for k in ('tx_simo','tx_alamouti','tx_mimo','tx_mimo_tracking','tx_mimo_ofdm')},
+        **{k:(['多天线符号'],'多天线符号') for k in ('spatial_channel','spatial_dynamic','spatial_multipath')},
+        **{k:(['多天线符号'],'复符号') for k in ('rx_selection','rx_mrc','rx_alamouti','rx_mimo_zf','rx_mimo_mmse','rx_mimo_zf_sic','rx_mimo_mmse_sic','rx_mimo_tracking','rx_mimo_ofdm')},
+        'tx_ofdma':(['复符号'],'多用户波形'),'ofdma_channel':(['多用户波形'],'多用户波形'),'rx_ofdma':(['多用户波形'],'复符号'),
+        'tx_fhss':(['复符号'],'跳频波形'),'rx_hop_sync':(['跳频波形'],'跳频波形'),'rx_dehop':(['跳频波形'],'复符号'),
         'rx_matched':(['复波形'],'复波形'),'rx_timing':(['复波形'],'复符号'),'rx_fse':(['复波形'],'复符号'),
         'rx_complete':(['复波形'],'复符号'),'rx_ofdm':(['OFDM 波形'],'复符号'),
         'rx_ofdm_frequency':(['OFDM 波形'],'OFDM 波形'),'rx_ofdm_tracking':(['OFDM 波形'],'复符号'),'resample':(['复波形'],'复波形')}
     if kind in special: return special[kind]
-    if kind=='narrowband': return ['复符号','复波形','OFDM 波形','扩频码片'],'同输入'
+    if kind=='narrowband': return ['复符号','复波形','OFDM 波形','扩频码片','跳频波形'],'同输入'
     if kind in ('tx_pa','iq_imbalance','dc_offset','adc','rx_dc','rx_notch'): return ['复符号','复波形','OFDM 波形'],'同输入'
     if kind=='tx_clip_filter': return ['OFDM 波形'],'OFDM 波形'
     if kind=='rx_iq': return ['复符号'],'复符号'
@@ -53,23 +56,27 @@ def contract(kind):
     if kind in ('awgn',): return ['复符号'],'同输入'
     if kind=='analog_awgn': return ['模拟复包络'],'同输入'
     if kind in ('sample_awgn','bandlimited_awgn','lowpass_channel','bandpass_channel','ac_coupling','isi_channel'): return ['实波形'],'同输入'
-    return ['复符号','复波形','OFDM 波形','实波形','模拟复包络','扩频码片'],'同输入'
+    return ['复符号','复波形','OFDM 波形','实波形','模拟复包络','扩频码片','跳频波形'],'同输入'
 
 
 def describe(program):
     from src import communications as c
-    p=c.normalize(program,draft=True); domain='起点'; fs=p['sample_rate']; rows=[]
+    p=c.normalize(program,draft=True); domain='起点'; fs=p['sample_rate']; rs=p['symbol_rate']; rows=[]
     for b in p['blocks']:
         accepts,output=contract(b['kind']); compatible=domain in accepts or b['kind'] in c.SOURCES
+        if b['kind'] == 'iq_source':
+            q=b['params'];output=('复符号', '复波形', 'OFDM 波形')[q['mode']];fs=q['rate_hz'];rs=fs/(q['sps'] if q['mode']==1 else q['nfft'] if q['mode']==2 else 1)
         if b['kind'] in ('tx_rrc','mod_pam','mod_baseband','mod_fsk2','mod_msk','mod_gmsk'): fs=(p['symbol_rate'] or 1)*(b['params'].get('sps') or 1)
         elif b['kind']=='tx_dsss': fs=(p['symbol_rate'] or 1)*(2**b['params']['degree']-1)
         elif b['kind']=='tx_ofdm': fs=(p['symbol_rate'] or 1)*(b['params'].get('nfft') or 1)
-        elif b['kind'] in ('rx_timing','rx_complete','rx_fse','rx_ofdm','rx_ofdm_tracking','rx_despread','rx_rake'): fs=p['symbol_rate']
+        elif b['kind']=='tx_fhss': fs=p['symbol_rate']*b['params']['sps']
+        elif b['kind'] in ('tx_mimo_ofdm','tx_ofdma'): fs=p['symbol_rate']*b['params']['nfft']
+        elif b['kind'] in ('rx_timing','rx_complete','rx_fse','rx_ofdm','rx_ofdm_tracking','rx_despread','rx_rake','rx_dehop','rx_mimo_ofdm','rx_ofdma'): fs=rs
         elif b['kind']=='resample': fs=fs*b['params']['up']/b['params']['down'] if fs else None
         if output=='同输入': output=domain
         if output=='信宿': output=domain
         rows.append({'id':b['id'],'input':domain,'accepts':accepts,'output':output,'compatible':compatible,
-                     'sample_rate':fs if '波形' in output or output in ('模拟样本','模拟复包络','扩频码片') else None,'symbol_rate':p['symbol_rate']})
+                     'sample_rate':fs if '波形' in output or output in ('模拟样本','模拟复包络','扩频码片') else None,'symbol_rate':rs})
         domain=output
     error=None; compiled=None
     try: compiled=c.build(program)
@@ -89,6 +96,7 @@ def describe(program):
 def complete_receiver(raw):
     from src import communications as c
     p=c.normalize(raw,draft=True); blocks=p['blocks']; tx=next((b for b in blocks if b['kind'].startswith('mod_')),None)
+    if blocks[0]['kind']=='iq_source': return complete_iq_receiver(p)
     if tx is None: raise ValueError('请先添加调制器，再补齐接收链路。')
     def make(k,q=None):
         return {'id':'auto-'+uuid.uuid4().hex[:12],'kind':k,'params':{name:(q or {}).get(name,s['default']) for name,s in c.BLOCKS[k]['params'].items()}}
@@ -100,7 +108,14 @@ def complete_receiver(raw):
     if 'tx_dsss' in existing:
         if 'rx_code_acquire' not in existing: steps.append(make('rx_code_acquire',{'threshold':.05} if 'narrowband' in existing else None))
         if not existing&{'rx_despread','rx_rake'}: steps.append(make('rx_rake' if 'dsss_multipath' in existing else 'rx_despread'))
-    for transmitter,receivers in [('tx_simo',('rx_mrc','rx_selection')),('tx_alamouti',('rx_alamouti',)),('tx_mimo',('rx_mimo_mmse','rx_mimo_zf'))]:
+    if 'tx_fhss' in existing:
+        if 'rx_hop_sync' not in existing: steps.append(make('rx_hop_sync',{'threshold':.05} if 'narrowband' in existing else None))
+        if 'rx_dehop' not in existing: steps.append(make('rx_dehop'))
+    for transmitter,channel,receiver in [('tx_mimo_tracking','spatial_dynamic','rx_mimo_tracking'),('tx_mimo_ofdm','spatial_multipath','rx_mimo_ofdm'),('tx_ofdma','ofdma_channel','rx_ofdma')]:
+        if transmitter in existing:
+            if channel not in existing: blocks[channel_end]=make(channel)
+            if receiver not in existing: steps.append(make(receiver))
+    for transmitter,receivers in [('tx_simo',('rx_mrc','rx_selection')),('tx_alamouti',('rx_alamouti',)),('tx_mimo',('rx_mimo_mmse','rx_mimo_zf','rx_mimo_zf_sic','rx_mimo_mmse_sic'))]:
         if transmitter in existing:
             if 'spatial_channel' not in existing:
                 blocks[channel_end]=make('spatial_channel')
@@ -112,7 +127,7 @@ def complete_receiver(raw):
         if a in existing and z not in existing and 'rx_complete' not in existing and not replacement: steps.append(make(z))
     if digital and 'tx_rrc' in existing and 'rx_carrier' not in existing and 'rx_complete' not in existing: steps.append(make('rx_carrier'))
     if 'tx_ofdm' in existing and 'frequency_offset' in existing and 'rx_ofdm_frequency' not in existing: steps.append(make('rx_ofdm_frequency'))
-    order=['rx_code_acquire','rx_despread','rx_rake','rx_selection','rx_mrc','rx_alamouti','rx_mimo_zf','rx_mimo_mmse','rx_frequency','rx_agc','resample','rx_matched','rx_timing','rx_fse','rx_carrier','rx_frame','rx_equalizer','rx_cma','rx_pilots','rx_ofdm_frequency','rx_ofdm','rx_ofdm_tracking','rx_noise_estimate','rx_iq','rx_dc','rx_notch']
+    order=['rx_code_acquire','rx_despread','rx_rake','rx_hop_sync','rx_dehop','rx_selection','rx_mrc','rx_alamouti','rx_mimo_zf','rx_mimo_mmse','rx_mimo_zf_sic','rx_mimo_mmse_sic','rx_mimo_tracking','rx_mimo_ofdm','rx_ofdma','rx_frequency','rx_agc','resample','rx_matched','rx_timing','rx_fse','rx_carrier','rx_frame','rx_equalizer','rx_cma','rx_pilots','rx_ofdm_frequency','rx_ofdm','rx_ofdm_tracking','rx_noise_estimate','rx_iq','rx_dc','rx_notch']
     for step in sorted(steps,key=lambda b:order.index(b['kind'])):
         rank=order.index(step['kind']);index=next((i for i,b in enumerate(blocks) if i>channel_end and (b['kind'] in order and order.index(b['kind'])>rank or b['kind'].startswith(('demod_','soft_')) or b['kind'] in c.PAIRS or b['kind']=='sink')),len(blocks))
         blocks.insert(index,step)
@@ -133,6 +148,30 @@ def complete_receiver(raw):
         elif rx['kind'] not in ('ldpc_decode','conv_soft_decode'): rx['params']=make(rx['kind'],encoder['params'])['params']
         rebuilt.append(rx)
     blocks[:]=[b for b in blocks if b['kind'] not in c.PAIRS and b['kind']!='sink']+rebuilt+[next((b for b in raw['blocks'] if b['kind']=='sink'),make('sink'))]
+    return c.normalize(p,draft=True)
+
+
+def complete_iq_receiver(program):
+    """Complete a receive-only chain from public recording format metadata."""
+    from src import communications as c, communication_iq as iq
+    p=copy.deepcopy(program); source=p['blocks'][0]; q=source['params']
+    def make(kind):
+        return {'id':'auto-'+uuid.uuid4().hex[:12],'kind':kind,'params':{k:v['default'] for k,v in c.BLOCKS[kind]['params'].items()}}
+    stages=[b for b in p['blocks'][1:] if b['kind'] in iq.RECEIVERS]
+    if any(b['kind'] not in iq.RECEIVERS and not b['kind'].startswith(('demod_','soft_')) and b['kind']!='sink' for b in p['blocks'][1:]): raise ValueError('录波链路请保留接收处理、解调器和信宿。')
+    existing={b['kind'] for b in stages}
+    required=([] if q['matched'] else ['rx_matched'])+['rx_timing'] if q['mode']==1 else ['rx_ofdm'] if q['mode']==2 else []
+    if 'rx_ofdm_tracking' in existing: required=[k for k in required if k!='rx_ofdm']
+    if q['framed']: required.append('rx_frame')
+    stages.extend(make(kind) for kind in required if kind not in existing)
+    order=['rx_dc','rx_notch','rx_agc','resample','rx_frequency','rx_matched','rx_timing','rx_ofdm_frequency','rx_ofdm','rx_ofdm_tracking','rx_carrier','rx_cma','rx_frame','rx_equalizer','rx_noise_estimate']
+    stages.sort(key=lambda b:order.index(b['kind']))
+    kind='demod_'+iq.SCHEMES[q['scheme']]
+    demod=next((b for b in p['blocks'] if b['kind'].startswith(('demod_','soft_'))),None)
+    if demod is None: demod=make(kind)
+    elif demod['kind']!=kind: demod={'id':demod['id'],'kind':kind,'params':make(kind)['params']}
+    sink=next((b for b in p['blocks'] if b['kind']=='sink'),None) or make('sink')
+    p['blocks']=[source]+stages+[demod,sink]
     return c.normalize(p,draft=True)
 
 
@@ -159,6 +198,8 @@ def validate_document(raw):
     if raw.get('schema')==1 and 'blocks' in raw: raw={'document_schema':2,'name':'导入的通信工程','program':raw}
     if raw.get('document_schema')!=2: raise ValueError('工程文档版本不匹配。')
     document=copy.deepcopy(raw); document['program']=c.normalize(document.get('program'),draft=True)
+    from src.communication_subprojects import validate_document as validate_subprojects
+    validate_subprojects(document)
     name=document.get('name','我的通信工程')
     if not isinstance(name,str) or not 1<=len(name.strip())<=120: raise ValueError('工程名称需要 1–120 个字符。')
     document['name']=name.strip(); ids=[b['id'] for b in document['program']['blocks']]

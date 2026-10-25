@@ -11,7 +11,7 @@ function fixture(){
     append(...nodes){this.children.push(...nodes);} prepend(...nodes){this.children.unshift(...nodes);} insertBefore(node){this.append(node);} setAttribute(key,value){this[key]=String(value);} addEventListener(){} remove(){} close(){} click(){return this.onclick?.();}
     querySelector(selector){if(!this.nodes.has(selector))this.nodes.set(selector,new Element());return this.nodes.get(selector);}
     querySelectorAll(selector){return selector==='button,input,select,textarea'?[...elements.values()]:[];}
-    closest(){return new Element();}
+    closest(){if(!this.parent)this.parent=new Element();return this.parent;}
     getContext(){return new Proxy({},{get:()=>()=>{}});}
   }
   const byId=id=>{if(!elements.has(id)){const e=new Element();e.id=id;elements.set(id,e);}return elements.get(id);};
@@ -50,6 +50,12 @@ async function main(){
     f.setRequest(()=>new Promise(resolve=>{release=resolve;}));f.byId('cmScanX').value='blocks.noise.esn0_db';f.byId('cmScanY').value='seed';f.byId('cmScanXValues').value='0';f.byId('cmScanYValues').value='1';f.byId('cmScanFrames').value='1';
     const pending=f.byId('cmScanRun').onclick();const locked=f.get().busy;release({program:f.get().program,variables:{Rs:1000}});await pending;
     assert.equal(locked,true);assert.equal(f.get().busy,false);
+  });
+  await test('protocol controls follow the selected physical chain',()=>{
+    const f=fixture();f.byId('cmProtocolPHY').value='program';f.byId('cmProtocolMode').value='arq';f.byId('cmProtocolMode').onchange();
+    assert.equal(f.byId('cmProtocolRate').closest('label').hidden,true);assert.equal(f.byId('cmProtocolSNR').closest('label').hidden,true);
+    f.byId('cmProtocolMode').value='amc';f.byId('cmProtocolMode').onchange();assert.equal(f.byId('cmProtocolSNR').closest('label').hidden,false);assert.equal(f.byId('cmProtocolNoise').closest('label').hidden,false);
+    f.byId('cmProtocolPHY').value='reference';f.byId('cmProtocolPHY').onchange();assert.equal(f.byId('cmProtocolRate').closest('label').hidden,false);assert.equal(f.byId('cmProtocolNoise').closest('label').hidden,true);
   });
   if(failures.length)process.exitCode=1;
 }
