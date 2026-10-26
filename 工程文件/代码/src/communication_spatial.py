@@ -209,15 +209,17 @@ def ofdm_decode(y,s,q,scheme):
     grid=np.fft.fft(y[:frames*(n+cp)].reshape(frames,n+cp,2)[:,cp:],axis=1,norm='ortho')
     h=np.stack([np.mean(grid[:4:2],axis=0),np.mean(grid[1:4:2],axis=0)],axis=2)*math.sqrt(2)
     prediction=np.einsum('krn,fkn->fkr',h,s['pilot']);residual=grid[:4]-prediction
-    variance=float(np.sum(abs(residual)**2)/(n*2*2));decoded=np.zeros((s['frames'],n,2),complex);orders=[];powers=[]
+    variance=float(np.sum(abs(residual)**2)/(n*2*2));decoded=np.zeros((s['frames'],n,2),complex);orders=[];powers=[];sample_indices=[]
     for carrier in range(n):
         valid=(np.arange(s['frames'])[:,None]*n*2+carrier*2+np.arange(2)[None,:])<s['count']
         decoded[:,carrier],trace=detect(grid[4:,carrier],h[carrier],variance,scheme,q['detector'],valid)
-        if len(orders)<64:orders.extend(trace['orders']);powers.extend(trace['residual_power'])
+        if len(orders)<64:
+            orders.extend(trace['orders']);powers.extend(trace['residual_power'])
+            sample_indices.extend([row*n+carrier for row in trace.get('sample_indices',range(len(trace['orders'])))])
     return decoded.ravel()[:s['count']],{'channel_estimate':arrays(h),'estimated_noise_variance':variance,'grid':arrays(grid),
         'recovered_grid':arrays(decoded),'subcarriers':np.fft.fftfreq(n,d=1/n).astype(int).tolist(),
         'condition_numbers':[float(np.linalg.cond(matrix)) for matrix in h],
-        'sic':{'orders':orders[:64],'residual_power':powers[:64]},'pilot_reference':arrays(s['pilot']),'pilot_received':arrays(grid[:4])}
+        'sic':{'orders':orders[:64],'residual_power':powers[:64],'sample_indices':sample_indices[:64]},'pilot_reference':arrays(s['pilot']),'pilot_received':arrays(grid[:4])}
 
 
 def run_stage(kind,data,q,state,rng,fs):

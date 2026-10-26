@@ -13,4 +13,9 @@
 .cm-experiment-queue>span{overflow-wrap:anywhere;min-width:0}
 .cm-experiments #cmExperimentStop{border-color:#a899c8;background:#f5effa}
 .cm-experiments td{font-variant-numeric:tabular-nums}
+.cm-batch-chart{margin:12px 0;border:2px solid #a9c4df;border-radius:12px;background:#f8fcff;padding:10px;overflow:auto}
+.cm-batch-chart:empty{display:none}.cm-batch-chart svg{display:block;width:100%;min-width:540px;max-height:440px;font:12px system-ui,sans-serif;fill:#405d83}
+[data-student-locked]{background:#eaf1f8!important;color:#64809b!important}
+#cmStudentStage h4{margin:0 0 10px}#cmStudentHistory h4{margin-top:18px}
+#cmExecutionTools{flex:1 0 100%;width:100%;box-sizing:border-box}
 @media(max-width:700px){.cm-task-parameters{grid-template-columns:1fr}.cm-experiment-queue{align-items:start;flex-direction:column}.cm-experiments>.cm-learning-nav{grid-template-columns:1fr}.cm-experiments .cm-learn-actions>label{width:100%}}

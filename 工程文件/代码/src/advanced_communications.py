@@ -185,7 +185,7 @@ def build(p):
             requested=k.split('_',1)[1]
             if direction not in ('channel','signal_rx') or not channels or requested!=scheme: fail('解调方式须与发送映射匹配。')
             if scheme in SYMBOL_SCHEMES and domain!='复符号': fail('先完成波形接收滤波 / 抽样或 OFDM 解调。')
-            if q.get('automatic_variance') and 'rx_noise_estimate' not in consumed: fail('自动 LLR 方差需要接收噪声方差估计积木。')
+            if q.get('automatic_variance') and not consumed&{'rx_noise_estimate','rx_mimo_soft','rx_mimo_lmmse','rx_mimo_kalman'}: fail('自动 LLR 方差需要接收噪声方差估计或空间软检测积木。')
             for tx,rx in [('tx_frame','rx_frame'),('tx_rrc','rx_timing'),('tx_pilots','rx_pilots'),('tx_ofdm','rx_ofdm')]:
                 if tx in features and rx not in consumed: fail('缺少 '+c.BLOCKS[rx]['label']+'。')
             count=features['coded_count']; domain='LLR' if k.startswith('soft_') else '比特'; direction='rx'
@@ -193,8 +193,9 @@ def build(p):
             if direction!='rx' or not stack: fail('缺少配对发送编码器。')
             expected,params,original=stack.pop()
             if c.PAIRS[k]!=expected: fail('须按发送编码的相反顺序译码。')
-            if k not in ('ldpc_decode','conv_soft_decode') and q!=params: fail('配对编码参数须一致。')
-            if k in ('ldpc_decode','conv_soft_decode'):
+            if k not in ('ldpc_decode','conv_soft_decode','polar_decode') and q!=params: fail('配对编码参数须一致。')
+            if k=='polar_decode' and any(q[name]!=params[name] for name in ('n','rate','design')): fail('Polar 码长、码率和构造参数须与编码器一致。')
+            if k in ('ldpc_decode','conv_soft_decode','polar_decode'):
                 if domain!='LLR': fail('该译码需要软解调输出的 LLR。')
                 domain='比特'
             elif k=='depuncture':
@@ -224,7 +225,7 @@ def run(compiled, source, texts, source_count, rng):
     p=compiled['program']; f=compiled['features']; data=source.copy(); analog=compiled['source_kind']=='analog'
     reference=None if analog else source.copy(); stack=[]; info={}; snapshots=[]; recovery={}; gain=1+0j; prefix=0
     fs=p['symbol_rate']; tx=None; channel=None; tx_power=1.; in_channel=False; decoded_bits=None; clipped=corrections=0; eye=None;noise_estimate=None
-    rf_stages=[];learning=[];wireless_state={'source_counts':f['source_counts']}
+    rf_stages=[];learning=[];wireless_state={'source_counts':f['source_counts'],'array_channel_params':f.get('array_channel',{}).get('params')}
     receive_sps=f.get('receiver_sps',f.get('tx_rrc',{}).get('params',{}).get('sps',1))
     for b in p['blocks'][source_count:]:
         runtime.enter(b)
@@ -234,6 +235,8 @@ def run(compiled, source, texts, source_count, rng):
                 tx=data.copy();tx_power=float(np.mean(abs(tx)**2));in_channel=True
             data,details,fs=wireless.run_stage(k,data,q,wireless_state,rng,fs)
             info.setdefault('wireless',{})[k]=details
+            if 'before' in details and 'after' in details and len(rf_stages)<8:
+                rf_stages.append({'label':c.BLOCKS[k]['label'],'before':details['before'],'after':details['after']})
             if k in wireless.CHANNEL: channel=data.copy()
             if k in wireless.RX:
                 snapshots.append({'id':b['id'],'label':c.BLOCKS[k]['label'],**view(data,c.CONFIG['plot_points'],fs)})
@@ -345,10 +348,12 @@ def run(compiled, source, texts, source_count, rng):
             else:
                 received=np.pad(received[:len(mapped)],(0,max(0,len(mapped)-len(received))))
                 hard,decided_indices=dsp.decisions(received,scheme); decision_symbols=received; _,points=dsp.constellation(scheme)
-                data=dsp.soft_demod(received,scheme,noise_estimate if q.get('automatic_variance') else q['noise_variance']) if k.startswith('soft_') else hard
+                variance=wireless_state.get('soft_variance',noise_estimate if q.get('automatic_variance') else q.get('noise_variance'))
+                data=dsp.soft_demod(received,scheme,variance) if k.startswith('soft_') else hard
             data=data[:len(encoded)]
             if scheme not in WAVE_SCHEMES:
-                data=runtime.decision(b,received,scheme,data,noise_estimate if noise_estimate is not None else q.get('noise_variance'))
+                decision_variance=wireless_state.get('soft_variance',noise_estimate if noise_estimate is not None else q.get('noise_variance'))
+                data=runtime.decision(b,received,scheme,data,decision_variance)
             demapped=(data<0).astype(np.uint8) if k.startswith('soft_') else data.copy()
         elif k in c.PAIRS:
             encoder,params,size=stack.pop()

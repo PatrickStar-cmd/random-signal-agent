@@ -117,7 +117,7 @@ def axis_spec(program, axis):
     return block, name, spec, {**settings, 'values': checked, 'mode': axis.get('mode', 'native')}
 
 
-def sweep2d(program, token, settings, progress=None, cancel=None):
+def sweep2d(program, token, settings, progress=None, cancel=None, resume=None):
     from src import communications as c
     from src.communication_sweep import sweep
     built = c.build(program)
@@ -138,6 +138,10 @@ def sweep2d(program, token, settings, progress=None, cancel=None):
               'x_values': xs['values'], 'y_values': ys['values'], 'x_label': xspec['label'], 'y_label': yspec['label'],
               'points': [], 'complete': False, 'total_points': len(xs['values']) * len(ys['values']),
               'seed_policy': '每个网格点使用相同种子序列 seed + 帧序号；恢复点保留该点参数与基准种子。'}
+    if resume and (resume.get('token') != token or resume.get('settings') != settings):
+        raise ValueError('二维扫描续跑配置需要与检查点一致。')
+    row_checkpoints = copy.deepcopy(resume.get('row_checkpoints', {})) if resume else {}
+    result['row_checkpoints'] = row_checkpoints
     started = time.monotonic()
     for row, y in enumerate(ys['values']):
         if cancel is not None and cancel.is_set():
@@ -170,9 +174,12 @@ def sweep2d(program, token, settings, progress=None, cancel=None):
                        'completed': len(result['points']) + len(active), 'total': result['total_points'], 'x_label': value['axis']}
             return current
         def update(value):
+            row_checkpoints[str(row)] = copy.deepcopy(value)
             if progress:
                 progress(current_row(value))
-        row_result = sweep(candidate, row_build['token'], {**xs, 'frames': frames, 'target_errors': settings.get('target_errors', 100)}, update, cancel)
+        previous = row_checkpoints.get(str(row))
+        row_result = previous if previous and previous.get('complete') else sweep(candidate, row_build['token'], {**xs, 'frames': frames, 'target_errors': settings.get('target_errors', 100)}, update, cancel, previous)
+        row_checkpoints[str(row)] = copy.deepcopy(row_result)
         result = current_row(row_result); result['elapsed_seconds'] = time.monotonic() - started
         if not row_result['complete']:
             break

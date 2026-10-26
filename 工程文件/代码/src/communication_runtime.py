@@ -7,6 +7,7 @@ future block for the debugger. Receiver state contains no transmitted payload.
 from contextvars import ContextVar
 from contextlib import contextmanager
 import hashlib
+import math
 import threading
 import time
 import numpy as np
@@ -15,6 +16,36 @@ CURRENT=ContextVar('communication_execution',default=None)
 
 
 class Cancelled(Exception): pass
+
+
+def validate_breakpoints(rules, compiled):
+    if not isinstance(rules, list) or len(rules) > 32:
+        raise ValueError('断点最多保存 32 个。')
+    domains = {p['id']: p['output'] for p in compiled['plan']}
+    for rule in rules:
+        if not isinstance(rule, dict) or rule.get('block_id') not in domains:
+            raise ValueError('请选择工程内的断点积木。')
+        metric = rule.get('metric', 'always')
+        if metric not in ('always', 'rms', 'peak', 'llr_mean_abs', 'llr_uncertain_fraction'):
+            raise ValueError('断点指标请选择输出 RMS、峰值或 LLR 可靠度。')
+        if metric.startswith('llr_') and domains[rule['block_id']] != 'LLR':
+            raise ValueError('LLR 条件请选择软解调输出积木。')
+        if metric != 'always' and (rule.get('operator') not in ('>=', '<=') or
+                type(rule.get('value')) not in (int, float) or not math.isfinite(rule['value'])):
+            raise ValueError('填写有限的断点阈值和比较方式。')
+    return rules
+
+
+def breakpoint_match(rule, observation):
+    if rule['block_id'] != observation['id']:
+        return False
+    metric = rule.get('metric', 'always')
+    if metric == 'always':
+        return True
+    value = observation.get(metric)
+    if value is None:
+        return False
+    return value >= rule['value'] if rule['operator'] == '>=' else value <= rule['value']
 
 
 def enter(block):
@@ -85,6 +116,9 @@ class Observer:
             'power':power,'rms':power**.5,'peak':float(np.max(abs(array))) if count else 0.,
             'mean_i':float(np.mean(array).real) if count else 0.,'mean_q':float(np.mean(array).imag) if count else 0.,
             'elapsed_ms':(time.perf_counter()-self.started)*1000,'sha256':hashlib.sha256(np.ascontiguousarray(array).tobytes()).hexdigest(),'frame':self.frame}
+        if domain == 'LLR':
+            observation.update(llr_mean_abs=float(np.mean(abs(array))) if count else 0.,
+                               llr_uncertain_fraction=float(np.mean(abs(array) < 1)) if count else 0.)
         if self.retain:
             from src import communications as c
             if sum(v.nbytes for v in self.values.values())+array.nbytes>c.CONFIG['max_capture_bytes']: raise ValueError('观察数据超过内存上限，请减少信源或采样点。')

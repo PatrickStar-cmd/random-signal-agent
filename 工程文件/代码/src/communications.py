@@ -129,6 +129,7 @@ communication_catalog.register(block, number, field, BLOCKS)
 business.register(block, number, field, BLOCKS)
 wireless.register(block, number, field, BLOCKS)
 iq.register(block, number, field, BLOCKS)
+communication_codecs.polar.register(block, number, field, BLOCKS)
 PAIRS = {'pcm_decode': 'pcm_encode', 'repeat_decode': 'repeat_encode', 'hamming_decode': 'hamming_encode', 'conv_decode': 'conv_encode', 'deinterleave': 'interleave'}
 PAIRS.update(communication_codecs.PAIRS)
 PAIRS.update({'line_'+scheme+'_decode':'line_'+scheme+'_encode' for scheme in baseband.LINE_CODES})
@@ -169,6 +170,7 @@ PRESETS.update(communication_v045.presets(preset))
 PRESETS.update(business.presets(preset))
 PRESETS.update(wireless.presets(preset))
 PRESETS.update(iq.presets(preset))
+PRESETS.update(communication_codecs.polar.presets(preset))
 
 
 def catalog():
@@ -235,7 +237,7 @@ def normalize(raw, draft=False):
 def build(raw):
     p = normalize(raw); items = p['blocks']; sources = []
     if any(b['kind'] == 'iq_source' for b in items): return iq.build(p)
-    extended=communication_catalog.KINDS | business.KINDS | wireless.KINDS
+    extended=communication_catalog.KINDS | business.KINDS | wireless.KINDS | set(communication_codecs.polar.PAIRS) | set(communication_codecs.polar.PAIRS.values())
     analog_audio=any(b['kind'] in {'mod_'+scheme for scheme in analog_modulation.LABELS} for b in items) and not any(b['kind'] in extended-{'audio_source'} for b in items)
     if any(b['kind'] in extended for b in items) and not analog_audio and not any(b['kind'].startswith('line_') or b['kind'] in ('mod_baseband','mod_pam') for b in items):
         return advanced_communications.build(p)

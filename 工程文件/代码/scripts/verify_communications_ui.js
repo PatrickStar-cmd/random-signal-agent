@@ -4,7 +4,7 @@ const path = require('node:path');
 const {spawnSync} = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
-const logs = path.join(root, 'logs/communications-v048');
+const logs = path.join(root, 'logs/communications-v049');
 fs.mkdirSync(logs, {recursive: true});
 const entries = [];
 const output = [];
@@ -20,6 +20,8 @@ run('alignment regression', ['scripts/test_communications_alignment.js']);
 run('learning UI lifecycle regression', ['scripts/test_communications_learning_ui.js']);
 run('experiment UI lifecycle regression', ['scripts/test_communications_experiments_ui.js']);
 run('spatial UI lifecycle regression', ['scripts/test_communications_spatial_ui.js']);
+run('waveform UI lifecycle regression', ['scripts/test_communications_waveform_ui.js']);
+run('v0.4.9 experiment UI regression', ['scripts/test_communications_v049_ui.js']);
 const report = {
   status: entries.every(entry => entry.status === 'passed') ? 'passed' : 'failed',
   node: process.version,

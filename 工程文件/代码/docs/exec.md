@@ -358,3 +358,10 @@ node scripts/verify_communications_ui.js
 ```
 
 验证日志覆盖 `logs/communications-v048/`，发布验证覆盖 `logs/release/`；临时材料与修订前文档保存在 `debug/v048/`。提交后执行 `scripts/build_release.py` 和 `scripts/verify_release.py`，再核对 Windows/Linux Python 3.12–3.14、Docker 与 Pages。
+
+
+## 🌊 v0.4.9 先进收发算法与实验调试增强
+
+已实现：LMMSE/Kalman、空间软检测、DFT-s-OFDM、记忆功放与 DPD、突发同步与时钟恢复、Polar、阵列预编码与 MVDR；条件断点、实验续跑、统计复跑、阶段作业、空间联动和报告编排。
+
+[完整功能、实现原理、操作顺序及验证命令](communications-v049.md)。日志位于 `logs/communications-v049/` 与 `logs/release/`。

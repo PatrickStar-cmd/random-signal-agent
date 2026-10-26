@@ -10,9 +10,11 @@ from reportlab.platypus import SimpleDocTemplate,Paragraph,Spacer,Table,TableSty
 from src import pdf_report,communications as c
 from src.communication_studio import validate_document
 from src.workbench import VERSION
+from src.communication_report_materials import prepare, MaterialFigure
 
 def printable(value):
-    return str(value).translate(str.maketrans('₀₁₂₃₄₅₆₇₈₉','0123456789'))
+    text=str(value).translate(str.maketrans('₀₁₂₃₄₅₆₇₈₉','0123456789'))
+    return ''.join(ch for ch in text if ord(ch)<=0xffff and not 0x2600<=ord(ch)<=0x27bf and ch not in '\ufe0f\u200d')
 
 
 def facts(raw):
@@ -29,7 +31,8 @@ def facts(raw):
     summary=[]
     if result:
         m=result['metrics']
-        if 'ber' in m: summary.append(f"接收 {m['bit_count']} 位，错误 {m['bit_errors']} 位，BER={m['ber']:.5g}。")
+        if m.get('ber') is not None: summary.append(f"接收 {m['bit_count']} 位，错误 {m['bit_errors']} 位，BER={m['ber']:.5g}。")
+        elif m.get('received_bits') is not None: summary.append(f"录波接收 {m['received_bits']} 位，接收功率 {m['rx_power']:.5g}。")
         if m.get('net_bit_rate') is not None: summary.append(f"净信息速率 {m['net_bit_rate']:.5g} bit/s；频谱效率 {m['spectral_efficiency']:.5g} bit/s/Hz（99% 占用带宽）；PAPR {m['papr_db']:.5g} dB。")
         if m.get('rmse') is not None: summary.append(f"信宿 RMSE={m['rmse']:.5g}。")
     for curve in curves:
@@ -38,7 +41,10 @@ def facts(raw):
             first,last=curve['points'][0],curve['points'][-1]
             metric='ber' if any(p.get('bit_count') for p in curve['points']) else 'rmse'
             summary.append(f"{str(curve.get('name','性能扫描'))[:80]}：参数 {first['db']:g} → {last['db']:g}，观测 {metric.upper()} {first[metric]:.5g} → {last[metric]:.5g}，累计 {sum(p['frames'] for p in curve['points'])} 帧。")
-    return {'document':doc,'build':built,'summary':summary or ['工程已构建，尚未保存运行结果。'],'app_version':VERSION,'sections':['实验链路与参数','接收结果','性能曲线与统计','结论与复现']}
+    available,selected,conclusion=prepare(doc)
+    return {'document':doc,'build':built,'summary':summary or ['工程已构建，尚未保存运行结果。'],'app_version':VERSION,
+            'sections':['实验链路与参数','接收结果','性能曲线与统计',*[v['title'] for v in selected],'结论与复现'],
+            'materials':available,'selected_materials':selected,'conclusion':conclusion}
 
 
 class Diagram(Flowable):
@@ -91,7 +97,7 @@ def render(raw):
         styles['heading'].keepWithNext=True
         paragraph=lambda text,style='body':Paragraph(escape(printable(text)),styles[style])
         doc=f['document'];story=[paragraph(doc['name'],'title'),paragraph(f"通信原理实验报告 · v{VERSION}"),paragraph('实验链路与参数','heading')]
-        blocks=doc['program']['blocks'];story.append(Diagram([c.BLOCKS[b['kind']]['label'] for b in blocks]))
+        blocks=doc['program']['blocks'];story.append(Diagram([printable(c.BLOCKS[b['kind']]['label']).strip() for b in blocks]))
         rows=[[paragraph('模块'),paragraph('参数')]]
         for b in blocks:
             params='；'.join(f"{c.BLOCKS[b['kind']]['params'][k]['label']}={v}" for k,v in b['params'].items())
@@ -114,6 +120,18 @@ def render(raw):
             if group: story.extend([paragraph('性能比较 · '+axis,'heading'),Curve(group)])
         for curve in curves:
             story.append(paragraph(f"{curve.get('name','扫描')}：令牌 {curve.get('token','')}；设置 {json.dumps(curve.get('settings',{}),ensure_ascii=False)}"))
+        for item in f['selected_materials']:
+            story.append(paragraph(item['title'],'heading'))
+            if item['series'] or item['heatmap']: story.append(MaterialFigure(item))
+            if item['rows']:
+                headers=item['headers'];width=490/len(headers)
+                rows=[[paragraph(value) for value in headers]]+[[paragraph('—' if value is None else f'{value:.5g}' if isinstance(value,float) else value) for value in row] for row in item['rows']]
+                table=Table(rows,colWidths=[width]*len(headers),repeatRows=1)
+                table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#e3eafa')),('GRID',(0,0),(-1,-1),.3,colors.HexColor('#c7d4e8')),('VALIGN',(0,0),(-1,-1),'TOP')]))
+                story.append(table)
+            for text in (item['note'],item['caption']):
+                if text: story.append(paragraph(text))
+        if f['conclusion']: story.extend([paragraph('实验结论','heading'),paragraph(f['conclusion'])])
         story.extend([paragraph('复现信息','heading'),paragraph(f"随机种子 {doc['program']['seed']}；构建令牌 {f['build']['token']}。"),paragraph('误码统计保留实际试验帧数与置信区间；零错误点使用置信上界绘图。')])
         text=json.dumps({k:doc['program'][k] for k in ('sample_rate','sample_count','symbol_rate')},ensure_ascii=False);story.append(paragraph(text))
         def footer(canvas,document):

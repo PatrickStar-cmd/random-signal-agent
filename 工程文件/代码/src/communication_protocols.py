@@ -257,12 +257,12 @@ class PacketReceiver:
             return data
         _, points = dsp.constellation(scheme)
         residual = float(np.mean(np.min(abs(np.asarray(symbols)[:, None]-points[None, :])**2, axis=1)))
-        variance = max(1e-12, float(noise_variance) if noise_variance is not None else residual)
-        automatic = noise_variance is not None and any(b['kind']=='rx_noise_estimate' for b in self.observer.compiled['program']['blocks'])
-        measured = noise_variance if automatic else residual
+        variance = np.maximum(1e-12, np.asarray(noise_variance, float)) if noise_variance is not None else max(1e-12,residual)
+        automatic = noise_variance is not None and (np.ndim(noise_variance)>0 or any(b['kind']=='rx_noise_estimate' for b in self.observer.compiled['program']['blocks']))
+        measured = float(np.mean(variance)) if automatic else residual
         self.variance = float(max(1e-12, measured))
         self.snr_db = float(-10*np.log10(max(1e-12, measured)))
-        self.method = '接收噪声估计积木' if automatic else '最近星座残差的接收噪声估计'
+        self.method = '接收有效噪声估计' if automatic else '最近星座残差的接收噪声估计'
         self.llr = np.asarray(data, float).copy() if block['kind'].startswith('soft_') else dsp.soft_demod(symbols, scheme, variance)[:len(data)]
         if self.previous is not None and len(self.previous) != len(self.llr): raise ValueError('重传码字的 LLR 长度需要保持一致。')
         self.combined = self.llr.copy() if self.previous is None else self.previous+self.llr

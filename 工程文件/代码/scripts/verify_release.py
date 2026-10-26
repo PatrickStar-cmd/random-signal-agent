@@ -64,7 +64,7 @@ def main():
         assert (code / 'web/communication-layout.css').is_file()
         assert (code / 'web/communication-learning.js').is_file()
         assert (code / 'web/communication-learning.css').is_file()
-        for name in ('communication-spatial.js','communication-experiments.js','communication-experiments.css'):
+        for name in ('communication-spatial.js','communication-experiments.js','communication-experiments.css','communication-report.js','communication-report.css','communication-waveform.js'):
             assert (code / 'web' / name).is_file()
         assert (code / 'src/communication_rf.py').is_file()
         assert (code / 'src/communication_v045.py').is_file()
@@ -75,6 +75,9 @@ def main():
         for name in ('advanced_communications','communication_catalog','communication_codecs','communication_dsp','communication_sweep','communication_runtime','communication_studio','communication_jobs','communication_algorithms','communication_report','communication_business','communication_wireless','communication_learning','communication_protocols','communication_subprojects','communication_spatial','communication_iq','communication_experiments'):
             assert (code / 'src' / (name+'.py')).is_file()
         assert (code / 'docs/communications-v048.md').is_file()
+        assert (code / 'docs/communications-v049.md').is_file()
+        for name in ('communication_receiver_v049','communication_array_v049','communication_waveform_v049','communication_polar','communication_report_materials'):
+            assert (code / ('src/'+name+'.py')).is_file()
         for name in ('communication_hopping.py', 'communication_ofdma.py'):
             assert (code / 'src' / name).is_file()
         for suite in ('test_communications_business', 'test_communications_wireless', 'test_communications_learning'):
@@ -116,6 +119,8 @@ def main():
             run([python, 'scripts/test_communications_learning.py'])
             for suite in ('closedloop','spatial','iq','experiments','v048_integration'):
                 run([python, 'scripts/test_communications_'+suite+'.py'])
+            for suite in sorted((code / 'scripts').glob('test_communications_*v049*.py')):
+                run([python, str(suite)])
             run([python, 'scripts/benchmark_algorithms.py'])
             report['benchmark'] = json.loads((code / 'outputs/benchmark/summary.json').read_text(encoding='utf-8'))
             env['PATH'] = str(bin_dir) + os.pathsep + env.get('PATH', '')
@@ -145,7 +150,9 @@ def main():
                                     'synthetic_audio_download', 'diagnostic_acceptance', 'communication_lab_acceptance',
                                     'communication_advanced_acceptance', 'communication_performance_sweep', 'communication_experience_acceptance', 'communication_rf_acceptance',
                                     'communication_business_acceptance', 'communication_wireless_acceptance', 'communication_learning_acceptance','communication_closedloop_acceptance','communication_spatial_acceptance',
-                                    'communication_iq_acceptance','communication_experiments_acceptance','communication_v048_integration']
+                                    'communication_iq_acceptance','communication_experiments_acceptance','communication_v048_integration',
+                                    'communication_v049_receiver','communication_v049_waveform','communication_v049_iq_roundtrip',
+                                    'communication_v049_experiments','communication_v049_integration']
             finally:
                 if process is not None and process.poll() is None:
                     if os.name == 'nt':

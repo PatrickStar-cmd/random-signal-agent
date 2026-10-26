@@ -16,6 +16,8 @@ class Job:
         self.cancel=threading.Event();self.condition=threading.Condition();self.status='queued';self.revision=0
         self.progress={};self.result=None;self.error=None;self.ctx=None;self.mode='step' if kind=='debug' else 'run';self.permits=0
         self.created=time.monotonic();self.accessed=self.created;self.contexts=[]
+        self.breakpoints=payload.get('breakpoints',[])
+        if kind=='debug' and payload.get('debug_mode')=='continue': self.mode='run'
     def update(self,**changes):
         with self.condition:
             for k,v in changes.items(): setattr(self,k,copy.deepcopy(v))
@@ -25,7 +27,12 @@ class Job:
         if observation is not None:
             self.update(progress={'observation':observation,'completed':len(self.ctx.observations),'total':len(self.ctx.compiled['program']['blocks'])})
         with self.condition:
-            if self.mode=='run' or observation and observation['kind']=='sink': return
+            hit=next((rule for rule in self.breakpoints if observation and runtime.breakpoint_match(rule,observation)),None)
+            if hit:
+                self.mode='step';self.permits=0
+                self.progress['breakpoint']={'rule':hit,'block_id':observation['id'],
+                    'actual':observation.get(hit.get('metric','rms')),'label':observation['label']}
+            if self.mode=='run' or observation and observation['kind']=='sink' and not hit: return
             self.status='paused';self.revision+=1;self.condition.notify_all()
             deadline=time.monotonic()+c.CONFIG['max_debug_idle_seconds']
             while self.mode=='step' and self.permits==0 and not self.cancel.is_set():
@@ -65,16 +72,17 @@ class Jobs:
             p=self.receipt(session,key)
             if not p.exists(): raise
             value=json.loads(p.read_text(encoding='utf-8'))
-            return {'id':key,'kind':'sweep','status':'completed' if value['checkpoint'].get('complete') else 'interrupted','revision':0,'progress':value['checkpoint'],'result':value['checkpoint'],'error':None,'observations':[]}
+            return {'id':key,'kind':value.get('kind','sweep'),'status':'completed' if value['checkpoint'].get('complete') else 'interrupted','revision':0,'progress':value['checkpoint'],'result':value['checkpoint'],'error':None,'observations':[]}
     def persist(self,job,value):
         p=self.receipt(job.session,job.id);p.parent.mkdir(parents=True,exist_ok=True)
-        receipt={'payload':job.payload,'checkpoint':value};temporary=p.with_suffix('.tmp')
+        payload=copy.deepcopy(job.payload);payload.pop('resume',None)
+        receipt={'kind':job.kind,'payload':payload,'checkpoint':value};temporary=p.with_suffix('.tmp')
         temporary.write_text(json.dumps(receipt,ensure_ascii=False,allow_nan=False),encoding='utf-8');temporary.replace(p)
         # Bounded receipt retention per browser session.
         for old in sorted(p.parent.glob('*.json'),key=lambda q:q.stat().st_mtime,reverse=True)[30:]: old.unlink()
     def start(self,session,kind,payload):
         from src import communications as c
-        if kind not in ('debug','run','sweep','continuous','branches','experiments','rf-task','sweep2d','protocol','amc','classroom','batch','target-search'): raise ValueError('未知通信任务类型。')
+        if kind not in ('debug','run','sweep','continuous','branches','experiments','rf-task','sweep2d','protocol','amc','classroom','classroom-stage','batch','batch-replay','target-search'): raise ValueError('未知通信任务类型。')
         if not isinstance(payload,dict): raise ValueError('任务参数无效。')
         if kind not in ('branches','experiments','batch'):
             built=c.build(payload.get('program'))
@@ -92,6 +100,7 @@ class Jobs:
             from src.communication_v045 import task_programs
             task_programs(payload.get('task_id'),built['program'])
         if kind=='continuous': c.numeric(payload.get('frames',10),'多帧数量',1,c.CONFIG['max_continuous_frames'],True)
+        if kind=='debug': runtime.validate_breakpoints(payload.get('breakpoints',[]),built)
         if kind=='sweep':
             from src.communication_sweep import parameter
             parameter(built['program'],payload.get('settings'))
@@ -101,17 +110,20 @@ class Jobs:
             # Retain bounded completed observations for paging.
             completed=sorted((j for j in self.jobs.values() if j not in active),key=lambda j:j.accessed,reverse=True)
             for j in completed[12:]: self.jobs.pop(j.id,None)
-            job=Job(session,kind,payload);self.jobs[job.id]=job;self.executor.submit(self.execute,job)
+            job=Job(session,kind,payload);self.jobs[job.id]=job
+            if kind in ('sweep','sweep2d','batch','target-search'):
+                self.persist(job,{'complete':False,'not_started':True})
+            self.executor.submit(self.execute,job)
         return job.public(False)
     def control(self,session,key,action):
-        if action=='resume-sweep':
+        if action in ('resume-sweep','resume'):
             with self.lock:
                 original=self.jobs.get(key)
                 if original and original.status in ('queued','running','paused'): raise ValueError('请先停止正在运行的扫描。')
             p=self.receipt(session,key)
             if not p.exists(): raise KeyError('没有可续跑的扫描检查点。')
-            value=json.loads(p.read_text(encoding='utf-8'));payload=value['payload'];payload['resume']=value['checkpoint']
-            return self.start(session,'sweep',payload)
+            value=json.loads(p.read_text(encoding='utf-8'));payload=value['payload'];payload['resume']=None if value['checkpoint'].get('not_started') else value['checkpoint']
+            return self.start(session,value.get('kind','sweep'),payload)
         job=self.get(session,key)
         with job.condition:
             if action=='cancel': job.cancel.set()
@@ -138,24 +150,29 @@ class Jobs:
             if not acquired: raise runtime.Cancelled('任务已取消。')
             job.update(status='running')
             p=job.payload
+            durable=job.kind in ('sweep','sweep2d','batch','target-search')
+            def progress(value):
+                job.update(progress=value)
+                if durable: self.persist(job,value)
             if job.kind=='sweep':
                 from src.communication_sweep import sweep
-                def progress(value):
-                    job.update(progress=value);self.persist(job,value)
                 result=sweep(p['program'],p['token'],p['settings'],progress,job.cancel,p.get('resume'))
             elif job.kind=='sweep2d':
                 from src.communication_learning import sweep2d
-                result=sweep2d(p['program'],p['token'],p['settings'],lambda v:job.update(progress=v),job.cancel)
+                result=sweep2d(p['program'],p['token'],p['settings'],progress,job.cancel,p.get('resume'))
             elif job.kind in ('protocol','amc'):
                 from src import communication_protocols
                 operation=communication_protocols.protocol if job.kind=='protocol' else communication_protocols.amc
                 result=operation(c.build(p['program'])['program'],p.get('settings',{}),lambda v:job.update(progress=v),job.cancel)
-            elif job.kind in ('classroom','batch','target-search'):
+            elif job.kind in ('classroom','classroom-stage','batch','target-search'):
                 from src import communication_experiments as experiments
-                progress=lambda v:job.update(progress=v)
                 if job.kind=='classroom': result=experiments.classroom(p['task'],p['program'],p.get('settings',{}),progress,job.cancel)
-                elif job.kind=='batch': result=experiments.batch(p['programs'],p.get('settings',{}),progress,job.cancel)
-                else: result=experiments.target_search(p['program'],p.get('settings',{}),progress,job.cancel)
+                elif job.kind=='classroom-stage': result=experiments.classroom_stage(p['submission'],p['program'],p['stage'],progress,job.cancel)
+                elif job.kind=='batch': result=experiments.batch(p['programs'],p.get('settings',{}),progress,job.cancel,p.get('resume'))
+                else: result=experiments.target_search(p['program'],p.get('settings',{}),progress,job.cancel,p.get('resume'))
+            elif job.kind=='batch-replay' and p.get('mode')=='protocol':
+                from src.communication_protocols import protocol
+                result=protocol(p['program'],p.get('protocol',{}),progress,job.cancel)
             elif job.kind=='branches': result=studio.compare_branches(p['programs'],p.get('names'),job.cancel,lambda v:job.update(progress=v),job.contexts)
             elif job.kind=='experiments':
                 from src.communication_sweep import sweep
@@ -189,6 +206,7 @@ class Jobs:
                 with runtime.execution(ctx): result=c.run(compiled['program'],compiled['token'])
                 result['experience']={'observations':ctx.observations,'contract':1,'job_id':job.id}
             job.update(result=result,status='cancelled' if job.cancel.is_set() else 'completed')
+            if durable: self.persist(job,result)
         except runtime.Cancelled as exc: job.update(status='cancelled',error=str(exc))
         except Exception as exc: job.update(status='failed',error=str(exc))
         finally:

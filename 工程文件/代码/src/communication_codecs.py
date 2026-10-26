@@ -7,6 +7,7 @@ The LDPC code is an explicitly defined educational (128,64) IRA code.
 from functools import lru_cache
 import numpy as np
 from src import communication_business as business
+from src import communication_polar as polar
 
 SOURCE_CODECS = {'compand_encode', 'dpcm_encode', 'delta_encode', 'adpcm_encode'}
 PAIRS = {'crc_check': 'crc_append', 'descramble': 'scramble',
@@ -14,6 +15,7 @@ PAIRS = {'crc_check': 'crc_append', 'descramble': 'scramble',
          'compand_decode': 'compand_encode', 'dpcm_decode': 'dpcm_encode',
          'delta_decode': 'delta_encode', 'depuncture': 'puncture'}
 PAIRS.update(business.PAIRS)
+PAIRS.update(polar.PAIRS)
 
 
 def pn(count, degree=7, seed=1):
@@ -136,6 +138,7 @@ def soft_viterbi(llr, trace=False):
 
 
 def encoded_count(kind, count, q):
+    if kind == 'polar_encode': return polar.encoded_count(kind,count,q)
     if kind in business.PAIRS.values(): return business.encoded_count(kind,count,q)
     if kind == 'puncture': return int(puncture_mask(count,q['rate']).sum())
     if kind == 'crc_append': return count + q['width']
@@ -145,6 +148,7 @@ def encoded_count(kind, count, q):
 
 
 def encode(kind, data, q):
+    if kind == 'polar_encode': return polar.encode(kind,data,q)
     if kind in business.PAIRS.values(): return business.encode(kind,data,q)
     if kind == 'puncture': return data[puncture_mask(len(data),q['rate'])]
     if kind == 'crc_append': return np.r_[data, crc(data, q['width'])]
@@ -170,6 +174,7 @@ def encode(kind, data, q):
 
 
 def decode(kind, data, q):
+    if kind == 'polar_decode': return polar.decode(kind,data,q)
     if kind in business.PAIRS: return business.decode(kind,data,q)
     info = {}
     if kind == 'crc_check':

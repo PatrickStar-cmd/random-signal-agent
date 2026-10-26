@@ -191,7 +191,7 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
             if action == 'learning-export':
                 return await run_in_threadpool(learning.export_python, payload.get('program'), payload.get('variables'), payload.get('bindings'))
             return await run_in_threadpool(learning.explain, payload.get('algorithm'), payload.get('seed', 42), payload.get('snr_db', 2), payload.get('scheme', 'qpsk'))
-        extension_actions={'subproject-create','subproject-insert','subproject-update','subproject-validate','classroom-validate','iq-import','iq-export'}
+        extension_actions={'subproject-create','subproject-insert','subproject-update','subproject-validate','classroom-validate','classroom-submission-validate','iq-import','iq-export'}
         if action in extension_actions:
             if request.headers.get('content-type','').split(';')[0]!='application/json': raise ValueError('通信实验请求须使用 JSON。')
             payload=await body(request);session=session_key(payload.get('session_id'))
@@ -203,6 +203,9 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
             if action=='classroom-validate':
                 from src.communication_experiments import validate_assignment
                 return await run_in_threadpool(validate_assignment,payload.get('task'))
+            if action=='classroom-submission-validate':
+                from src.communication_experiments import validate_submission
+                return await run_in_threadpool(validate_submission,payload.get('submission'))
             if action=='iq-import': return await run_in_threadpool(iq.import_recording,payload.get('data'),payload.get('metadata'),payload.get('name','录波'),payload.get('datatype','cf32_le'),payload.get('sample_rate',8000))
             job=communication_jobs.get(session,payload.get('id'));bid=payload.get('block_id')
             if job.ctx is None or bid not in job.ctx.values: raise ValueError('选择本次运行中已记录的复采样观察点。')
@@ -227,7 +230,7 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
             from src import communication_report
             if action=='report-preview':
                 facts=await run_in_threadpool(communication_report.facts,payload.get('document'))
-                return {k:facts[k] for k in ('summary','sections','app_version')}
+                return {k:facts[k] for k in ('summary','sections','app_version','materials','selected_materials','conclusion')}
             pdf=await run_in_threadpool(communication_report.render,payload.get('document'))
             return Response(pdf,media_type='application/pdf',headers={'Content-Disposition':'attachment; filename="communication-experiment.pdf"'})
         if action not in ('validate', 'build', 'run', 'sweep'):

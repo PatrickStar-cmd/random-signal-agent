@@ -30,13 +30,21 @@ window.createCommunicationExperience = function (core) {
   const sweepParameter=document.createElement('label');sweepParameter.innerHTML='扫描参数<select id="cmSweepParameter"></select>';byId('cmSweepNoise').closest('label').after(sweepParameter);
   const sweepValues=document.createElement('label');sweepValues.innerHTML='指定值（可选，逗号分隔）<input id="cmSweepValues" type="text" maxlength="160" placeholder="例如 128,256,512">';byId('cmSweepErrors').closest('label').after(sweepValues);
   byId('cmSweepNoise').closest('label').firstChild.textContent='扫描积木 / 全局参数';
-  const reportDialog=document.createElement('dialog');reportDialog.id='cmReportDialog';reportDialog.className='cm-replace-dialog';reportDialog.innerHTML='<h3>📄 通信实验报告</h3><div id="cmReportPreview"></div><div class="cm-experience-row"><button id="cmReportDownload" type="button">下载 PDF</button><button id="cmReportClose" type="button">关闭</button></div>';root.append(reportDialog);
+  const executionPanel=document.createElement('details');executionPanel.id='cmExecutionTools';executionPanel.className='cm-experiment-details';
+  executionPanel.innerHTML=`<summary>🛑 断点与实验续跑</summary><div class="cm-experience-row"><label>断点积木<select id="cmBreakpointBlock"></select></label><label>条件<select id="cmBreakpointMetric"><option value="always">执行到此积木</option><option value="rms">输出 RMS</option><option value="peak">输出峰值</option><option value="llr_mean_abs">平均 |LLR|</option><option value="llr_uncertain_fraction">低可靠度比例（|LLR|＜1）</option></select></label><label>比较<select id="cmBreakpointOperator"><option value=">=">≥</option><option value="<=">≤</option></select></label><label>阈值<input id="cmBreakpointValue" type="number" value="1" step="any"></label><button type="button" id="cmBreakpointAdd">＋ 添加断点</button><button type="button" id="cmBreakpointRun">▶ 运行至断点</button></div><div id="cmBreakpointList"></div><div class="cm-experience-row"><label>持久化任务<select id="cmResumeJobs"></select></label><button type="button" id="cmJobResume">↻ 继续选中任务</button></div><p id="cmBreakpointStatus" role="status"></p>`;
+  projectPanel.querySelector('.cm-debug-controls').append(executionPanel);
 
   const rf=window.createCommunicationAnalysis(core,{meta:()=>meta,persist,runJob});
   const layout=window.createCommunicationLayout(core);
+  const waveform=window.createCommunicationWaveform(core,{meta:()=>meta,persist,request,layout});
   const learning=window.createCommunicationLearning(core,{meta:()=>meta,persist,runJob,documentValue,request,layout});
   const experiments=window.createCommunicationExperiments(core,{meta:()=>meta,persist,runJob,documentValue,request,layout});
   const spatial=window.createCommunicationSpatial(core,{meta:()=>meta,persist,request,layout,selected:()=>[...selected],insertionIndex,selectMembers:ids=>{selected=new Set(ids);render()},jobId:()=>get().result?.experience?.job_id});
+  const report=window.createCommunicationReport(core,{meta:()=>meta,persist,documentValue,request,session});
+  const savedFormIds=/^cm(?:Scan|Protocol|Packet|Retries|Feedback|AMC|Breakpoint(?:Metric|Operator|Value)|ContinuousFrames|Sweep(?:Start|Stop|Step|Frames|Errors|Values|Name))/;
+  function rememberForm(event){const e=event.target;if(e.id&&savedFormIds.test(e.id)&&['INPUT','SELECT','TEXTAREA'].includes(e.tagName)&&e.type!=='file'){(meta.formValues||(meta.formValues={}))[e.id]=e.value;persist();}}
+  root.addEventListener('input',rememberForm,true);root.addEventListener('change',rememberForm,true);
+  function restoreFormValues(){for(const [id,value] of Object.entries(meta.formValues||{})){const e=byId(id);if(e&&document.activeElement!==e&&(e.tagName!=='SELECT'||[...e.options].some(o=>o.value===String(value))))e.value=value;}}
 
   function documentValue(){
     syncBranches();return {document_schema:2,...clone(meta),program:clone(get().program),sweeps:clone(get().sweeps),result:clone(get().result||meta.result)};
@@ -47,7 +55,7 @@ window.createCommunicationExperience = function (core) {
     clearTimeout(saveTimer);
     if(meta.projectId&&!get().busy)saveTimer=setTimeout(()=>save(false).catch(e=>message(e.message)),1800);
   }
-  function invalidate(){if(!restoring){rf.invalidate();learning.invalidate();experiments.invalidate();spatial.invalidate();meta.result=null;meta.comparisons=null;observations=[];windowA=windowB=null;byId('cmProbeA').innerHTML='';byId('cmProbeB').innerHTML='';byId('cmExecutionSummary').textContent='链路已更新，运行后选择积木输出';byId('cmBranchResults').innerHTML='';drawScopes()}scheduleDescribe()}
+  function invalidate(){if(!restoring){rf.invalidate();learning.invalidate();experiments.invalidate();spatial.invalidate();waveform.invalidate();meta.result=null;meta.comparisons=null;observations=[];windowA=windowB=null;byId('cmProbeA').innerHTML='';byId('cmProbeB').innerHTML='';byId('cmExecutionSummary').textContent='链路已更新，运行后选择积木输出';byId('cmBranchResults').innerHTML='';drawScopes()}scheduleDescribe()}
   function editSnapshot(){return clone(meta)}
   function restoreEdit(value){meta={...defaults(),...clone(value)}}
   function loadState(doc){meta={...defaults(),...clone(doc)};delete meta.program;delete meta.sweeps;delete meta.document_schema;restoring=true}
@@ -147,7 +155,7 @@ window.createCommunicationExperience = function (core) {
     byId('cmLibrary').innerHTML=meta.library.length?meta.library.map((g,i)=>`<button type="button" data-cm-library="${i}">🧩 ${esc(g.name)} · ${g.blocks.length} 块</button>`).join(''):'勾选相邻积木，封装后即可复用。';
     byId('cmGroupExpose').innerHTML=blocks.filter(b=>selected.has(b.id)).flatMap(b=>Object.entries(get().definitions[b.kind].params).map(([key,spec])=>`<option value="${esc(b.id+':'+key)}">${esc(get().definitions[b.kind].label+' · '+spec.label)}</option>`)).join('');
     byId('cmBranchSelect').innerHTML=meta.branches.length?meta.branches.map((b,i)=>`<option value="${i}">${esc(b.name)}</option>`).join(''):'<option value="0">主链路</option>';byId('cmBranchSelect').value=String(meta.activeBranch);
-    renderFlow();renderSweepParameters();selection();scheduleDescribe();learning.render();experiments.render();spatial.render();
+    renderFlow();renderSweepParameters();selection();scheduleDescribe();learning.render();experiments.render();spatial.render();waveform.render();renderExecution();restoreFormValues();
   }
   function renderFlow(){
     const blocks=get().program.blocks,split=blocks.findIndex(b=>['demodulator','rx_converter'].includes(get().definitions[b.kind].category));
@@ -175,7 +183,8 @@ window.createCommunicationExperience = function (core) {
     const text=byId('cmSweepValues').value.trim();if(text)extra.values=text.split(',').map(v=>Number(v.trim()));meta.sweepSettings={block_id:block,parameter:param};return extra;
   }
   function buttons(busy){
-    rf.buttons(busy);learning.buttons(busy);experiments.buttons(busy);spatial.buttons(busy);
+    report.buttons(busy);executionPanel.querySelectorAll('button,input,select').forEach(e=>e.disabled=busy);byId('cmBreakpointRun').disabled=busy||!get().compiled;byId('cmJobResume').disabled=busy||!byId('cmResumeJobs').value;
+    rf.buttons(busy);learning.buttons(busy);experiments.buttons(busy);spatial.buttons(busy);waveform.buttons(busy);
     if(wasBusy&&!busy)persist();wasBusy=busy;
     const built=!!get().compiled;
     for(const id of ['cmDebugStart','cmContinuous','cmBranchesRun','cmContrastRun'])byId(id).disabled=busy||!built;
@@ -188,6 +197,7 @@ window.createCommunicationExperience = function (core) {
     while(true){
       job=await request('job-status',{id:job.id});activeJob=job;buttons(get().busy);
       if(job.revision!==lastRevision){lastRevision=job.revision;const p=job.progress||{},completed=p.completed_frames??p.completed??job.observations.length,total=p.total_frames??p.total??get().program.blocks.length;
+        rememberJob(job);if(p.breakpoint){const hit=p.breakpoint;byId('cmBreakpointStatus').textContent=`🛑 ${hit.label} · ${hit.rule.metric==='always'?'已到达断点':hit.rule.metric+' = '+hit.actual} · 点击继续或下一积木`;core.selectBlock(hit.block_id);}
         byId('cmJobProgress').textContent=`${({queued:'排队中',running:'执行中',paused:'已暂停',completed:'已完成',cancelled:'已停止',failed:'执行失败',interrupted:'可续跑'})[job.status]||job.status} · ${completed} / ${total}${job.error?' · '+job.error:''}`;byId('cmJobBar').max=Math.max(1,total);byId('cmJobBar').value=completed;
         if(job.observations.length)setObservations(job.observations,job.id);
         if(job.kind==='sweep'&&p.points){byId('cmSweepStatus').textContent=`正在累计：${p.points.length} 个参数点，${p.completed_frames||0} 帧。可停止并保留检查点。`}
@@ -197,13 +207,16 @@ window.createCommunicationExperience = function (core) {
       await new Promise(resolve=>setTimeout(resolve,220));
     }
     if(job.kind==='sweep'){receipt=job.result?.complete?null:job.id;meta.sweepReceipt=receipt;persist()}
+    rememberJob(job);persist();
     if(job.status==='failed')throw Error(job.error||'实验执行失败。');if(job.status==='cancelled'&&!job.result)throw Error(job.error||'实验已停止。');
     if(job.result&&typeof job.result==='object')job.result.job_id=job.id;
     if(job.result?.branches)setObservations(job.result.branches.flatMap((branch,index)=>branch.result.experience.observations.map(v=>({...v,label:branch.name+' · '+v.label,branch:index}))),job.id);
     return job.result;
   }
-  async function runJob(kind,payload){const job=await request('job-start',{kind,payload});return watch(job)}
-  function onResult(result){rf.onResult(result);learning.onResult(result);experiments.onResult(result);spatial.onResult(result);if(result){meta.result=clone(result);if(result.experience)setObservations(result.experience.observations,result.experience.job_id||result.job_id);persist()}}
+  async function runJob(kind,payload){const job=await request('job-start',{kind,payload});rememberJob(job);persist();return watch(job)}
+  function rememberJob(job){if(!['sweep','sweep2d','batch','target-search'].includes(job.kind))return;const rows=meta.jobReceipts||(meta.jobReceipts=[]),p=job.result||job.progress||{},entry={id:job.id,kind:job.kind,status:job.status,completed:p.completed_frames??p.completed??0,total:p.total_frames??p.total??0,time:new Date().toISOString()};const index=rows.findIndex(r=>r.id===job.id);if(index>=0)rows[index]=entry;else rows.unshift(entry);meta.jobReceipts=rows.slice(0,20);renderExecution();}
+  function renderExecution(){const previous=byId('cmBreakpointBlock').value,blocks=get().program.blocks;byId('cmBreakpointBlock').innerHTML=blocks.map(b=>`<option value="${esc(b.id)}">${esc(get().definitions[b.kind].label)}</option>`).join('');byId('cmBreakpointBlock').value=blocks.some(b=>b.id===previous)?previous:get().selectedId;const rules=(meta.breakpoints||[]).filter(r=>blocks.some(b=>b.id===r.block_id));meta.breakpoints=rules;byId('cmBreakpointList').innerHTML=rules.map((r,i)=>`<div class="cm-experiment-queue"><span>${esc(get().definitions[blocks.find(b=>b.id===r.block_id)?.kind]?.label||r.block_id)} · ${r.metric==='always'?'执行到此处':esc(r.metric+' '+r.operator+' '+r.value)}</span><button type="button" data-remove-breakpoint="${i}">移除</button></div>`).join('');const old=byId('cmResumeJobs').value,items=(meta.jobReceipts||[]).filter(r=>r.status!=='completed'),names={sweep:'一维扫描',sweep2d:'二维扫描',batch:'批量实验','target-search':'目标搜索'};byId('cmResumeJobs').innerHTML='<option value="">选择任务…</option>'+items.map(r=>`<option value="${r.id}">${names[r.kind]} · ${r.completed}/${r.total} · ${new Date(r.time).toLocaleString()}</option>`).join('');if(items.some(r=>r.id===old))byId('cmResumeJobs').value=old;byId('cmJobResume').disabled=get().busy||!byId('cmResumeJobs').value;}
+  function onResult(result){rf.onResult(result);learning.onResult(result);experiments.onResult(result);spatial.onResult(result);waveform.onResult(result);if(result){meta.result=clone(result);if(result.experience)setObservations(result.experience.observations,result.experience.job_id||result.job_id);persist()}}
   function setObservations(values,jobId){
     observations=values.map(v=>({...v,job_id:jobId}));const a=byId('cmProbeA').value,b=byId('cmProbeB').value;
     const options=observations.map((v,i)=>`<option value="${i}">${meta.probes.includes(v.id)?'📌 ':''}${esc(v.label)} · ${esc(v.domain)} · ${v.count}</option>`).join('');byId('cmProbeA').innerHTML=options;byId('cmProbeB').innerHTML=options;
@@ -313,7 +326,13 @@ window.createCommunicationExperience = function (core) {
   byId('cmProjectList').onchange=versions;byId('cmProjectSave').onclick=()=>action(()=>save(false));byId('cmProjectCopy').onclick=()=>action(()=>save(true));
   byId('cmProjectOpen').onclick=()=>action(async()=>{const key=byId('cmProjectList').value;if(!key)throw Error('请选择已保存工程。');const version=byId('cmProjectVersions').value;const saved=await request('project-load',{id:key,version:version?Number(version):undefined});saved.document.projectId=saved.id;saved.document.projectVersion=version?null:saved.version;if(version)saved.document.projectId=null;await importDocument(saved.document);message(version?'已打开历史快照，保存时创建新的工程。':'工程、参数和结果已恢复。')});
   byId('cmProjectExport').onclick=()=>core.download('communication-project-v2.json',JSON.stringify(documentValue(),null,2)+'\n','application/json');
-  byId('cmDebugStart').onclick=()=>action(async()=>{core.setBusy(true);try{const built=get().compiled;const result=await runJob('debug',{program:built.program,token:built.token});core.setResult(result)}finally{core.setBusy(false)}});
+  async function debug(mode){core.setBusy(true);try{const built=get().compiled;if(!built)throw Error('先 Build 当前链路。');const result=await runJob('debug',{program:built.program,token:built.token,breakpoints:meta.breakpoints||[],debug_mode:mode});core.setResult(result)}finally{core.setBusy(false)}}
+  byId('cmDebugStart').onclick=()=>action(()=>debug('step'));
+  byId('cmBreakpointRun').onclick=()=>action(()=>debug('continue'));
+  byId('cmBreakpointAdd').onclick=()=>action(async()=>{const rule={block_id:byId('cmBreakpointBlock').value,metric:byId('cmBreakpointMetric').value,operator:byId('cmBreakpointOperator').value,value:Number(byId('cmBreakpointValue').value)};if(!Number.isFinite(rule.value))throw Error('填写有限的断点阈值。');(meta.breakpoints||(meta.breakpoints=[])).push(rule);renderExecution();persist()});
+  byId('cmBreakpointList').onclick=e=>{const index=e.target.closest('[data-remove-breakpoint]')?.dataset.removeBreakpoint;if(index!==undefined&&!get().busy){meta.breakpoints.splice(Number(index),1);renderExecution();persist()}};
+  byId('cmResumeJobs').onchange=()=>buttons(get().busy);
+  byId('cmJobResume').onclick=()=>action(async()=>{const id=byId('cmResumeJobs').value;if(!id)return;core.setBusy(true);try{const existing=await request('job-status',{id}),job=['queued','running','paused','completed'].includes(existing.status)?existing:await request('job-control',{id,control:'resume'});rememberJob(job);persist();const result=await watch(job);meta.jobReceipts=meta.jobReceipts.filter(r=>r.id!==id);if(job.kind==='sweep'){result.resume_of=id;result.name=meta.name;core.addCurves([result])}else if(job.kind==='sweep2d'){(meta.learning||(meta.learning={})).scan=result;learning.render()}else experiments.acceptResumed(job.kind,result);renderExecution();persist();message(result.complete?'任务续跑完成。':'当前测量与检查点已保存。')}finally{core.setBusy(false)}});
   for(const [id,control] of [['cmDebugStep','step'],['cmDebugContinue','continue'],['cmDebugPause','pause'],['cmJobCancel','cancel']])byId(id).onclick=()=>action(async()=>{if(activeJob)activeJob=await request('job-control',{id:activeJob.id,control})});
   byId('cmContinuous').onclick=()=>action(async()=>{const input=byId('cmContinuousFrames');if(!input.checkValidity()){input.reportValidity();return}core.setBusy(true);try{const b=get().compiled,value=await runJob('continuous',{program:b.program,token:b.token,frames:Number(input.value)});renderFrames(value);if(value.last)core.setResult(value.last);message(`多帧完成 ${value.frames.length} 帧，累计 BER ${value.ber.toPrecision(5)}，保留 ${value.state_count} 组算法状态。`)}finally{core.setBusy(false)}});
   byId('cmSweepResume').onclick=()=>action(async()=>{if(!receipt)return;core.setBusy(true);try{const prior=receipt,job=await request('job-control',{id:prior,control:'resume-sweep'}),curve=await watch(job);curve.name=byId('cmSweepName').value||meta.name;curve.resume_of=prior;core.addCurves([curve]);byId('cmSweepStatus').textContent=curve.complete?'续跑完成。':'已保存新的续跑检查点。'}finally{core.setBusy(false)}});
@@ -326,8 +345,7 @@ window.createCommunicationExperience = function (core) {
   byId('cmContrastRun').onclick=()=>action(async()=>{core.setBusy(true);try{await contrast()}finally{core.setBusy(false)}});
   byId('cmSweepNoise').addEventListener('change',()=>{meta.sweepSettings={block_id:byId('cmSweepNoise').value};renderSweepParameters(true);meta.sweepSettings.parameter=byId('cmSweepParameter').value});byId('cmSweepParameter').onchange=()=>{const key=byId('cmSweepParameter').value;meta.sweepSettings={block_id:byId('cmSweepNoise').value,parameter:key};renderSweepParameters(false);byId('cmSweepValues').value='';const spec=get().definitions[get().program.blocks.find(b=>b.id===byId('cmSweepNoise').value)?.kind]?.params[key];if(spec){byId('cmSweepStart').value=spec.default;byId('cmSweepStop').value=Math.min(spec.max??Math.max(...spec.choices),spec.default*2||1);byId('cmSweepStep').value=spec.type==='number'?Math.max(.000001,(byId('cmSweepStop').value-spec.default)/4||.01):1;if(spec.type==='select')byId('cmSweepValues').value=spec.choices.join(',')}};
   for(const id of ['cmProbeA','cmProbeB'])byId(id).onchange=()=>{persistScope();loadWindows()};byId('cmProbeWindow').onclick=()=>{persistScope();loadWindows()};for(const id of ['cmProbePlot','cmScopeScale','cmScopeDifference','cmScopeAlign'])byId(id).onchange=()=>{persistScope();drawScopes()};byId('cmScopeCursor').oninput=()=>{persistScope();drawScopes()};
-  byId('cmReport').onclick=()=>action(async()=>{const preview=await request('report-preview',{document:documentValue()});byId('cmReportPreview').innerHTML=preview.sections.map(s=>`<p><strong>${esc(s)}</strong></p>`).join('')+preview.summary.map(s=>`<p>${esc(s)}</p>`).join('');reportDialog.showModal()});byId('cmReportClose').onclick=()=>reportDialog.close();
-  byId('cmReportDownload').onclick=()=>action(async()=>{const response=await fetch('/api/communications/report-pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:session(),document:documentValue()})});if(!response.ok){const data=await response.json();throw Error(data.error||'报告生成失败。')}const url=URL.createObjectURL(await response.blob()),link=document.createElement('a');link.href=url;link.download='communication-experiment.pdf';link.click();setTimeout(()=>URL.revokeObjectURL(url),30000)});
+  byId('cmReport').onclick=()=>report.open();
   const hint=document.createElement('p');hint.id='cmConnectionHint';hint.className='cm-connection-hint';byId('cmInspector').after(hint);
   window.addEventListener('resize',drawScopes);document.addEventListener('visibilitychange',()=>{if(!document.hidden)drawScopes()});
   async function ready(){receipt=meta.sweepReceipt||null;renderComparisons();try{await refreshProjects()}catch(e){message(e.message)}if(meta.result){try{const b=await api('build',{program:get().program});core.restoreResult(b,meta.result)}catch{}}const saved=meta.scope||{};for(const [key,id] of [['a','cmProbeA'],['b','cmProbeB'],['plot','cmProbePlot'],['offset','cmProbeOffset'],['cursor','cmScopeCursor']])if(saved[key]!==undefined)byId(id).value=saved[key];if(saved.align!==undefined)byId('cmScopeAlign').checked=saved.align;if(saved.scale!==undefined)byId('cmScopeScale').checked=saved.scale;if(saved.difference!==undefined)byId('cmScopeDifference').checked=saved.difference;buttons(get().busy);if(observations.length)loadWindows()}

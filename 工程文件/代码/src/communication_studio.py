@@ -20,7 +20,7 @@ def contract(kind):
     if kind in ('pcm_decode','compand_decode','dpcm_decode','delta_decode','adpcm_decode'): return ['比特'],'模拟样本'
     if kind.startswith('line_'): return (['比特'],'线路电平') if kind.endswith('encode') else (['线路电平'],'比特')
     if kind=='depuncture': return ['LLR'],'LLR'
-    if kind in ('conv_soft_decode','ldpc_decode'): return ['LLR'],'比特'
+    if kind in ('conv_soft_decode','ldpc_decode','polar_decode'): return ['LLR'],'比特'
     if kind in c.ENCODERS: return ['比特'],'比特'
     if kind=='deinterleave': return ['比特','LLR'],'同输入'
     if kind in c.PAIRS: return ['比特'],'比特'
@@ -35,6 +35,13 @@ def contract(kind):
         if kind[6:] in ('am','dsb','ssb','vsb','fm','pm'): return ['模拟复包络'],'模拟样本'
         return ['复波形'] if kind in ('demod_fsk2','demod_msk','demod_gmsk') else ['复符号'],'比特'
     special={'tx_rrc':(['复符号'],'复波形'),'tx_ofdm':(['复符号'],'OFDM 波形'),
+        **{k:(['复符号'],'多天线符号') for k in ('tx_array','tx_mrt','tx_svd')},
+        **{k:(['多天线符号'],'多天线符号') for k in ('array_channel','array_interference')},
+        'tx_scfdma':(['复符号'],'OFDM 波形'),'rx_scfdma':(['OFDM 波形'],'复符号'),
+        **{k:(['OFDM 波形'],'OFDM 波形') for k in ('tx_burst_preamble','burst_clock','rx_burst_sync')},
+        **{k:(['复符号'],'复符号') for k in ('tx_dft_spread','rx_dft_despread')},
+        **{k:(['复符号','复波形','OFDM 波形'],'同输入') for k in ('tx_pa_probe','tx_dpd_fit','tx_dpd','tx_memory_pa')},
+        **{k:(['多天线符号'],'复符号') for k in ('rx_mimo_lmmse','rx_mimo_kalman','rx_mimo_soft','rx_array_conventional','rx_array_mvdr','rx_array_svd')},
         'tx_dsss':(['复符号'],'扩频码片'),'dsss_multipath':(['扩频码片'],'扩频码片'),'rx_code_acquire':(['扩频码片'],'扩频码片'),
         'rx_despread':(['扩频码片'],'复符号'),'rx_rake':(['扩频码片'],'复符号'),
         **{k:(['复符号'],'多天线符号') for k in ('tx_simo','tx_alamouti','tx_mimo','tx_mimo_tracking','tx_mimo_ofdm')},
@@ -68,10 +75,10 @@ def describe(program):
             q=b['params'];output=('复符号', '复波形', 'OFDM 波形')[q['mode']];fs=q['rate_hz'];rs=fs/(q['sps'] if q['mode']==1 else q['nfft'] if q['mode']==2 else 1)
         if b['kind'] in ('tx_rrc','mod_pam','mod_baseband','mod_fsk2','mod_msk','mod_gmsk'): fs=(p['symbol_rate'] or 1)*(b['params'].get('sps') or 1)
         elif b['kind']=='tx_dsss': fs=(p['symbol_rate'] or 1)*(2**b['params']['degree']-1)
-        elif b['kind']=='tx_ofdm': fs=(p['symbol_rate'] or 1)*(b['params'].get('nfft') or 1)
+        elif b['kind'] in ('tx_ofdm','tx_scfdma'): fs=(p['symbol_rate'] or 1)*(b['params'].get('nfft') or 1)
         elif b['kind']=='tx_fhss': fs=p['symbol_rate']*b['params']['sps']
         elif b['kind'] in ('tx_mimo_ofdm','tx_ofdma'): fs=p['symbol_rate']*b['params']['nfft']
-        elif b['kind'] in ('rx_timing','rx_complete','rx_fse','rx_ofdm','rx_ofdm_tracking','rx_despread','rx_rake','rx_dehop','rx_mimo_ofdm','rx_ofdma'): fs=rs
+        elif b['kind'] in ('rx_timing','rx_complete','rx_fse','rx_ofdm','rx_ofdm_tracking','rx_scfdma','rx_despread','rx_rake','rx_dehop','rx_mimo_ofdm','rx_ofdma','rx_mimo_soft','rx_mimo_lmmse'): fs=rs
         elif b['kind']=='resample': fs=fs*b['params']['up']/b['params']['down'] if fs else None
         if output=='同输入': output=domain
         if output=='信宿': output=domain
@@ -111,15 +118,19 @@ def complete_receiver(raw):
     if 'tx_fhss' in existing:
         if 'rx_hop_sync' not in existing: steps.append(make('rx_hop_sync',{'threshold':.05} if 'narrowband' in existing else None))
         if 'rx_dehop' not in existing: steps.append(make('rx_dehop'))
-    for transmitter,channel,receiver in [('tx_mimo_tracking','spatial_dynamic','rx_mimo_tracking'),('tx_mimo_ofdm','spatial_multipath','rx_mimo_ofdm'),('tx_ofdma','ofdma_channel','rx_ofdma')]:
+    enhanced_receivers={'rx_mimo_lmmse','rx_mimo_kalman','rx_mimo_soft'}
+    for transmitter,channel,receiver in [('tx_mimo_tracking','spatial_dynamic','rx_mimo_tracking'),('tx_mimo_ofdm','spatial_multipath','rx_mimo_ofdm'),('tx_ofdma','ofdma_channel','rx_ofdma'),('tx_array','array_channel','rx_array_mvdr'),('tx_mrt','array_channel','rx_array_mvdr'),('tx_svd','array_channel','rx_array_svd')]:
         if transmitter in existing:
-            if channel not in existing: blocks[channel_end]=make(channel)
-            if receiver not in existing: steps.append(make(receiver))
+            if channel not in existing:
+                defaults={'branches':1} if transmitter=='tx_mrt' else {'arrival':'10,-35','departure':'20,50','gains':'1,0.6+0.2j'} if transmitter=='tx_svd' else None
+                blocks[channel_end]=make(channel,defaults)
+            alternatives=enhanced_receivers if transmitter.startswith('tx_mimo') else {'rx_array_conventional','rx_array_mvdr','rx_array_svd'} if transmitter in ('tx_array','tx_mrt','tx_svd') else set()
+            if receiver not in existing and not existing&alternatives: steps.append(make(receiver))
     for transmitter,receivers in [('tx_simo',('rx_mrc','rx_selection')),('tx_alamouti',('rx_alamouti',)),('tx_mimo',('rx_mimo_mmse','rx_mimo_zf','rx_mimo_zf_sic','rx_mimo_mmse_sic'))]:
         if transmitter in existing:
             if 'spatial_channel' not in existing:
                 blocks[channel_end]=make('spatial_channel')
-            if not existing&set(receivers): steps.append(make(receivers[0]))
+            if not existing&(set(receivers)|(enhanced_receivers if transmitter=='tx_mimo' else set())): steps.append(make(receivers[0]))
     digital=tx['kind'][4:] in ('bpsk','qpsk','psk8','qam16','qam64','qam256')
     if tx['kind'] in ('mod_bpsk','mod_qpsk') and 'frequency_offset' in existing and 'rx_frequency' not in existing and 'tx_ofdm' not in existing: steps.append(make('rx_frequency'))
     for a,z in [('tx_rrc','rx_matched'),('tx_rrc','rx_timing'),('tx_frame','rx_frame'),('tx_pilots','rx_pilots'),('tx_ofdm','rx_ofdm')]:
@@ -127,11 +138,18 @@ def complete_receiver(raw):
         if a in existing and z not in existing and 'rx_complete' not in existing and not replacement: steps.append(make(z))
     if digital and 'tx_rrc' in existing and 'rx_carrier' not in existing and 'rx_complete' not in existing: steps.append(make('rx_carrier'))
     if 'tx_ofdm' in existing and 'frequency_offset' in existing and 'rx_ofdm_frequency' not in existing: steps.append(make('rx_ofdm_frequency'))
+    if 'tx_scfdma' in existing and 'rx_scfdma' not in existing: steps.append(make('rx_scfdma'))
+    if 'tx_dft_spread' in existing and 'rx_dft_despread' not in existing: steps.append(make('rx_dft_despread'))
+    if 'tx_burst_preamble' in existing and 'rx_burst_sync' not in existing:
+        preamble=next(b for b in blocks if b['kind']=='tx_burst_preamble')
+        steps.append(make('rx_burst_sync',preamble['params']))
     order=['rx_code_acquire','rx_despread','rx_rake','rx_hop_sync','rx_dehop','rx_selection','rx_mrc','rx_alamouti','rx_mimo_zf','rx_mimo_mmse','rx_mimo_zf_sic','rx_mimo_mmse_sic','rx_mimo_tracking','rx_mimo_ofdm','rx_ofdma','rx_frequency','rx_agc','resample','rx_matched','rx_timing','rx_fse','rx_carrier','rx_frame','rx_equalizer','rx_cma','rx_pilots','rx_ofdm_frequency','rx_ofdm','rx_ofdm_tracking','rx_noise_estimate','rx_iq','rx_dc','rx_notch']
+    order[order.index('rx_frequency'):order.index('rx_frequency')]=['rx_mimo_lmmse','rx_mimo_kalman','rx_mimo_soft','rx_array_conventional','rx_array_mvdr','rx_array_svd']
+    order[order.index('rx_ofdm_frequency'):order.index('rx_ofdm_frequency')]=['rx_burst_sync','rx_scfdma','rx_dft_despread']
     for step in sorted(steps,key=lambda b:order.index(b['kind'])):
         rank=order.index(step['kind']);index=next((i for i,b in enumerate(blocks) if i>channel_end and (b['kind'] in order and order.index(b['kind'])>rank or b['kind'].startswith(('demod_','soft_')) or b['kind'] in c.PAIRS or b['kind']=='sink')),len(blocks))
         blocks.insert(index,step)
-    soft=any(b['kind'] in ('ldpc_encode','puncture') for b in blocks)
+    soft=any(b['kind'] in ('ldpc_encode','puncture','polar_encode','rx_mimo_soft') for b in blocks)
     demod=next((b for b in blocks if b['kind'].startswith(('demod_','soft_'))),None)
     kind=('soft_' if soft else 'demod_')+tx['kind'][4:]
     if demod is None:
@@ -145,6 +163,8 @@ def complete_receiver(raw):
         inverse='conv_soft_decode' if encoder['kind']=='conv_encode' and demod['kind'].startswith('soft_') else next(k for k,v in c.PAIRS.items() if v==encoder['kind'])
         rx=next((b for b in old_rx if c.PAIRS[b['kind']]==encoder['kind'] and b not in rebuilt),None)
         if rx is None: rx=make(inverse,encoder['params'])
+        elif rx['kind']=='conv_decode' and inverse=='conv_soft_decode': rx.update(kind=inverse,params=make(inverse,encoder['params'])['params'])
+        elif rx['kind']=='polar_decode': rx['params'].update(encoder['params'])
         elif rx['kind'] not in ('ldpc_decode','conv_soft_decode'): rx['params']=make(rx['kind'],encoder['params'])['params']
         rebuilt.append(rx)
     blocks[:]=[b for b in blocks if b['kind'] not in c.PAIRS and b['kind']!='sink']+rebuilt+[next((b for b in raw['blocks'] if b['kind']=='sink'),make('sink'))]
@@ -160,11 +180,14 @@ def complete_iq_receiver(program):
     stages=[b for b in p['blocks'][1:] if b['kind'] in iq.RECEIVERS]
     if any(b['kind'] not in iq.RECEIVERS and not b['kind'].startswith(('demod_','soft_')) and b['kind']!='sink' for b in p['blocks'][1:]): raise ValueError('录波链路请保留接收处理、解调器和信宿。')
     existing={b['kind'] for b in stages}
-    required=([] if q['matched'] else ['rx_matched'])+['rx_timing'] if q['mode']==1 else ['rx_ofdm'] if q['mode']==2 else []
-    if 'rx_ofdm_tracking' in existing: required=[k for k in required if k!='rx_ofdm']
-    if q['framed']: required.append('rx_frame')
-    stages.extend(make(kind) for kind in required if kind not in existing)
-    order=['rx_dc','rx_notch','rx_agc','resample','rx_frequency','rx_matched','rx_timing','rx_ofdm_frequency','rx_ofdm','rx_ofdm_tracking','rx_carrier','rx_cma','rx_frame','rx_equalizer','rx_noise_estimate']
+    required=iq.receive_stages(q)
+    if 'rx_ofdm_tracking' in existing: required=[item for item in required if item[0]!='rx_ofdm']
+    for kind,params in required:
+        if kind not in existing:
+            stage=make(kind);stage['params'].update(params);stages.append(stage)
+        elif kind=='rx_burst_sync':
+            next(stage for stage in stages if stage['kind']==kind)['params'].update(params)
+    order=['rx_dc','rx_notch','rx_agc','resample','rx_frequency','rx_matched','rx_timing','rx_burst_sync','rx_ofdm_frequency','rx_ofdm','rx_ofdm_tracking','rx_scfdma','rx_dft_despread','rx_carrier','rx_cma','rx_frame','rx_equalizer','rx_noise_estimate']
     stages.sort(key=lambda b:order.index(b['kind']))
     kind='demod_'+iq.SCHEMES[q['scheme']]
     demod=next((b for b in p['blocks'] if b['kind'].startswith(('demod_','soft_'))),None)
