@@ -10,14 +10,15 @@ import numpy as np
 from src import communication_dsp as dsp, communication_algorithms as algorithms
 from src import communication_rf as rf, communication_runtime as runtime
 from src import communication_waveform_v049 as waveform
+from src import communication_framing_v0410 as framing
 
 SCHEMES = ('bpsk', 'qpsk', 'qam16', 'qam64', 'psk8', 'qam256')
-DOMAINS = ('复符号', '复波形', 'OFDM 波形')
+DOMAINS = ('复符号', '复波形', 'OFDM 波形', '复采样波形')
 MAX_SAMPLES = 262144
 RECEIVERS = {'rx_agc', 'rx_frequency', 'rx_carrier', 'rx_noise_estimate', 'rx_cma',
              'rx_matched', 'rx_timing', 'rx_frame', 'rx_equalizer', 'rx_ofdm',
              'rx_ofdm_frequency', 'rx_ofdm_tracking', 'rx_dc', 'rx_notch', 'resample','rx_burst_sync',
-             'rx_scfdma','rx_dft_despread'}
+             'rx_scfdma','rx_dft_despread','rx_self_frame'}
 
 
 def encoded(samples):
@@ -33,7 +34,7 @@ def register(block, number, field, blocks):
           name=field('录波名称', 'QPSK 演示录波', max_length=120),
           rate_hz=number('录波采样率 / Hz', 8000, 16, 1e9),
           center_hz=number('中心频率 / Hz', 0, 0, 1e12),
-          mode=select('采样格式', 0, {0:'符号采样', 1:'RRC 脉冲波形', 2:'OFDM 波形'}),
+          mode=select('采样格式', 0, {0:'符号采样', 1:'RRC 脉冲波形', 2:'OFDM 波形', 3:'自描述连续物理帧'}),
           scheme=select('接收调制', 1, {i:v.upper() for i,v in enumerate(SCHEMES)}),
           sps=number('每符号采样', 4, 2, 16, True), rolloff=number('RRC 滚降', .35, .01, 1),
           span=number('RRC 跨度 / 符号', 8, 2, 32, True),
@@ -67,6 +68,7 @@ def presets(preset):
 
 def receive_stages(q):
     """Public format metadata determines the remaining receive operations."""
+    if q['mode']==3: return [('rx_self_frame',{})]
     stages=[]
     if q['burst_framed']:
         stages.append(('rx_burst_sync',{'method':q['burst_method'],'length':q['burst_length'],
@@ -142,6 +144,7 @@ def import_recording(data, metadata=None, name='录波', datatype='cf32_le', sam
     q.update(data=encoded(values),name=name[:120],rate_hz=fs,center_hz=captures[0].get('core:frequency',0) if captures else 0)
     # Validate receiver metadata before using enum values as indexes.
     q=c.normalize(c.preset(['iq_source','demod_qpsk','sink'],{0:q}))['blocks'][0]['params']
+    if q['mode']==3: q['scheme']=0
     stages=receive_stages(q);kinds=['iq_source']+[kind for kind,_ in stages]+['demod_'+SCHEMES[q['scheme']],'sink']
     changes={0:q,**{i+1:params for i,(_,params) in enumerate(stages)}}
     p=c.preset(kinds,changes);p.update(sample_rate=min(48000,fs),symbol_rate=min(100000,fs/(q['sps'] if q['mode']==1 else q['nfft'] if q['mode']==2 else 1)))
@@ -193,7 +196,18 @@ def export_recording(values, rate, program, block_id, domain):
             q['matched']=True;q['sample_offset']+=(len(dsp.rrc(q))-1)/2
         if b['kind']=='resample' and domain=='复波形': q['sample_offset']*=b['params']['up']/b['params']['down']
         if original and b['kind']=='rx_frame': q['framed']=True
-    if domain=='复波形':
+    self_framed=bool(original and original['params']['mode']==3)
+    for b in prefix:
+        if b['kind']=='tx_self_frame': self_framed=True
+        elif b['kind']=='rx_self_frame':
+            self_framed=False
+            q.update(mode=0,scheme=0,framed=False,dft_spread=False,dft_symbols=0,
+                     burst_framed=False,burst_payload_samples=0,ofdm_format=0,
+                     matched=False,sample_offset=0,payload_symbols=len(values))
+    if self_framed:
+        # MCS, payload length and packet offsets are carried by the waveform.
+        q={'mode':3,'scheme':0,'center_hz':q.get('center_hz',0)}
+    if domain=='复波形' and not self_framed:
         sps=rate/program['symbol_rate'] if not original else q['sps']*rate/original['params']['rate_hz']
         if not float(sps).is_integer() or not 2<=sps<=16: raise ValueError('RRC 导出需要每符号 2–16 个整数采样点。')
         q['sps']=int(sps)
@@ -201,7 +215,7 @@ def export_recording(values, rate, program, block_id, domain):
     data=np.asarray(values,dtype='<c8').tobytes()
     meta={'global':{'core:datatype':'cf32_le','core:sample_rate':rate,'core:version':'1.2.6',
                    'core:description':f'RandomSign 积木观察点 {block_id}', 'core:sha512':hashlib.sha512(data).hexdigest(),
-                   'core:extensions':[{'name':'randomsign','version':'0.4.9','optional':True}], 'randomsign:receiver':q},
+                   'core:extensions':[{'name':'randomsign','version':'0.4.10','optional':True}], 'randomsign:receiver':q},
           'captures':[{'core:sample_start':0,'core:frequency':q.get('center_hz',0)}],'annotations':[]}
     output=io.BytesIO()
     with tarfile.open(fileobj=output,mode='w') as archive:
@@ -214,15 +228,16 @@ def build(p):
     from src import communications as c
     blocks=p['blocks']; q=blocks[0]['params']; plan=[]
     if blocks[0]['kind']!='iq_source' or blocks[-1]['kind']!='sink': raise ValueError('I/Q 链路以录波信源开始、信宿结束。')
-    count=len(samples(q));domain=DOMAINS[q['mode']];scheme=SCHEMES[q['scheme']];consumed={'rx_matched'} if q['matched'] else set()
-    if q['sample_offset']>=count: raise ValueError('首符号位置须位于录波采样范围内。')
+    count=len(samples(q));domain=DOMAINS[q['mode']];scheme='bpsk' if q['mode']==3 else SCHEMES[q['scheme']];consumed={'rx_matched'} if q['matched'] else set()
+    dynamic_count=False
+    if q['mode']!=3 and q['sample_offset']>=count: raise ValueError('首符号位置须位于录波采样范围内。')
     if q['mode']==0 and q['payload_symbols']>count: raise ValueError('有效符号数超过录波符号数。')
     if q['mode']==2:
         if q['cp']>q['nfft']: raise ValueError('循环前缀须小于等于 FFT 点数。')
         if q['ofdm_format']==1:waveform.carriers(scfdma_params(q))
         else:dsp.ofdm_indices(q['nfft'],q)
         if count<2*(q['nfft']+q['cp']): raise ValueError('OFDM 录波需要训练符号和数据符号。')
-    if q['burst_framed'] and (q['mode']!=2 or not q['burst_payload_samples']):
+    if q['mode']!=3 and q['burst_framed'] and (q['mode']!=2 or not q['burst_payload_samples']):
         raise ValueError('突发录波需要 OFDM 格式及有效波形长度。')
     if q['dft_spread'] and q['mode']==1:raise ValueError('DFT 扩展录波选择符号采样或 SC-FDMA 波形。')
     for index,b in enumerate(blocks):
@@ -231,6 +246,11 @@ def build(p):
         if index==0: pass
         elif k in RECEIVERS:
             if domain in ('比特','LLR'): fail('接收处理位于解调之前。')
+            if domain=='复采样波形' and k not in ('rx_self_frame','rx_agc','rx_dc','rx_notch'):
+                fail('连续录波先进行物理帧捕获，再处理恢复符号。')
+            if k=='rx_self_frame':
+                if domain!='复采样波形' or q['mode']!=3: fail('连续物理帧捕获选择自描述录波格式。')
+                domain='复符号';dynamic_count=True
             if k=='rx_burst_sync':
                 if domain!='OFDM 波形' or b['params']['payload_samples']<1: fail('突发同步选择 OFDM 录波，并填写有效波形长度。')
                 count=b['params']['payload_samples']
@@ -267,16 +287,17 @@ def build(p):
             consumed.add(k)
         elif k=='demod_'+scheme:
             if domain!='复符号': fail('先完成抽样或 OFDM 解调。')
-            if q['dft_spread'] and 'rx_dft_despread' not in consumed:fail('先完成 IDFT 解扩。')
+            if q['mode']!=3 and q['dft_spread'] and 'rx_dft_despread' not in consumed:fail('先完成 IDFT 解扩。')
             count=(count-(q['preamble_length'] if 'rx_frame' in consumed else 0))*len(dsp.constellation(scheme)[0][0]);domain='比特'
         elif k=='sink':
             if index!=len(blocks)-1 or domain!='比特': fail('录波接收链路以匹配解调和信宿结束。')
         else: fail('录波链路请选择接收处理、匹配解调与信宿。')
         if count>MAX_SAMPLES*8: fail('请减少录波长度或重采样倍率。')
         plan.append({'id':b['id'],'kind':k,'label':c.BLOCKS[k]['label'],'input_count':before,'count':count,'output':domain})
+        if dynamic_count: plan[-1]['dynamic_count']=True
     token=hashlib.sha256(json.dumps(p,sort_keys=True,ensure_ascii=False,allow_nan=False,separators=(',',':')).encode()).hexdigest()
     return {'program':p,'token':token,'plan':plan,'source_kind':'digital','transport':'iq','model':'I/Q 录波 · 接收回放',
-            'summary':f'{len(blocks)} 个积木 · {len(samples(q))} 个录波采样 · {count} 个接收比特'}
+            'summary':f'{len(blocks)} 个积木 · {len(samples(q))} 个录波采样 · '+('接收长度由实际帧头确定' if dynamic_count else f'{count} 个接收比特')}
 
 
 def run(compiled):
@@ -284,11 +305,15 @@ def run(compiled):
     from src.advanced_communications import view
     p=compiled['program']; first=p['blocks'][0]; q=first['params']; data=samples(q); original=data.copy(); fs=q['rate_hz']; snapshots=[]; recovery={};wireless={}
     plan=copy.deepcopy(compiled['plan']); sample_offset=q['sample_offset']; receive_sps=float(q['sps']); prefix=0
-    scheme=SCHEMES[q['scheme']]; _,points=dsp.constellation(scheme); preamble=dsp.public_preamble(q['preamble_length'],scheme)
+    scheme='bpsk' if q['mode']==3 else SCHEMES[q['scheme']]; _,points=dsp.constellation(scheme); preamble=dsp.public_preamble(q['preamble_length'],scheme)
     for index,b in enumerate(p['blocks']):
         runtime.enter(b); k=b['kind']; params=b['params']
         before=len(data)
-        if k=='rx_burst_sync':
+        if k=='rx_self_frame':
+            bits,details,_=framing.receive_stream(data,params)
+            data=(1-2*bits.astype(float)).astype(complex)
+            recovery['self_frame']=details;wireless[k]=details
+        elif k=='rx_burst_sync':
             data,recovery['burst_sync']=waveform.synchronize(data,params,fs,params['payload_samples'])
             wireless[k]=recovery['burst_sync']
         elif k=='rx_scfdma':
@@ -337,12 +362,20 @@ def run(compiled):
         elif k.startswith('demod_'): decisions=data[prefix:].copy();data,_=dsp.decisions(decisions,scheme)
         data=runtime.record(b,data,fs)
         plan[index].update(input_count=before,count=len(data))
+        plan[index].pop('dynamic_count',None)
         if k in RECEIVERS: snapshots.append({'id':b['id'],'label':c.BLOCKS[k]['label'],**view(data,c.CONFIG['plot_points'],fs)})
-    spectrum=rf.measure(original,q['rate_hz']); decision_power=float(np.mean(abs(decisions)**2))
+    spectrum=rf.measure(original,q['rate_hz']); decision_power=float(np.mean(abs(decisions)**2)) if len(decisions) else 0.
     metrics={'bit_count':0,'bit_errors':0,'ber':None,'symbol_count':len(decisions),'symbol_errors':0,'ser':None,
              'evm_percent':None,'rmse':None,'frame_count':1,'frame_errors':0,'fer':None,'received_bits':len(data),
              'rx_power':decision_power,'papr_db':spectrum['papr_db'],'tx_sample_count':0}
-    return {'token':compiled['token'],'seed':p['seed'],'summary':f'{len(p["blocks"])} 个积木 · {len(original)} 个录波采样 · {len(data)} 个接收比特','model':compiled['model'],'transport':'iq','plan':plan,'metrics':metrics,
+    if 'self_frame' in recovery:
+        details=recovery['self_frame'];frame_count=len(details['frames'])
+        metrics.update(received_bits=details['received_bits'],reassembled_bits=len(data),
+                       complete_payload=details['complete_payload'],accepted_packets=details['accepted_packets'],
+                       frame_count=frame_count,frame_errors=details['failed_packets'],
+                       fer=details['failed_packets']/frame_count if frame_count else None)
+    received_summary=f"{metrics['received_bits']} 位通过 CRC · {len(data)} 位业务重组" if 'self_frame' in recovery else f'{len(data)} 个接收比特'
+    return {'token':compiled['token'],'seed':p['seed'],'summary':f'{len(p["blocks"])} 个积木 · {len(original)} 个录波采样 · {received_summary}','model':compiled['model'],'transport':'iq','plan':plan,'metrics':metrics,
             'sink':{'kind':'digital','values':data[:256].tolist(),'reference':[],'count':len(data),'plot_count':min(256,len(data)),'sample_rate':None},
             'channel':view(original,c.CONFIG['plot_points'],q['rate_hz']),
             'advanced':{'scheme':scheme.upper(),'sample_rate':q['rate_hz'],'transmitter':view(original,256,q['rate_hz']),

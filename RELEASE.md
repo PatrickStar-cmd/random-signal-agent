@@ -1,10 +1,10 @@
-# v0.4.9 · Installation and deployment
+# v0.4.10 · Installation and deployment
 
-**v0.4.9 · 先进收发算法与实验调试增强 / Advanced transceivers and experiment debugging** adds LMMSE/Kalman estimation, soft MIMO detection, DFT-s-OFDM, memory-PA DPD, burst synchronization, Polar and array beamforming. Durable experiment checkpoints, conditional breakpoints, student submissions, linked spatial plots and configurable reports extend the ocean workspace to **217 addable blocks and 109 presets**. See the [v0.4.9 guide](工程文件/代码/docs/communications-v049.md).
+**v0.4.10 · 自主接收与实验分析增强 / Autonomous reception and experiment analysis** adds MLSE, MUSIC-guided MVDR, 3GPP TDL channels, self-describing continuous frames, Turbo decoding and IR-HARQ. Actual-run diagnostics, constrained Pareto design, teacher review, frame scenarios, two-path merging and single-target OFDM sensing share the ocean workspace. The catalog contains **230 addable blocks, a fixed sink and 121 presets**. See the [v0.4.10 guide](工程文件/代码/docs/communications-v0410.md).
 
-Download `random-signal-agent-v0.4.9-deploy.zip` from the [v0.4.9 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.9) and extract it; the archive contains source, Web assets, configuration, documentation and example data. Use **Python 3.12–3.14** or **Docker**. The [previous v0.4.8 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.8) remains available.
+Download `random-signal-agent-v0.4.10-deploy.zip` from the [v0.4.10 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.10) and extract it. The archive contains source, Web assets, configuration, documentation and example data. Use **Python 3.12–3.14** or **Docker**. The [previous v0.4.9 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.9) remains available.
 
-Open a terminal in `random-signal-agent/工程文件/代码` (or `random-signal-agent-v0.4.9/工程文件/代码` in a deployment archive).
+Open a terminal in `random-signal-agent/工程文件/代码` (or `random-signal-agent-v0.4.10/工程文件/代码` in a deployment archive).
 
 ## Windows
 
@@ -47,7 +47,7 @@ The check covers health, Web assets, Agent mode, streaming responses, CSV upload
 
 ## 中文说明
 
-下载 v0.4.9 部署包并解压，进入 `工程文件/代码` 后按上方命令启动。支持 Python 3.12–3.14，依赖版本在 `requirements-repro.txt` 固定。也可使用 Docker Compose；默认地址为 <http://127.0.0.1:8000>。实验可导出 ZIP，升级前停止服务并备份整个 `data/` 目录。
+下载 v0.4.10 部署包并解压，进入 `工程文件/代码` 后按上方命令启动。支持 Python 3.12–3.14，依赖版本在 `requirements-repro.txt` 固定。也可使用 Docker Compose；默认地址为 <http://127.0.0.1:8000>。实验可导出 ZIP，升级前停止服务并备份整个 `data/` 目录。
 
 完整应用包含对话、分析、上传及音频处理，不需要外部模型密钥即可使用本地工具链。服务器部署、模型配置与日志查看见[部署说明](工程文件/代码/DEPLOY.md)。
 
@@ -75,7 +75,7 @@ Keys are held in server memory by default. Opting into **记住配置** stores t
 
 The package includes the seven-view ocean interface, transparent AI-generated whale artwork, responsive charts and all local styles/scripts. GitHub Pages is a static preview; API configuration and interactive experiments require the Python backend.
 
-打开“模型与设置 → 模型 API 配置”，选择服务、输入自己的 Key、读取模型列表并“测试并应用”，无需重启。默认只在服务内存保存；勾选“记住配置”后会将 Key 明文写入 `data/model-settings.sqlite3`，需保护该文件及数据备份。可随时切回本地模式或清除配置。v0.4.9 部署包已包含海洋界面及所有图片资源；GitHub Pages 仍为静态预览。
+打开“模型与设置 → 模型 API 配置”，选择服务、输入自己的 Key、读取模型列表并“测试并应用”，无需重启。默认只在服务内存保存；勾选“记住配置”后会将 Key 明文写入 `data/model-settings.sqlite3`，需保护该文件及数据备份。可随时切回本地模式或清除配置。v0.4.10 部署包已包含海洋界面及所有图片资源；GitHub Pages 仍为静态预览。
 
 ## PDF analysis reports (v0.4.9)
 
@@ -147,3 +147,12 @@ From v0.4.0, stop the service, retain the existing data/ and needed uploads/outp
 保留 data/、uploads/、outputs/，替换源码后重启服务并刷新浏览器。旧 schema 1 通信工程继续导入；新 schema 2 保存组合、分支、结果和曲线。新增工程库和扫描检查点使用当前会话标识，无数据库迁移或新增生产依赖。备份 data/ 时一并保留 communication-projects/ 和 communication-jobs/。
 
 运行 `scripts/test_communications_receiver_v049.py`、`scripts/test_communications_waveform_v049.py`、`scripts/test_communications_iq_v049.py` 和 `scripts/test_communications_v049_experiments.py` 验证本次接收估计、软检测、阵列、波形、编码、录波与教学功能；`node scripts/verify_communications_ui.js` 检查前端脚本及交互状态；`scripts/verify_release.py` 执行完整回归、540 组基准和部署冒烟。19 个新增预设均验证实际 Python 导出脚本及其 JSON/SVG 输出，日志位于 `logs/communications-v049/export-tests.log`。远端检查覆盖 Windows/Linux Python 3.12–3.14 与 Docker 启动及重启持久化。发布附件包含 ZIP、SHA256SUMS.txt 和实际验证汇总 verification.json。
+
+
+## 🌊 v0.4.10 升级与验证
+
+保留 `data/`、`uploads/`、`outputs/` 和现有工程库，替换源码后重启服务或重建 Docker，再刷新浏览器。新模块继续使用既有工程、观察点、任务和报告流程，界面按主题子页组织。
+
+推荐依次体验 MLSE、MUSIC/自动 MVDR、TDL、自描述连续帧、Turbo、IR/Chase 对照，再使用约束选参、教师评阅、帧级场景、两路汇合和 OFDM 通感。详细操作见 [v0.4.10 指南](工程文件/代码/docs/communications-v0410.md)。
+
+验收覆盖新预设 Build/Run、自动配对、数值与真实输入对照、连续录波恢复、算法轨迹、共享采样汇合、后台任务、工程生命周期、报告及部署包。专项日志位于 `logs/communications-v0410/`，发布检查日志位于 `logs/release/`。执行 `scripts/build_release.py` 构建，随后运行 `scripts/verify_release.py` 核查打包结果；附件包括部署 ZIP、`SHA256SUMS.txt` 与 `verification.json`。

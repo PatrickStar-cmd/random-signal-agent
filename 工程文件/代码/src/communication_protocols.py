@@ -55,20 +55,36 @@ def cancelled(cancel):
         raise Cancelled('包级实验已取消。')
 
 
-def transmit(bits, scheme, snr_db, rng, rate=1):
+def redundancy_indices(count, rv=0, rate=2):
+    """Equal-sized RVs rotate punctures across a terminated convolutional mother.
+
+    Every RV transmits exactly the RV0 budget, including the short final
+    puncturing group. Indices identify actual mother-code bits for LLR scatter.
+    """
+    if rate==1: return np.arange(count)
+    pattern=np.array([1,1,1,0] if rate==2 else [1,1,1,0,0,1],bool)
+    budget=int(codec.puncture_mask(count,rate).sum())
+    mask=np.resize(np.roll(pattern,int(rv)%len(pattern)),count)
+    indices=np.flatnonzero(mask)
+    if len(indices)<budget: indices=np.sort(np.r_[indices,np.flatnonzero(~mask)[:budget-len(indices)]])
+    return indices[:budget]
+
+
+def transmit(bits, scheme, snr_db, rng, rate=1, rv=None):
     from src import communications as c
     mother = c.conv_encode(bits)
-    coded = mother if rate == 1 else codec.encode('puncture', mother, {'rate': rate})
+    indices=redundancy_indices(len(mother),rv or 0,rate)
+    coded = mother[indices]
     symbols, _ = c.modulate(coded, scheme)
     variance = 10. ** (-snr_db / 10)
     iq_noise = rng.normal(size=(len(symbols), 2))
     noise = np.sqrt(variance / 2) * (iq_noise[:, 0] + 1j * iq_noise[:, 1])
     received = symbols + noise
     llr = dsp.soft_demod(received, scheme, variance)[:len(coded)]
-    if rate != 1:
-        llr = codec.depuncture(llr, len(mother), rate)
+    expanded=np.zeros(len(mother)); expanded[indices]=llr; llr=expanded
     return llr, {'symbols': len(symbols), 'tx_energy': float(np.sum(abs(symbols) ** 2)),
-                 'evm_percent': float(100 * np.linalg.norm(noise) / np.linalg.norm(symbols))}
+                 'evm_percent': float(100 * np.linalg.norm(noise) / np.linalg.norm(symbols)),
+                 'rv':int(rv or 0),'mother_bits':len(mother),'coded_bits':len(coded),'mother_indices':indices.tolist()}
 
 
 def common(program, settings):
@@ -88,8 +104,9 @@ def protocol(program, settings, progress=None, cancel=None):
     from src import communications as c
     size, rate, packets = common(program, settings)
     mode = settings.get('mode', 'arq')
-    if mode not in ('arq', 'harq'):
-        raise ValueError('协议模式请选择 arq 或 harq。')
+    if mode not in ('arq', 'harq', 'ir_harq'):
+        raise ValueError('协议模式请选择 arq、harq 或 ir_harq。')
+    budget_rate=c.numeric(settings.get('budget_rate',2 if mode=='ir_harq' else 1),'每轮码率',1,3,True)
     count = c.numeric(settings.get('packets', 8), '最大包数', 1, 32, True)
     retries = c.numeric(settings.get('max_retries', 4), '最大重传次数', 0, 8, True)
     snr = c.numeric(settings.get('snr_db', 0), 'Es/N₀', -15, 40)
@@ -107,16 +124,20 @@ def protocol(program, settings, progress=None, cancel=None):
               'scheme': scheme, 'snr_db': snr, 'seed': program['seed'], 'source': '当前工程数字信源',
               'seed_policy': '按工程种子、包序号、发送次数派生物理层与反馈独立随机流；ARQ/HARQ 同包同次发送使用相同噪声。',
               'noise_reference': '标称单位符号能量 Es/N₀；信息比特 Eb/N₀ 计入包头、CRC、卷积尾位与重传能量。',
-              'actual_chain': '序号/长度/CRC16 分包 → (7,5)₈ 卷积码 1/2 → ' + scheme.upper() +
-              ' → AWGN → Max-log LLR → ' + ('Chase 软信息合并' if mode == 'harq' else '每次独立软译码') + ' → Viterbi → CRC16 → ACK/NACK'}
+              'budget_rate':budget_rate,'resource_rule':'相同 budget_rate、分包、调制和信道随机流下，每轮编码位、符号数与期望发送能量一致。',
+              'actual_chain': '序号/长度/CRC16 分包 → (7,5)₈ 卷积母码 → 等长 RV 速率匹配 → ' + scheme.upper() +
+              ' → AWGN → Max-log LLR → ' + ('RV 母码索引增量合并' if mode=='ir_harq' else 'Chase 软信息合并' if mode == 'harq' else '每次独立软译码') + ' → Viterbi → CRC16 → ACK/NACK'}
     for packet in packets:
-        combined = None; ack = False; first_delivery = None; start_time = clock; last_errors = 0; packet_energy = 0.
+        combined = None; observed=None; ack = False; first_delivery = None; start_time = clock; last_errors = 0; packet_energy = 0.
         for attempt in range(retries + 1):
             cancelled(cancel); attempts += 1
             phy_seed, feedback_seed = np.random.SeedSequence([program['seed'], packet['sequence'], attempt, 4701]).spawn(2)
-            llr, details = transmit(packet['wire'], scheme, snr, np.random.default_rng(phy_seed))
+            rv=attempt%4 if mode=='ir_harq' else 0
+            llr, details = transmit(packet['wire'], scheme, snr, np.random.default_rng(phy_seed),budget_rate,rv)
             packet_energy += details['tx_energy']
             combined = llr if combined is None or mode == 'arq' else combined + llr
+            if observed is None or mode=='arq': observed=np.zeros(len(llr),bool)
+            observed[details['mother_indices']]=True
             decoded = codec.soft_viterbi(combined)
             last_errors = int(np.count_nonzero(decoded[32:-16] != packet['payload']))
             received = unpack_packet(decoded)
@@ -129,8 +150,10 @@ def protocol(program, settings, progress=None, cancel=None):
             feedback = 'ACK' if valid else 'NACK'
             events.append({'packet': packet['sequence'], 'attempt': attempt + 1, 'start_seconds': begin,
                            'receive_seconds': clock, 'feedback': feedback, 'feedback_lost': bool(erased), 'duplicate': duplicate,
-                           'crc_pass': valid, 'bit_errors': last_errors, 'combined_transmissions': attempt + 1 if mode == 'harq' else 1,
+                           'crc_pass': valid, 'bit_errors': last_errors, 'combined_transmissions': attempt + 1 if mode != 'arq' else 1,
                            'llr_mean_abs': float(np.mean(abs(combined))),
+                           'mother_coverage':float(observed.mean()),'observed_mother_bits':int(observed.sum()),
+                           'llr_buffer':combined.tolist(),'accumulated_tx_energy':packet_energy,
                            'payload_ebn0_db': snr + 10 * math.log10(details['tx_energy'] / len(packet['payload'])),
                            'accumulated_payload_ebn0_db': snr + 10 * math.log10(packet_energy / len(packet['payload'])), **details})
             clock += timeout if erased else delay
@@ -153,6 +176,8 @@ def protocol(program, settings, progress=None, cancel=None):
                'delivered_bit_errors': sum(r['bit_errors'] for r in rows if r['delivered']),
                'complete_payload': len(accepted) == len(packets) and np.array_equal(original, restored)}
     metrics.update(bit_count=len(original), bit_errors=sum(r['bit_errors'] for r in rows))
+    metrics.update(total_symbols=sum(e['symbols'] for e in events),total_tx_energy=sum(e['tx_energy'] for e in events),
+                   total_coded_bits=sum(e['coded_bits'] for e in events))
     metrics['ber'] = metrics['bit_errors']/metrics['bit_count']
     return {'config': config, 'source_program': copy.deepcopy(program), 'metrics': metrics, 'frames': rows, 'events': events, 'complete': True,
             'source_base64': base64.b64encode(np.packbits(original)).decode(), 'received_base64': base64.b64encode(np.packbits(restored)).decode()}
@@ -244,11 +269,27 @@ def packet_program(program, wire, seed):
 
 class PacketReceiver:
     """Receiver evidence and Chase combining through the runtime decision hook."""
-    def __init__(self, compiled, cancel, states, previous=None):
+    def __init__(self, compiled, cancel, states, previous=None, redundancy=None):
         from src import communication_runtime as runtime
         self.observer = runtime.Observer(compiled, points=16, cancel=cancel, states=states)
         self.observer.on_decision = self.decision
         self.previous = previous; self.llr = None; self.combined = None; self.snr_db = None; self.method = None; self.variance = None
+        self.redundancy=redundancy; self.mother=None; self.indices=None; self.observed=None
+        if redundancy is not None:
+            self.base_record=self.observer.record; self.observer.record=self.record_redundancy
+
+    def record_redundancy(self,block,data,rate):
+        """Execute RV selection/scatter at the real coding block boundaries."""
+        kind=block['kind']
+        if kind=='conv_encode': self.mother=np.asarray(data).copy()
+        elif kind=='puncture':
+            self.indices=redundancy_indices(len(self.mother),self.redundancy['rv'],block['params']['rate'])
+            data=self.mother[self.indices]
+        elif kind=='depuncture':
+            expanded=np.zeros(len(self.mother)); expanded[self.indices]=self.llr[:len(self.indices)]
+            self.combined=expanded if self.previous is None else self.previous+expanded
+            data=self.combined
+        return self.base_record(block,data,rate)
 
     def decision(self, block, symbols, scheme, data, noise_variance):
         from src import communication_dsp as dsp
@@ -264,16 +305,17 @@ class PacketReceiver:
         self.snr_db = float(-10*np.log10(max(1e-12, measured)))
         self.method = '接收有效噪声估计' if automatic else '最近星座残差的接收噪声估计'
         self.llr = np.asarray(data, float).copy() if block['kind'].startswith('soft_') else dsp.soft_demod(symbols, scheme, variance)[:len(data)]
+        if self.redundancy is not None: return data
         if self.previous is not None and len(self.previous) != len(self.llr): raise ValueError('重传码字的 LLR 长度需要保持一致。')
         self.combined = self.llr.copy() if self.previous is None else self.previous+self.llr
         if self.previous is None: return data
         return self.combined if block['kind'].startswith('soft_') else (self.combined < 0).astype(np.uint8)
 
 
-def run_packet(program, packet, seed, cancel, states, previous=None):
+def run_packet(program, packet, seed, cancel, states, previous=None, redundancy=None):
     from src import communications as c, communication_runtime as runtime
     compiled = packet_program(program, packet['wire'], seed)
-    receiver = PacketReceiver(compiled, cancel, states, previous)
+    receiver = PacketReceiver(compiled, cancel, states, previous,redundancy)
     with runtime.execution(receiver.observer): result = c.run(compiled['program'], compiled['token'])
     decoded = np.asarray(result['sink']['values'], dtype=np.uint8)
     source_length = sum(len(b['params']['pattern']) for b in compiled['program']['blocks'] if b['kind']=='bit_pattern')
@@ -288,7 +330,9 @@ def run_packet(program, packet, seed, cancel, states, previous=None):
     channel_duration = result['channel']['count']/(analysis['channel']['sample_rate'] if analysis else wave['sample_rate'])
     advanced = result.get('advanced', {})
     synchronized = advanced.get('recovery', {}).get('frame', {}).get('detected', True) and all(stage.get('detected', True) and stage.get('sync', {}).get('detected', True) for stage in advanced.get('wireless', {}).values())
-    return decoded, receiver, {'duration_seconds': max(duration, channel_duration), 'tx_duration_seconds': duration,
+    redundancy_detail={} if redundancy is None else {'rv':redundancy['rv'],'mother_bits':len(receiver.mother),
+        'coded_bits':len(receiver.indices),'mother_indices':receiver.indices.tolist()}
+    return decoded, receiver, {**redundancy_detail,'duration_seconds': max(duration, channel_duration), 'tx_duration_seconds': duration,
                                'channel_tail_seconds': max(0., channel_duration-duration), 'tx_energy': float(energy), 'symbols': int(sample_count),
                                'evm_percent': result['metrics'].get('evm_percent'), 'estimated_snr_db': receiver.snr_db,
                                'estimated_noise_variance': receiver.variance,
@@ -298,11 +342,33 @@ def run_packet(program, packet, seed, cancel, states, previous=None):
                                'code_rate': result['metrics'].get('effective_rate', 1.), 'wire_padding_bits': source_length-len(packet['wire']), 'program': compiled['program']}
 
 
+def redundancy_program(program,settings):
+    """Keep the chosen PHY and install paired convolutional rate matching."""
+    from src import communications as c
+    p=copy.deepcopy(program); blocks=p['blocks']
+    encoders=[b for b in blocks if b['kind'] in c.ENCODERS]
+    if sum(b['kind']=='conv_encode' for b in encoders)!=1 or any(b['kind'] not in ('conv_encode','puncture') for b in encoders):
+        raise ValueError('增量冗余选择一个卷积母码编码器，编码链采用卷积码与可选打孔。')
+    if not any(b['kind']=='conv_soft_decode' for b in blocks): raise ValueError('增量冗余接收端选择软 Viterbi 译码器。')
+    if not any(b['kind'] in {'soft_'+s for s in ('bpsk','qpsk','psk8','qam16','qam64','qam256')} for b in blocks):
+        raise ValueError('增量冗余接收端选择 PSK / QAM 软解调器。')
+    existing=next((b['params']['rate'] for b in blocks if b['kind']=='puncture'),2)
+    rate=c.numeric(settings.get('budget_rate',existing),'每轮卷积码率',2,3,True)
+    blocks[:]=[b for b in blocks if b['kind'] not in ('puncture','depuncture')]
+    encoder=next(b for b in blocks if b['kind']=='conv_encode'); decoder=next(b for b in blocks if b['kind']=='conv_soft_decode')
+    blocks.insert(blocks.index(encoder)+1,{'id':'ir-puncture-'+encoder['id'],'kind':'puncture','params':{'rate':rate}})
+    blocks.insert(blocks.index(decoder),{'id':'ir-depuncture-'+decoder['id'],'kind':'depuncture','params':{'rate':rate}})
+    return c.build(p)['program'],rate
+
+
 def program_protocol(program, settings, progress=None, cancel=None):
     from src import communications as c
     p = c.build(program)['program']; size, _, packets = common(p, settings)
     mode = settings.get('mode', 'arq')
-    if mode not in ('arq', 'harq'): raise ValueError('协议模式请选择 arq 或 harq。')
+    if mode not in ('arq', 'harq', 'ir_harq'): raise ValueError('协议模式请选择 arq、harq 或 ir_harq。')
+    rate_matched=mode=='ir_harq' or settings.get('budget_rate',1)!=1
+    budget_rate=1
+    if rate_matched: p,budget_rate=redundancy_program(p,settings)
     retries = c.numeric(settings.get('max_retries', 4), '最大重传次数', 0, 8, True)
     packets = packets[:c.numeric(settings.get('packets', 8), '最大包数', 1, 32, True)]
     delay = c.numeric(settings.get('feedback_delay', 20), '反馈往返延迟 / ms', 0, 10000)/1000
@@ -312,15 +378,19 @@ def program_protocol(program, settings, progress=None, cancel=None):
     if mode == 'harq' and not any(b['kind'] in {'mod_'+s for s in ('bpsk','qpsk','psk8','qam16','qam64','qam256')} for b in p['blocks']): raise ValueError('Chase 合并请选择 PSK / QAM 数字物理层。')
     events = []; rows = []; accepted = {}; clock = 0.; states = {}; confirmed = 0; last_program = None
     for packet in packets:
-        combined = None; combined_count = 0; ack = False; first_delivery = None; start = clock; energy = 0.
+        combined = None; observed=None; combined_count = 0; ack = False; first_delivery = None; start = clock; energy = 0.
         for attempt in range(retries+1):
             cancelled(cancel)
             seeds = np.random.SeedSequence([p['seed'], packet['sequence'], attempt, 4801]).spawn(2)
             seed = int(seeds[0].generate_state(1)[0])
-            decoded, receiver, detail = run_packet(p, packet, seed, cancel, states, combined if mode == 'harq' else None)
+            redundancy={'rv':attempt%4 if mode=='ir_harq' else 0} if rate_matched else None
+            decoded, receiver, detail = run_packet(p, packet, seed, cancel, states, combined if mode != 'arq' else None,redundancy)
             if detail['synchronization_pass']:
-                if mode == 'harq' and receiver.combined is None: raise ValueError('该工程的接收机需要提供 PSK / QAM 解调软信息。')
+                if mode != 'arq' and receiver.combined is None: raise ValueError('该工程的接收机需要提供 PSK / QAM 解调软信息。')
                 combined = receiver.combined; combined_count += 1
+                if rate_matched:
+                    if observed is None or mode=='arq': observed=np.zeros(len(combined),bool)
+                    observed[receiver.indices]=True
             last_program = detail.pop('program'); energy += detail['tx_energy']
             errors = int(np.count_nonzero(decoded[32:-16] != packet['payload'])); received = unpack_packet(decoded)
             valid = detail['synchronization_pass'] and received is not None and received[0] == packet['sequence'] and len(received[1]) == len(packet['payload'])
@@ -330,8 +400,12 @@ def program_protocol(program, settings, progress=None, cancel=None):
             erased = bool(np.random.default_rng(seeds[1]).random() < loss); feedback = 'ACK' if valid else 'NACK'
             event = {'packet': packet['sequence'], 'attempt': attempt+1, 'start_seconds': begin, 'receive_seconds': clock,
                      'feedback': feedback, 'feedback_lost': erased, 'duplicate': duplicate, 'crc_pass': valid, 'bit_errors': errors,
-                     'combined_transmissions': combined_count if mode == 'harq' else int(detail['synchronization_pass']),
+                     'combined_transmissions': combined_count if mode != 'arq' else int(detail['synchronization_pass']),
                      'llr_mean_abs': float(np.mean(abs(combined))) if combined is not None else None, 'accumulated_tx_energy': energy, **detail}
+            if rate_matched:
+                event.update(mother_coverage=float(observed.mean()) if observed is not None else 0.,
+                             observed_mother_bits=int(observed.sum()) if observed is not None else 0,
+                             llr_buffer=combined.tolist() if combined is not None else [])
             clock += timeout if erased else delay; event.update(end_seconds=clock, event='timeout' if erased else feedback); events.append(event)
             if valid and not erased: ack = True; confirmed += 1; break
         delivered = packet['sequence'] in accepted
@@ -342,7 +416,10 @@ def program_protocol(program, settings, progress=None, cancel=None):
     original = np.concatenate([v['payload'] for v in packets]); restored = np.concatenate([accepted[i] for i in sorted(accepted)]) if accepted else np.array([], dtype=np.uint8)
     errors = sum(r['bit_errors'] for r in rows)
     return {'config': {**settings, 'phy': 'program', 'mode': mode, 'packet_bytes': size, 'packets': len(packets), 'seed': p['seed'],
-                       'symbol_rate': p['symbol_rate'], 'actual_chain': ' → '.join(c.BLOCKS[b['kind']]['label'] for b in p['blocks']),
+                       'symbol_rate': p['symbol_rate'],'budget_rate':budget_rate,
+                       'redundancy_mode':'母码索引增量合并' if mode=='ir_harq' else '相同 RV Chase 合并' if rate_matched else mode,
+                       'resource_rule':'以同一实际工程、budget_rate、包长和每轮种子比较 IR 与 Chase；统计实际发送样本与能量。',
+                       'actual_chain': ' → '.join(c.BLOCKS[b['kind']]['label'] for b in p['blocks']),
                        'noise_reference': '实际工程的信道与接收机参数', 'seed_policy': '按工程种子、包序号、发送次数配对信道与反馈随机流'},
             'source_program': p, 'actual_program': last_program, 'frames': rows, 'events': events, 'complete': True,
             'source_base64': base64.b64encode(np.packbits(original)).decode(), 'received_base64': base64.b64encode(np.packbits(restored)).decode(),
@@ -351,7 +428,21 @@ def program_protocol(program, settings, progress=None, cancel=None):
                         'elapsed_seconds': clock, 'goodput_bps': len(restored)/clock, 'bit_count': len(original), 'bit_errors': errors, 'ber': errors/len(original),
                         'mean_delivery_latency_seconds': float(np.mean([r['delivery_latency_seconds'] for r in rows if r['delivered']])) if accepted else None,
                         'delivered_bit_errors': sum(r['bit_errors'] for r in rows if r['delivered']),
+                        'total_symbols':sum(e['symbols'] for e in events),'total_tx_energy':sum(e['tx_energy'] for e in events),
+                        'total_coded_bits':sum(e.get('coded_bits',0) for e in events),
                         'complete_payload': len(accepted) == len(packets) and np.array_equal(original, restored)}}
+
+
+def compare_ir_chase(program,settings,progress=None,cancel=None):
+    """Paired complete experiments; both use the same per-round coded budget."""
+    shared={**settings,'budget_rate':settings.get('budget_rate',2)}
+    def report(stage):
+        return None if progress is None else lambda value:progress({**value,'stage':stage,
+            'completed':value['completed']+(value['total'] if stage=='IR-HARQ' else 0),'total':2*value['total']})
+    chase=protocol(program,{**shared,'mode':'harq'},report('Chase'),cancel)
+    ir=protocol(program,{**shared,'mode':'ir_harq'},report('IR-HARQ'),cancel)
+    return {'chase':chase,'ir_harq':ir,'comparison':{'budget_rate':shared['budget_rate'],
+        'seed':program['seed'],'resource_rule':'各对应轮使用等长 RV、相同噪声随机流；按实际停止轮数汇总符号、能量与有效吞吐。'}}
 
 
 def adaptive_program(program, profile, coding, noise_id, snr):

@@ -82,12 +82,15 @@ class Jobs:
         for old in sorted(p.parent.glob('*.json'),key=lambda q:q.stat().st_mtime,reverse=True)[30:]: old.unlink()
     def start(self,session,kind,payload):
         from src import communications as c
-        if kind not in ('debug','run','sweep','continuous','branches','experiments','rf-task','sweep2d','protocol','amc','classroom','classroom-stage','batch','batch-replay','target-search'): raise ValueError('未知通信任务类型。')
+        if kind not in ('debug','run','sweep','continuous','branches','experiments','rf-task','sweep2d','protocol','amc','classroom','classroom-stage','batch','batch-replay','target-search','pareto','scenario','classroom-recheck','branch-merge','protocol-compare'): raise ValueError('未知通信任务类型。')
         if not isinstance(payload,dict): raise ValueError('任务参数无效。')
-        if kind not in ('branches','experiments','batch'):
+        if kind not in ('branches','experiments','batch','classroom-recheck','branch-merge'):
             built=c.build(payload.get('program'))
             if payload.get('token')!=built['token']: raise ValueError('配置已改变，请重新 Build。')
-        elif kind=='branches': studio.shared_prefix(payload.get('programs',[]))
+        elif kind in ('branches','branch-merge'): studio.shared_prefix(payload.get('programs',[]))
+        elif kind=='classroom-recheck':
+            from src.communication_experiment_v0410 import classroom_import
+            classroom_import(payload.get('submissions'))
         elif kind=='batch':
             programs=payload.get('programs',[])
             if not isinstance(programs,list) or not 1<=len(programs)<=12: raise ValueError('批量实验需要 1–12 个工程。')
@@ -160,9 +163,9 @@ class Jobs:
             elif job.kind=='sweep2d':
                 from src.communication_learning import sweep2d
                 result=sweep2d(p['program'],p['token'],p['settings'],progress,job.cancel,p.get('resume'))
-            elif job.kind in ('protocol','amc'):
+            elif job.kind in ('protocol','amc','protocol-compare'):
                 from src import communication_protocols
-                operation=communication_protocols.protocol if job.kind=='protocol' else communication_protocols.amc
+                operation=communication_protocols.protocol if job.kind=='protocol' else communication_protocols.compare_ir_chase if job.kind=='protocol-compare' else communication_protocols.amc
                 result=operation(c.build(p['program'])['program'],p.get('settings',{}),lambda v:job.update(progress=v),job.cancel)
             elif job.kind in ('classroom','classroom-stage','batch','target-search'):
                 from src import communication_experiments as experiments
@@ -173,6 +176,17 @@ class Jobs:
             elif job.kind=='batch-replay' and p.get('mode')=='protocol':
                 from src.communication_protocols import protocol
                 result=protocol(p['program'],p.get('protocol',{}),progress,job.cancel)
+            elif job.kind in ('pareto','scenario','classroom-recheck'):
+                from src import communication_experiment_v0410 as advanced_experiments
+                if job.kind=='pareto': result=advanced_experiments.optimize(p['program'],p.get('settings',{}),progress,job.cancel)
+                elif job.kind=='scenario':
+                    result=advanced_experiments.scenario(p['program'],p.get('settings',{}),progress,job.cancel,lambda observer:setattr(job,'ctx',observer))
+                    if result.get('last_result'): result['last_result']['experience']['job_id']=job.id
+                else: result=advanced_experiments.recheck(p['submissions'],p.get('settings',{}),progress,job.cancel)
+            elif job.kind=='branch-merge':
+                from src.communication_flow_v0410 import merge_branches
+                result=merge_branches(p['programs'],p.get('settings'),progress,job.cancel,job.contexts)
+                job.ctx=job.contexts[-1];result['merged_result']['experience']['job_id']=job.id
             elif job.kind=='branches': result=studio.compare_branches(p['programs'],p.get('names'),job.cancel,lambda v:job.update(progress=v),job.contexts)
             elif job.kind=='experiments':
                 from src.communication_sweep import sweep

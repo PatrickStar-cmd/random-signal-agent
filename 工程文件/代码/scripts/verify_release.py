@@ -76,6 +76,11 @@ def main():
             assert (code / 'src' / (name+'.py')).is_file()
         assert (code / 'docs/communications-v048.md').is_file()
         assert (code / 'docs/communications-v049.md').is_file()
+        assert (code / 'docs/communications-v0410.md').is_file()
+        for name in ('communication_receiver_v0410','communication_framing_v0410','communication_turbo','communication_experiment_v0410','communication_flow_v0410','communication_isac_v0410'):
+            assert (code / 'src' / (name+'.py')).is_file()
+        for name in ('receiver','framing','experiment','flow','views'):
+            assert (code / 'web' / ('communication-'+name+'-v0410.js')).is_file()
         for name in ('communication_receiver_v049','communication_array_v049','communication_waveform_v049','communication_polar','communication_report_materials'):
             assert (code / ('src/'+name+'.py')).is_file()
         for name in ('communication_hopping.py', 'communication_ofdma.py'):
@@ -119,7 +124,7 @@ def main():
             run([python, 'scripts/test_communications_learning.py'])
             for suite in ('closedloop','spatial','iq','experiments','v048_integration'):
                 run([python, 'scripts/test_communications_'+suite+'.py'])
-            for suite in sorted((code / 'scripts').glob('test_communications_*v049*.py')):
+            for suite in sorted([*(code / 'scripts').glob('test_communications_*v049*.py'),*(code / 'scripts').glob('test_communications_*v0410*.py')]):
                 run([python, str(suite)])
             run([python, 'scripts/benchmark_algorithms.py'])
             report['benchmark'] = json.loads((code / 'outputs/benchmark/summary.json').read_text(encoding='utf-8'))
@@ -152,7 +157,9 @@ def main():
                                     'communication_business_acceptance', 'communication_wireless_acceptance', 'communication_learning_acceptance','communication_closedloop_acceptance','communication_spatial_acceptance',
                                     'communication_iq_acceptance','communication_experiments_acceptance','communication_v048_integration',
                                     'communication_v049_receiver','communication_v049_waveform','communication_v049_iq_roundtrip',
-                                    'communication_v049_experiments','communication_v049_integration']
+                                    'communication_v049_experiments','communication_v049_integration',
+                                    'communication_v0410_receiver','communication_v0410_framing','communication_v0410_turbo','communication_v0410_harq',
+                                    'communication_v0410_iq','communication_v0410_experiment','communication_v0410_flow_isac','communication_v0410_integration']
             finally:
                 if process is not None and process.poll() is None:
                     if os.name == 'nt':

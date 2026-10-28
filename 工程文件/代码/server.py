@@ -211,10 +211,16 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
             if job.ctx is None or bid not in job.ctx.values: raise ValueError('选择本次运行中已记录的复采样观察点。')
             observation=next(o for o in job.ctx.observations if o['id']==bid)
             return await run_in_threadpool(iq.export_recording,job.ctx.values[bid],observation['sample_rate'],job.ctx.compiled['program'],bid,observation['domain'])
-        studio_actions={'describe','receiver','pair','document-check','project-list','project-save','project-load','job-start','job-status','job-control','window','report-preview','report-pdf'}
+        studio_actions={'v0410-inspect','v0410-classroom','describe','receiver','pair','document-check','project-list','project-save','project-load','job-start','job-status','job-control','window','report-preview','report-pdf'}
         if action in studio_actions:
             if request.headers.get('content-type','').split(';')[0]!='application/json': raise ValueError('通信实验请求须使用 JSON。')
             payload=await body(request);session=session_key(payload.get('session_id'))
+            if action=='v0410-inspect':
+                from src.communication_experiment_v0410 import inspect_run
+                return await run_in_threadpool(inspect_run,payload.get('program'),payload.get('result'))
+            if action=='v0410-classroom':
+                from src.communication_experiment_v0410 import classroom_import
+                return await run_in_threadpool(classroom_import,payload.get('submissions'))
             if action=='describe': return await run_in_threadpool(communication_studio.describe,payload.get('program'))
             if action=='document-check': return {'document':await run_in_threadpool(communication_studio.validate_document,payload.get('document'))}
             if action in ('receiver','pair'):

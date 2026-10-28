@@ -365,3 +365,21 @@ node scripts/verify_communications_ui.js
 已实现：LMMSE/Kalman、空间软检测、DFT-s-OFDM、记忆功放与 DPD、突发同步与时钟恢复、Polar、阵列预编码与 MVDR；条件断点、实验续跑、统计复跑、阶段作业、空间联动和报告编排。
 
 [完整功能、实现原理、操作顺序及验证命令](communications-v049.md)。日志位于 `logs/communications-v049/` 与 `logs/release/`。
+
+
+## 🌊 v0.4.10 自主接收与实验分析增强
+
+启动服务后，在通信实验库搜索 MLSE、MUSIC、TDL、自描述帧、Turbo 或 OFDM 通感，依次 Build / Run。射频、空间、教学分析区提供对应主题子页；在“教学实验 → 协议与速率”选择 IR-HARQ 或同预算 IR/Chase 对照。完整步骤与 12 个预设见 [v0.4.10 指南](communications-v0410.md)。
+
+```powershell
+.venv/Scripts/python.exe -m unittest discover -s scripts -p "test_*v0410.py"
+node scripts/test_communications_receiver_v0410_ui.js
+node scripts/test_communications_framing_v0410_ui.js
+node scripts/test_communications_experiment_v0410_ui.js
+node scripts/test_communications_learning_ui.js
+node scripts/verify_communications_ui.js
+```
+
+后台任务 `protocol-compare` 返回同预算 IR/Chase 对照，`pareto` 执行受约束离散选参，`classroom-recheck` 重验阶段快照，`scenario` 执行帧级时间表，`branch-merge` 执行两路接收汇合；均使用已有 `job-start/job-status/job-control`。同步接口 `v0410-inspect` 与 `v0410-classroom` 读取实际运行与作业包。任务设置与参数见[实验功能说明](communications-v0410-experiments.md)，IR 参数见[物理帧与迭代收发](communications-v0410-framing.md)。
+
+专项日志写入 `logs/communications-v0410/`，包括接收数值、物理帧、Turbo、HARQ、I/Q、汇合/通感、实验/API 和 UI 生命周期；浏览器材料与最近文档备份位于 `debug/v0410/`。发布继续执行 `scripts/build_release.py` 与 `scripts/verify_release.py`，在 `logs/release/` 查看打包与部署结果。

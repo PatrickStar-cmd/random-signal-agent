@@ -61,6 +61,17 @@ def record(block,data,rate=None):
     return ctx.record(block,data,rate) if ctx else data
 
 
+def decision_samples(block, symbols, scheme):
+    """Observe or merge normalized samples at the real demodulator input."""
+    callback=getattr(CURRENT.get(),'on_decision_samples',None)
+    return callback(block,symbols,scheme) if callback else symbols
+
+
+def decision_noise_variance(block, symbols, scheme, variance):
+    callback=getattr(CURRENT.get(),'on_decision_noise_variance',None)
+    return callback(block,symbols,scheme,variance) if callback else variance
+
+
 def decision(block, symbols, scheme, data, noise_variance=None):
     """Apply a packet receiver's soft-combining hook at the actual demodulator."""
     ctx = CURRENT.get()

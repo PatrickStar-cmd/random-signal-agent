@@ -40,8 +40,12 @@ window.createCommunicationExperience = function (core) {
   const learning=window.createCommunicationLearning(core,{meta:()=>meta,persist,runJob,documentValue,request,layout});
   const experiments=window.createCommunicationExperiments(core,{meta:()=>meta,persist,runJob,documentValue,request,layout});
   const spatial=window.createCommunicationSpatial(core,{meta:()=>meta,persist,request,layout,selected:()=>[...selected],insertionIndex,selectMembers:ids=>{selected=new Set(ids);render()},jobId:()=>get().result?.experience?.job_id});
+  const nextContext={meta:()=>meta,persist,runJob,documentValue,request,layout,syncBranches,
+    createBranch:(program,label)=>core.setProgram(program,'已载入诊断对照：'+label),
+    locateObservation:id=>{const index=observations.findIndex(o=>o.id===id);if(index>=0){byId('cmProbeA').value=String(index);loadWindows();layout.showAnalysis('signals');}}};
+  const enhancements=[window.createCommunicationReceiverV0410(core,nextContext),window.createCommunicationFramingV0410(core,nextContext),window.createCommunicationExperimentV0410(core,nextContext),window.createCommunicationFlowV0410(core,nextContext),window.createCommunicationViewsV0410(core,nextContext)];
   const report=window.createCommunicationReport(core,{meta:()=>meta,persist,documentValue,request,session});
-  const savedFormIds=/^cm(?:Scan|Protocol|Packet|Retries|Feedback|AMC|Breakpoint(?:Metric|Operator|Value)|ContinuousFrames|Sweep(?:Start|Stop|Step|Frames|Errors|Values|Name))/;
+  const savedFormIds=/^cm(?:Scan|Protocol|Packet|Retries|Feedback|HARQBudget|AMC|Breakpoint(?:Metric|Operator|Value)|ContinuousFrames|Sweep(?:Start|Stop|Step|Frames|Errors|Values|Name))/;
   function rememberForm(event){const e=event.target;if(e.id&&savedFormIds.test(e.id)&&['INPUT','SELECT','TEXTAREA'].includes(e.tagName)&&e.type!=='file'){(meta.formValues||(meta.formValues={}))[e.id]=e.value;persist();}}
   root.addEventListener('input',rememberForm,true);root.addEventListener('change',rememberForm,true);
   function restoreFormValues(){for(const [id,value] of Object.entries(meta.formValues||{})){const e=byId(id);if(e&&document.activeElement!==e&&(e.tagName!=='SELECT'||[...e.options].some(o=>o.value===String(value))))e.value=value;}}
@@ -55,11 +59,11 @@ window.createCommunicationExperience = function (core) {
     clearTimeout(saveTimer);
     if(meta.projectId&&!get().busy)saveTimer=setTimeout(()=>save(false).catch(e=>message(e.message)),1800);
   }
-  function invalidate(){if(!restoring){rf.invalidate();learning.invalidate();experiments.invalidate();spatial.invalidate();waveform.invalidate();meta.result=null;meta.comparisons=null;observations=[];windowA=windowB=null;byId('cmProbeA').innerHTML='';byId('cmProbeB').innerHTML='';byId('cmExecutionSummary').textContent='链路已更新，运行后选择积木输出';byId('cmBranchResults').innerHTML='';drawScopes()}scheduleDescribe()}
+  function invalidate(){if(!restoring){rf.invalidate();learning.invalidate();experiments.invalidate();spatial.invalidate();waveform.invalidate();enhancements.forEach(x=>x.invalidate());meta.result=null;meta.comparisons=null;observations=[];windowA=windowB=null;byId('cmProbeA').innerHTML='';byId('cmProbeB').innerHTML='';byId('cmExecutionSummary').textContent='链路已更新，运行后选择积木输出';byId('cmBranchResults').innerHTML='';drawScopes()}scheduleDescribe()}
   function editSnapshot(){return clone(meta)}
   function restoreEdit(value){meta={...defaults(),...clone(value)}}
   function loadState(doc){meta={...defaults(),...clone(doc)};delete meta.program;delete meta.sweeps;delete meta.document_schema;restoring=true}
-  function replaceProgram(){meta.groups=[];meta.branches=[];meta.activeBranch=0;meta.comparisons=null;meta.scope={};learning.replaceProgram();experiments.replaceProgram();spatial.replaceProgram();selected.clear()}
+  function replaceProgram(){meta.groups=[];meta.branches=[];meta.activeBranch=0;meta.comparisons=null;meta.scope={};learning.replaceProgram();experiments.replaceProgram();spatial.replaceProgram();enhancements.forEach(x=>x.replaceProgram?.());selected.clear()}
   function restoreDraft(){
     try{const saved=JSON.parse(localStorage.getItem(storage)||'null');if(saved?.document_schema===2){restoring=true;core.applyDocument(saved);restoring=false}}
     catch{message('已打开链路草稿；完整工程草稿无法读取。')}
@@ -112,7 +116,7 @@ window.createCommunicationExperience = function (core) {
   function parameterChanged(){
     if(!byId('cmLinkedParams').checked)return;
     const p=get().program,stack=[],definitions=get().definitions;
-    const pairs={pcm_decode:'pcm_encode',repeat_decode:'repeat_encode',hamming_decode:'hamming_encode',conv_decode:'conv_encode',conv_soft_decode:'conv_encode',ldpc_decode:'ldpc_encode',deinterleave:'interleave',crc_check:'crc_append',descramble:'scramble',compand_decode:'compand_encode',dpcm_decode:'dpcm_encode',delta_decode:'delta_encode',huffman_decode:'huffman_encode',adpcm_decode:'adpcm_encode',bch_decode:'bch_encode',rs_decode:'rs_encode',packet_decode:'packet_encode',rx_despread:'tx_dsss'};
+    const pairs={pcm_decode:'pcm_encode',repeat_decode:'repeat_encode',hamming_decode:'hamming_encode',conv_decode:'conv_encode',conv_soft_decode:'conv_encode',ldpc_decode:'ldpc_encode',polar_decode:'polar_encode',turbo_decode:'turbo_encode',deinterleave:'interleave',crc_check:'crc_append',descramble:'scramble',compand_decode:'compand_encode',dpcm_decode:'dpcm_encode',delta_decode:'delta_encode',huffman_decode:'huffman_encode',adpcm_decode:'adpcm_encode',bch_decode:'bch_encode',rs_decode:'rs_encode',packet_decode:'packet_encode',rx_despread:'tx_dsss'};
     for(const b of p.blocks)if(b.kind.startsWith('line_')&&b.kind.endsWith('_decode'))pairs[b.kind]=b.kind.replace('_decode','_encode');
     const encoders=new Set(Object.values(pairs));
     for(const b of p.blocks){if(encoders.has(b.kind))stack.push(b);else if(pairs[b.kind]&&stack.length){const tx=stack.pop();if(pairs[b.kind]===tx.kind)for(const name of Object.keys(definitions[b.kind].params))if(Object.hasOwn(tx.params,name))b.params[name]=tx.params[name]}}
@@ -155,7 +159,7 @@ window.createCommunicationExperience = function (core) {
     byId('cmLibrary').innerHTML=meta.library.length?meta.library.map((g,i)=>`<button type="button" data-cm-library="${i}">🧩 ${esc(g.name)} · ${g.blocks.length} 块</button>`).join(''):'勾选相邻积木，封装后即可复用。';
     byId('cmGroupExpose').innerHTML=blocks.filter(b=>selected.has(b.id)).flatMap(b=>Object.entries(get().definitions[b.kind].params).map(([key,spec])=>`<option value="${esc(b.id+':'+key)}">${esc(get().definitions[b.kind].label+' · '+spec.label)}</option>`)).join('');
     byId('cmBranchSelect').innerHTML=meta.branches.length?meta.branches.map((b,i)=>`<option value="${i}">${esc(b.name)}</option>`).join(''):'<option value="0">主链路</option>';byId('cmBranchSelect').value=String(meta.activeBranch);
-    renderFlow();renderSweepParameters();selection();scheduleDescribe();learning.render();experiments.render();spatial.render();waveform.render();renderExecution();restoreFormValues();
+    renderFlow();renderSweepParameters();selection();scheduleDescribe();learning.render();experiments.render();spatial.render();waveform.render();enhancements.forEach(x=>x.render());renderExecution();restoreFormValues();
   }
   function renderFlow(){
     const blocks=get().program.blocks,split=blocks.findIndex(b=>['demodulator','rx_converter'].includes(get().definitions[b.kind].category));
@@ -184,7 +188,7 @@ window.createCommunicationExperience = function (core) {
   }
   function buttons(busy){
     report.buttons(busy);executionPanel.querySelectorAll('button,input,select').forEach(e=>e.disabled=busy);byId('cmBreakpointRun').disabled=busy||!get().compiled;byId('cmJobResume').disabled=busy||!byId('cmResumeJobs').value;
-    rf.buttons(busy);learning.buttons(busy);experiments.buttons(busy);spatial.buttons(busy);waveform.buttons(busy);
+    rf.buttons(busy);learning.buttons(busy);experiments.buttons(busy);spatial.buttons(busy);waveform.buttons(busy);enhancements.forEach(x=>x.buttons(busy));
     if(wasBusy&&!busy)persist();wasBusy=busy;
     const built=!!get().compiled;
     for(const id of ['cmDebugStart','cmContinuous','cmBranchesRun','cmContrastRun'])byId(id).disabled=busy||!built;
@@ -216,7 +220,7 @@ window.createCommunicationExperience = function (core) {
   async function runJob(kind,payload){const job=await request('job-start',{kind,payload});rememberJob(job);persist();return watch(job)}
   function rememberJob(job){if(!['sweep','sweep2d','batch','target-search'].includes(job.kind))return;const rows=meta.jobReceipts||(meta.jobReceipts=[]),p=job.result||job.progress||{},entry={id:job.id,kind:job.kind,status:job.status,completed:p.completed_frames??p.completed??0,total:p.total_frames??p.total??0,time:new Date().toISOString()};const index=rows.findIndex(r=>r.id===job.id);if(index>=0)rows[index]=entry;else rows.unshift(entry);meta.jobReceipts=rows.slice(0,20);renderExecution();}
   function renderExecution(){const previous=byId('cmBreakpointBlock').value,blocks=get().program.blocks;byId('cmBreakpointBlock').innerHTML=blocks.map(b=>`<option value="${esc(b.id)}">${esc(get().definitions[b.kind].label)}</option>`).join('');byId('cmBreakpointBlock').value=blocks.some(b=>b.id===previous)?previous:get().selectedId;const rules=(meta.breakpoints||[]).filter(r=>blocks.some(b=>b.id===r.block_id));meta.breakpoints=rules;byId('cmBreakpointList').innerHTML=rules.map((r,i)=>`<div class="cm-experiment-queue"><span>${esc(get().definitions[blocks.find(b=>b.id===r.block_id)?.kind]?.label||r.block_id)} · ${r.metric==='always'?'执行到此处':esc(r.metric+' '+r.operator+' '+r.value)}</span><button type="button" data-remove-breakpoint="${i}">移除</button></div>`).join('');const old=byId('cmResumeJobs').value,items=(meta.jobReceipts||[]).filter(r=>r.status!=='completed'),names={sweep:'一维扫描',sweep2d:'二维扫描',batch:'批量实验','target-search':'目标搜索'};byId('cmResumeJobs').innerHTML='<option value="">选择任务…</option>'+items.map(r=>`<option value="${r.id}">${names[r.kind]} · ${r.completed}/${r.total} · ${new Date(r.time).toLocaleString()}</option>`).join('');if(items.some(r=>r.id===old))byId('cmResumeJobs').value=old;byId('cmJobResume').disabled=get().busy||!byId('cmResumeJobs').value;}
-  function onResult(result){rf.onResult(result);learning.onResult(result);experiments.onResult(result);spatial.onResult(result);waveform.onResult(result);if(result){meta.result=clone(result);if(result.experience)setObservations(result.experience.observations,result.experience.job_id||result.job_id);persist()}}
+  function onResult(result){rf.onResult(result);learning.onResult(result);experiments.onResult(result);spatial.onResult(result);waveform.onResult(result);enhancements.forEach(x=>x.onResult(result));if(result){meta.result=clone(result);if(result.experience)setObservations(result.experience.observations,result.experience.job_id||result.job_id);persist()}}
   function setObservations(values,jobId){
     observations=values.map(v=>({...v,job_id:jobId}));const a=byId('cmProbeA').value,b=byId('cmProbeB').value;
     const options=observations.map((v,i)=>`<option value="${i}">${meta.probes.includes(v.id)?'📌 ':''}${esc(v.label)} · ${esc(v.domain)} · ${v.count}</option>`).join('');byId('cmProbeA').innerHTML=options;byId('cmProbeB').innerHTML=options;

@@ -130,6 +130,7 @@ business.register(block, number, field, BLOCKS)
 wireless.register(block, number, field, BLOCKS)
 iq.register(block, number, field, BLOCKS)
 communication_codecs.polar.register(block, number, field, BLOCKS)
+communication_codecs.turbo.register(block, number, field, BLOCKS)
 PAIRS = {'pcm_decode': 'pcm_encode', 'repeat_decode': 'repeat_encode', 'hamming_decode': 'hamming_encode', 'conv_decode': 'conv_encode', 'deinterleave': 'interleave'}
 PAIRS.update(communication_codecs.PAIRS)
 PAIRS.update({'line_'+scheme+'_decode':'line_'+scheme+'_encode' for scheme in baseband.LINE_CODES})
@@ -171,6 +172,7 @@ PRESETS.update(business.presets(preset))
 PRESETS.update(wireless.presets(preset))
 PRESETS.update(iq.presets(preset))
 PRESETS.update(communication_codecs.polar.presets(preset))
+PRESETS.update(communication_codecs.turbo.presets(preset))
 
 
 def catalog():
@@ -237,7 +239,7 @@ def normalize(raw, draft=False):
 def build(raw):
     p = normalize(raw); items = p['blocks']; sources = []
     if any(b['kind'] == 'iq_source' for b in items): return iq.build(p)
-    extended=communication_catalog.KINDS | business.KINDS | wireless.KINDS | set(communication_codecs.polar.PAIRS) | set(communication_codecs.polar.PAIRS.values())
+    extended=communication_catalog.KINDS | business.KINDS | wireless.KINDS | set(communication_codecs.polar.PAIRS) | set(communication_codecs.polar.PAIRS.values()) | set(communication_codecs.turbo.PAIRS) | set(communication_codecs.turbo.PAIRS.values())
     analog_audio=any(b['kind'] in {'mod_'+scheme for scheme in analog_modulation.LABELS} for b in items) and not any(b['kind'] in extended-{'audio_source'} for b in items)
     if any(b['kind'] in extended for b in items) and not analog_audio and not any(b['kind'].startswith('line_') or b['kind'] in ('mod_baseband','mod_pam') for b in items):
         return advanced_communications.build(p)
@@ -438,10 +440,11 @@ def run(raw, token):
         json.dumps(result, allow_nan=False)
         return result
     data = source.copy(); reference_bits = None if analog else source.copy(); encoded_bits = None; stack = []; gain = 1 + 0j
-    channel_symbols = None; decision_symbols = None; tx_symbols = None; demapped = None; decided_indices = None; clipped = 0; corrections = 0;learning=[]
+    channel_symbols = None; decision_symbols = None; tx_symbols = None; demapped = None; decided_indices = None; clipped = 0; corrections = 0;learning=[];algorithm_traces=[]
     for b in p['blocks'][source_count:]:
         runtime.enter(b)
         k, q = b['kind'], b['params']; before = len(data)
+        trace_input=advanced_communications.trace_values(data);lesson_count=len(learning)
         if k in ENCODERS:
             stack.append((k, q, before))
             if k == 'pcm_encode':
@@ -461,6 +464,7 @@ def run(raw, token):
         elif k == 'dropout': data = data * (noise_rng.random(len(data)) >= q['probability'])
         elif k.startswith('demod_'):
             channel_symbols = data.copy(); decision_symbols = data / gain if q['compensate'] else data.copy()
+            decision_symbols=runtime.decision_samples(b,decision_symbols,scheme)
             data, decided_indices = demodulate(decision_symbols, scheme); data = data[:len(encoded_bits)]
             data = runtime.decision(b, decision_symbols, scheme, data)
             demapped = data.copy()
@@ -475,6 +479,7 @@ def run(raw, token):
                 data = values / (2 ** q['bits'] - 1) * 2 * q['full_scale'] - q['full_scale']
             data = data[:size]
         data=runtime.record(b,data,p['symbol_rate'])
+        if len(learning)>lesson_count: algorithm_traces.append({'block_id':b['id'],'kind':k,'input':trace_input,'output':advanced_communications.trace_values(data),'trace':learning[-1]})
     if not analog: decoded_bits = data.astype(np.uint8)
     errors = int(np.count_nonzero(reference_bits != decoded_bits)); coded_errors = int(np.count_nonzero(encoded_bits != demapped))
     full_count = len(data); shown = min(full_count, CONFIG['plot_points']); scatter = min(len(tx_symbols), CONFIG['scatter_points'])
@@ -483,6 +488,7 @@ def run(raw, token):
     result = {'token': compiled['token'], 'seed': p['seed'], 'summary': compiled['summary'], 'model': compiled['model'], 'metrics': metrics, 'plan': compiled['plan'], 'sink': {'kind': compiled['source_kind'], 'values': data.tolist(), 'reference': source.tolist(), 'sample_rate': p['sample_rate'] if analog else None, 'count': full_count, 'plot_count': shown}, 'channel': {'count': len(channel_symbols), 'plot_count': min(len(channel_symbols), CONFIG['plot_points']), 'symbol_rate': p['symbol_rate'], 'i': channel_symbols[:CONFIG['plot_points']].real.tolist(), 'q': channel_symbols[:CONFIG['plot_points']].imag.tolist()}, 'constellation': {'scheme': scheme, 'count': scatter, 'i': decision_symbols[:scatter].real.tolist(), 'q': decision_symbols[:scatter].imag.tolist(), 'ideal_i': points.real.tolist(), 'ideal_q': points.imag.tolist(), 'labels': [''.join(map(str, v)) for v in labels]}, 'text': None}
     if not analog and len(texts) == source_count: result['text'] = {'sent': b''.join(texts).decode('utf-8'), 'received': np.packbits(decoded_bits).tobytes().decode('utf-8', errors='replace')}
     if learning: result['learning']=learning
+    if algorithm_traces: result['algorithm_traces']=algorithm_traces
     # This is also the JSON-export contract: never return NaN/Infinity.
     json.dumps(result, allow_nan=False)
     result['analysis']=communication_rf.analyze(tx_symbols,channel_symbols,tx_symbols,decision_symbols,p['symbol_rate'],len(reference_bits))

@@ -183,9 +183,10 @@ def build(p):
         elif k.startswith('demod_') or k.startswith('soft_'):
             wireless.validate_receiver(features)
             requested=k.split('_',1)[1]
+            if 'rx_mlse' in consumed and k.startswith('soft_'): fail('MLSE 硬序列输出连接硬解调器。')
             if direction not in ('channel','signal_rx') or not channels or requested!=scheme: fail('解调方式须与发送映射匹配。')
             if scheme in SYMBOL_SCHEMES and domain!='复符号': fail('先完成波形接收滤波 / 抽样或 OFDM 解调。')
-            if q.get('automatic_variance') and not consumed&{'rx_noise_estimate','rx_mimo_soft','rx_mimo_lmmse','rx_mimo_kalman'}: fail('自动 LLR 方差需要接收噪声方差估计或空间软检测积木。')
+            if q.get('automatic_variance') and not consumed&{'rx_noise_estimate','rx_mimo_soft','rx_mimo_lmmse','rx_mimo_kalman','rx_music_mvdr'}: fail('自动 LLR 方差需要接收噪声方差估计或空间软检测积木。')
             for tx,rx in [('tx_frame','rx_frame'),('tx_rrc','rx_timing'),('tx_pilots','rx_pilots'),('tx_ofdm','rx_ofdm')]:
                 if tx in features and rx not in consumed: fail('缺少 '+c.BLOCKS[rx]['label']+'。')
             count=features['coded_count']; domain='LLR' if k.startswith('soft_') else '比特'; direction='rx'
@@ -193,9 +194,10 @@ def build(p):
             if direction!='rx' or not stack: fail('缺少配对发送编码器。')
             expected,params,original=stack.pop()
             if c.PAIRS[k]!=expected: fail('须按发送编码的相反顺序译码。')
-            if k not in ('ldpc_decode','conv_soft_decode','polar_decode') and q!=params: fail('配对编码参数须一致。')
+            if k not in ('ldpc_decode','conv_soft_decode','polar_decode','turbo_decode') and q!=params: fail('配对编码参数须一致。')
+            if k=='turbo_decode' and any(q[name]!=params[name] for name in ('block_size','interleaver_seed')): fail('Turbo 分块长度和交织种子须与编码器一致。')
             if k=='polar_decode' and any(q[name]!=params[name] for name in ('n','rate','design')): fail('Polar 码长、码率和构造参数须与编码器一致。')
-            if k in ('ldpc_decode','conv_soft_decode','polar_decode'):
+            if k in ('ldpc_decode','conv_soft_decode','polar_decode','turbo_decode'):
                 if domain!='LLR': fail('该译码需要软解调输出的 LLR。')
                 domain='比特'
             elif k=='depuncture':
@@ -220,21 +222,28 @@ def view(data, limit, fs):
     return {'count':len(data),'plot_count':len(shown),'symbol_rate':fs,'i':shown.real.tolist(),'q':shown.imag.tolist()}
 
 
+def trace_values(data):
+    values=np.asarray(data).ravel()[:64].astype(complex)
+    return {'i':values.real.tolist(),'q':values.imag.tolist(),'count':len(data)}
+
+
 def run(compiled, source, texts, source_count, rng):
     from src import communications as c
     p=compiled['program']; f=compiled['features']; data=source.copy(); analog=compiled['source_kind']=='analog'
     reference=None if analog else source.copy(); stack=[]; info={}; snapshots=[]; recovery={}; gain=1+0j; prefix=0
     fs=p['symbol_rate']; tx=None; channel=None; tx_power=1.; in_channel=False; decoded_bits=None; clipped=corrections=0; eye=None;noise_estimate=None
-    rf_stages=[];learning=[];wireless_state={'source_counts':f['source_counts'],'array_channel_params':f.get('array_channel',{}).get('params')}
+    rf_stages=[];learning=[];algorithm_traces=[];wireless_state={'source_counts':f['source_counts'],'array_channel_params':f.get('array_channel',{}).get('params')}
     receive_sps=f.get('receiver_sps',f.get('tx_rrc',{}).get('params',{}).get('sps',1))
     for b in p['blocks'][source_count:]:
         runtime.enter(b)
         k,q=b['kind'],b['params']; before=len(data)
+        trace_input=trace_values(data);trace=None;lesson_count=len(learning)
         if k in wireless.KINDS:
             if k in wireless.CHANNEL and not in_channel:
                 tx=data.copy();tx_power=float(np.mean(abs(tx)**2));in_channel=True
             data,details,fs=wireless.run_stage(k,data,q,wireless_state,rng,fs)
             info.setdefault('wireless',{})[k]=details
+            if k in wireless.RX: trace=details.get('trace',details)
             if 'before' in details and 'after' in details and len(rf_stages)<8:
                 rf_stages.append({'label':c.BLOCKS[k]['label'],'before':details['before'],'after':details['after']})
             if k in wireless.CHANNEL: channel=data.copy()
@@ -347,20 +356,23 @@ def run(compiled, source, texts, source_count, rng):
                 data=dsp.frequency_demodulate(received,scheme,modulation,q.get('coherent',False)); decided_indices=data.copy(); decision_symbols=received; points=np.array([-1,1],dtype=complex)
             else:
                 received=np.pad(received[:len(mapped)],(0,max(0,len(mapped)-len(received))))
+                received=runtime.decision_samples(b,received,scheme)
                 hard,decided_indices=dsp.decisions(received,scheme); decision_symbols=received; _,points=dsp.constellation(scheme)
                 variance=wireless_state.get('soft_variance',noise_estimate if q.get('automatic_variance') else q.get('noise_variance'))
+                if k.startswith('soft_'): variance=runtime.decision_noise_variance(b,received,scheme,variance)
                 data=dsp.soft_demod(received,scheme,variance) if k.startswith('soft_') else hard
             data=data[:len(encoded)]
             if scheme not in WAVE_SCHEMES:
                 decision_variance=wireless_state.get('soft_variance',noise_estimate if noise_estimate is not None else q.get('noise_variance'))
-                data=runtime.decision(b,received,scheme,data,decision_variance)
+                data=runtime.decision(b,received,scheme,data,variance if k.startswith('soft_') else decision_variance)
             demapped=(data<0).astype(np.uint8) if k.startswith('soft_') else data.copy()
+            if k.startswith('soft_'): _,decided_indices=dsp.map_bits(demapped,scheme)
         elif k in c.PAIRS:
             encoder,params,size=stack.pop()
             if encoder in codec.SOURCE_CODECS or encoder=='pcm_encode': decoded_bits=data.copy()
             if k=='depuncture': data=codec.depuncture(data,size,q['rate'])
             elif k in codec.PAIRS:
-                data,details=codec.decode(k,data,q); info.setdefault('codecs',[]).append({'kind':k,**details})
+                data,details=codec.decode(k,data,q); info.setdefault('codecs',[]).append({'block_id':b['id'],'kind':k,**details});trace=details.get('learning',details)
                 if k=='adpcm_decode': learning.append(details)
                 if 'learning' in details: learning.append(details['learning'])
             elif k=='repeat_decode': data=(data.reshape(-1,q['factor']).sum(axis=1)>q['factor']//2).astype(np.uint8)
@@ -370,6 +382,11 @@ def run(compiled, source, texts, source_count, rng):
             elif k=='pcm_decode': data=codec.bits_to_words(data,q['bits'])/(2**q['bits']-1)*2*q['full_scale']-q['full_scale']
             data=data[:size]
         data=runtime.record(b,data,fs)
+        if len(learning)>lesson_count: trace=learning[-1]
+        if k in RX_PROCESS:
+            key={'rx_carrier':'carrier','rx_frequency':'frequency','rx_timing':'timing','rx_frame':'frame','rx_equalizer':'equalizer','rx_cma':'equalizer','rx_fse':'equalizer'}.get(k)
+            trace=recovery.get(key) if key else info.get(k)
+        if trace is not None: algorithm_traces.append({'block_id':b['id'],'kind':k,'input':trace_input,'output':trace_values(data),'trace':trace})
     if not analog: decoded_bits=data.astype(np.uint8)
     errors=int(np.count_nonzero(reference!=decoded_bits)); coded_errors=int(np.count_nonzero(encoded!=demapped))
     bit_count=len(reference); symbol_errors=int(np.count_nonzero(transmitted_indices!=decided_indices))
@@ -388,7 +405,7 @@ def run(compiled, source, texts, source_count, rng):
     frequency=np.fft.fftshift(np.fft.fftfreq(len(tx),1/channel_fs(compiled)))
     selected=np.linspace(0,len(tx)-1,min(1024,len(tx)),dtype=int); spectrum=spectrum[selected]; frequency=frequency[selected]
     shown=c.CONFIG['plot_points']
-    advanced={'scheme':scheme.upper(),'sample_rate':channel_fs(compiled),'transmitter':view(tx,shown,channel_fs(compiled)), 'warnings':[], 'spectrum':{'frequency_hz':frequency.tolist(),'density_db':(10*np.log10(np.maximum(spectrum,1e-12))).tolist()},'recovery':recovery,'stages':snapshots,'learning':learning,**info}
+    advanced={'scheme':scheme.upper(),'sample_rate':channel_fs(compiled),'transmitter':view(tx,shown,channel_fs(compiled)), 'warnings':[], 'spectrum':{'frequency_hz':frequency.tolist(),'density_db':(10*np.log10(np.maximum(spectrum,1e-12))).tolist()},'recovery':recovery,'stages':snapshots,'learning':learning,'algorithm_traces':algorithm_traces,**info}
     if eye is not None: advanced['eye']=eye
     if any(b['kind']=='pn_bits' for b in p['blocks']):
         bits=2*source.astype(float)-1; autocorr=np.fft.ifft(abs(np.fft.fft(bits))**2).real/len(bits)
