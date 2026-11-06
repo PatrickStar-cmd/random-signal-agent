@@ -383,3 +383,11 @@ node scripts/verify_communications_ui.js
 后台任务 `protocol-compare` 返回同预算 IR/Chase 对照，`pareto` 执行受约束离散选参，`classroom-recheck` 重验阶段快照，`scenario` 执行帧级时间表，`branch-merge` 执行两路接收汇合；均使用已有 `job-start/job-status/job-control`。同步接口 `v0410-inspect` 与 `v0410-classroom` 读取实际运行与作业包。任务设置与参数见[实验功能说明](communications-v0410-experiments.md)，IR 参数见[物理帧与迭代收发](communications-v0410-framing.md)。
 
 专项日志写入 `logs/communications-v0410/`，包括接收数值、物理帧、Turbo、HARQ、I/Q、汇合/通感、实验/API 和 UI 生命周期；浏览器材料与最近文档备份位于 `debug/v0410/`。发布继续执行 `scripts/build_release.py` 与 `scripts/verify_release.py`，在 `logs/release/` 查看打包与部署结果。
+
+## 🪸 v0.4.11 可视接线执行
+
+启动服务，在通信实验室展开“可视接线与分支实验”，载入 NLMS / DFE 或多目标 CFAR，依次 Build 接线、完整运行、修改接收参数、局部重跑。使用工程菜单保存、导入或导出快照。可视工程 Python 导出在项目运行目录中执行。
+
+专项检查：`.venv/Scripts/python.exe scripts/test_communications_graph_v0411.py`；前端检查：`node scripts/verify_communications_ui.js`。日志位于 `logs/communications-v0411/`；发布检查使用 `scripts/build_release.py` 和 `scripts/verify_release.py`，日志位于 `logs/release/`。
+
+同步接口 `graph-create/graph-build/graph-export` 与异步 `kind=graph` 支持完整运行和 `partial=true` 局部重跑。目标表、CFAR 窗口、Pfa、图结构及存储预算见 [v0.4.11 指南](communications-v0411.md)。

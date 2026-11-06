@@ -51,6 +51,7 @@ def build_stage(kind,q,domain,count,features):
         if domain!='OFDM 波形' or w.get('tx')!='tx_isac_ofdm':raise ValueError('通感接收器需要通感 OFDM 组帧。')
         count=w['input_count'];domain='复符号';w['rx']=kind
         if 'isac_echo' in features and q['carrier_ghz']!=features['isac_echo']['params']['carrier_ghz']:raise ValueError('接收射频载频须与发射回波载频一致。')
+        if 'isac_echo_multi' in features and q['carrier_ghz']!=features['isac_echo_multi']['params']['carrier_ghz']:raise ValueError('接收射频载频须与多目标回波载频一致。')
     features[kind]={'params':q,'count':count}
     return domain,count
 
@@ -98,6 +99,7 @@ def receive(wave,reference,q,fs):
     sensing={'range_m':float(ranges[col]),'velocity_mps':float(speeds[row]),'detected':detected,'peak_background_db':contrast,
              'range_resolution_m':C/(2*fs),'velocity_resolution_mps':wavelength*fs/(2*slow*(n+cp)),
              'range_axis_m':ranges.tolist(),'velocity_axis_mps':speeds.tolist(),'power_db':(10*np.log10(np.maximum(power,1e-20))).tolist(),
+             'power':power.tolist(),'power_domain':'linear','analysis_port':'range_doppler_power',
              'reference':'local_transmit_grid','data_ofdm_symbols':slow,'direct_cell_excluded':0}
     return equalized.ravel()[:reference['count']],{'sensing':sensing,'channel_i':estimate.real.tolist(),'channel_q':estimate.imag.tolist(),
         'trace':{'channel_magnitude':abs(estimate).tolist(),'range_profile':np.max(power,axis=0).tolist(),'doppler_profile':np.max(searchable,axis=1).tolist()}}

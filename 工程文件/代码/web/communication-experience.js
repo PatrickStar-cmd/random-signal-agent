@@ -43,7 +43,8 @@ window.createCommunicationExperience = function (core) {
   const nextContext={meta:()=>meta,persist,runJob,documentValue,request,layout,syncBranches,
     createBranch:(program,label)=>core.setProgram(program,'已载入诊断对照：'+label),
     locateObservation:id=>{const index=observations.findIndex(o=>o.id===id);if(index>=0){byId('cmProbeA').value=String(index);loadWindows();layout.showAnalysis('signals');}}};
-  const enhancements=[window.createCommunicationReceiverV0410(core,nextContext),window.createCommunicationFramingV0410(core,nextContext),window.createCommunicationExperimentV0410(core,nextContext),window.createCommunicationFlowV0410(core,nextContext),window.createCommunicationViewsV0410(core,nextContext)];
+  const graphEditor=window.createCommunicationGraphV0411?.(core,nextContext);
+  const enhancements=[window.createCommunicationReceiverV0410(core,nextContext),window.createCommunicationFramingV0410(core,nextContext),window.createCommunicationExperimentV0410(core,nextContext),window.createCommunicationFlowV0410(core,nextContext),window.createCommunicationViewsV0410(core,nextContext),graphEditor].filter(Boolean);
   const report=window.createCommunicationReport(core,{meta:()=>meta,persist,documentValue,request,session});
   const savedFormIds=/^cm(?:Scan|Protocol|Packet|Retries|Feedback|HARQBudget|AMC|Breakpoint(?:Metric|Operator|Value)|ContinuousFrames|Sweep(?:Start|Stop|Step|Frames|Errors|Values|Name))/;
   function rememberForm(event){const e=event.target;if(e.id&&savedFormIds.test(e.id)&&['INPUT','SELECT','TEXTAREA'].includes(e.tagName)&&e.type!=='file'){(meta.formValues||(meta.formValues={}))[e.id]=e.value;persist();}}
@@ -61,8 +62,8 @@ window.createCommunicationExperience = function (core) {
   }
   function invalidate(){if(!restoring){rf.invalidate();learning.invalidate();experiments.invalidate();spatial.invalidate();waveform.invalidate();enhancements.forEach(x=>x.invalidate());meta.result=null;meta.comparisons=null;observations=[];windowA=windowB=null;byId('cmProbeA').innerHTML='';byId('cmProbeB').innerHTML='';byId('cmExecutionSummary').textContent='链路已更新，运行后选择积木输出';byId('cmBranchResults').innerHTML='';drawScopes()}scheduleDescribe()}
   function editSnapshot(){return clone(meta)}
-  function restoreEdit(value){meta={...defaults(),...clone(value)}}
-  function loadState(doc){meta={...defaults(),...clone(doc)};delete meta.program;delete meta.sweeps;delete meta.document_schema;restoring=true}
+  function restoreEdit(value,preserve=false){meta={...defaults(),...clone(value)};graphEditor?.restoreEdit(preserve)}
+  function loadState(doc){meta={...defaults(),...clone(doc)};delete meta.program;delete meta.sweeps;delete meta.document_schema;graphEditor?.loadState();restoring=true}
   function replaceProgram(){meta.groups=[];meta.branches=[];meta.activeBranch=0;meta.comparisons=null;meta.scope={};learning.replaceProgram();experiments.replaceProgram();spatial.replaceProgram();enhancements.forEach(x=>x.replaceProgram?.());selected.clear()}
   function restoreDraft(){
     try{const saved=JSON.parse(localStorage.getItem(storage)||'null');if(saved?.document_schema===2){restoring=true;core.applyDocument(saved);restoring=false}}
@@ -133,6 +134,7 @@ window.createCommunicationExperience = function (core) {
     return `<label>${esc(get().definitions[b.kind].label+' · '+spec.label)}${input}</label>`;
   }
   function syncBranches(){
+    if(meta.graph)return;
     if(!meta.branches.length||!get().program)return;
     meta.activeBranch=Math.min(meta.activeBranch,meta.branches.length-1);meta.branches[meta.activeBranch].program=clone(get().program);
     const current=get().program,split=current.blocks.findIndex(b=>['demodulator','rx_converter'].includes(get().definitions[b.kind].category));if(split<0)return;
@@ -193,6 +195,8 @@ window.createCommunicationExperience = function (core) {
     const built=!!get().compiled;
     for(const id of ['cmDebugStart','cmContinuous','cmBranchesRun','cmContrastRun'])byId(id).disabled=busy||!built;
     for(const id of ['cmCompleteReceiver','cmProjectOpen','cmProjectSave','cmProjectCopy','cmProjectExport','cmReport','cmGroupCreate','cmBranchAdd','cmGroupUnpack'])byId(id).disabled=busy;
+    if(meta.graph)for(const id of ['cmBranchAdd','cmBranchesRun','cmBranchSelect'])byId(id).disabled=true;
+    else byId('cmBranchSelect').disabled=busy;
     byId('cmDebugStep').disabled=!activeJob||activeJob.status!=='paused';byId('cmDebugContinue').disabled=!activeJob||terminal(activeJob.status);byId('cmDebugPause').disabled=!activeJob||activeJob.kind!=='debug'||activeJob.status!=='running';
     byId('cmJobCancel').disabled=!activeJob||terminal(activeJob.status);byId('cmSweepResume').disabled=busy||!receipt;
   }
@@ -220,7 +224,7 @@ window.createCommunicationExperience = function (core) {
   async function runJob(kind,payload){const job=await request('job-start',{kind,payload});rememberJob(job);persist();return watch(job)}
   function rememberJob(job){if(!['sweep','sweep2d','batch','target-search'].includes(job.kind))return;const rows=meta.jobReceipts||(meta.jobReceipts=[]),p=job.result||job.progress||{},entry={id:job.id,kind:job.kind,status:job.status,completed:p.completed_frames??p.completed??0,total:p.total_frames??p.total??0,time:new Date().toISOString()};const index=rows.findIndex(r=>r.id===job.id);if(index>=0)rows[index]=entry;else rows.unshift(entry);meta.jobReceipts=rows.slice(0,20);renderExecution();}
   function renderExecution(){const previous=byId('cmBreakpointBlock').value,blocks=get().program.blocks;byId('cmBreakpointBlock').innerHTML=blocks.map(b=>`<option value="${esc(b.id)}">${esc(get().definitions[b.kind].label)}</option>`).join('');byId('cmBreakpointBlock').value=blocks.some(b=>b.id===previous)?previous:get().selectedId;const rules=(meta.breakpoints||[]).filter(r=>blocks.some(b=>b.id===r.block_id));meta.breakpoints=rules;byId('cmBreakpointList').innerHTML=rules.map((r,i)=>`<div class="cm-experiment-queue"><span>${esc(get().definitions[blocks.find(b=>b.id===r.block_id)?.kind]?.label||r.block_id)} · ${r.metric==='always'?'执行到此处':esc(r.metric+' '+r.operator+' '+r.value)}</span><button type="button" data-remove-breakpoint="${i}">移除</button></div>`).join('');const old=byId('cmResumeJobs').value,items=(meta.jobReceipts||[]).filter(r=>r.status!=='completed'),names={sweep:'一维扫描',sweep2d:'二维扫描',batch:'批量实验','target-search':'目标搜索'};byId('cmResumeJobs').innerHTML='<option value="">选择任务…</option>'+items.map(r=>`<option value="${r.id}">${names[r.kind]} · ${r.completed}/${r.total} · ${new Date(r.time).toLocaleString()}</option>`).join('');if(items.some(r=>r.id===old))byId('cmResumeJobs').value=old;byId('cmJobResume').disabled=get().busy||!byId('cmResumeJobs').value;}
-  function onResult(result){rf.onResult(result);learning.onResult(result);experiments.onResult(result);spatial.onResult(result);waveform.onResult(result);enhancements.forEach(x=>x.onResult(result));if(result){meta.result=clone(result);if(result.experience)setObservations(result.experience.observations,result.experience.job_id||result.job_id);persist()}}
+  function onResult(result){rf.onResult(result);learning.onResult(result);experiments.onResult(result);spatial.onResult(result);waveform.onResult(result);enhancements.forEach(x=>x.onResult(result));if(result){meta.result=clone(result);if(result.experience)setObservations(result.experience.observations.map(v=>result.experience.branch===undefined?v:{...v,branch:result.experience.branch}),result.experience.job_id||result.job_id);persist()}}
   function setObservations(values,jobId){
     observations=values.map(v=>({...v,job_id:jobId}));const a=byId('cmProbeA').value,b=byId('cmProbeB').value;
     const options=observations.map((v,i)=>`<option value="${i}">${meta.probes.includes(v.id)?'📌 ':''}${esc(v.label)} · ${esc(v.domain)} · ${v.count}</option>`).join('');byId('cmProbeA').innerHTML=options;byId('cmProbeB').innerHTML=options;

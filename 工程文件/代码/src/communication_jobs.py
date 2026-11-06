@@ -54,7 +54,7 @@ class Jobs:
     def __init__(self,root,slots):
         from pathlib import Path
         from src import communications as c
-        self.root=Path(root)/'communication-jobs';self.slots=slots;self.lock=threading.RLock();self.jobs={}
+        self.root=Path(root)/'communication-jobs';self.slots=slots;self.lock=threading.RLock();self.jobs={};self.graph_caches={}
         self.executor=ThreadPoolExecutor(max_workers=c.CONFIG['max_studio_jobs'],thread_name_prefix='communication')
     def receipt(self,session,key):
         import re
@@ -82,9 +82,13 @@ class Jobs:
         for old in sorted(p.parent.glob('*.json'),key=lambda q:q.stat().st_mtime,reverse=True)[30:]: old.unlink()
     def start(self,session,kind,payload):
         from src import communications as c
-        if kind not in ('debug','run','sweep','continuous','branches','experiments','rf-task','sweep2d','protocol','amc','classroom','classroom-stage','batch','batch-replay','target-search','pareto','scenario','classroom-recheck','branch-merge','protocol-compare'): raise ValueError('未知通信任务类型。')
+        if kind not in ('debug','run','sweep','continuous','branches','experiments','rf-task','sweep2d','protocol','amc','classroom','classroom-stage','batch','batch-replay','target-search','pareto','scenario','classroom-recheck','branch-merge','protocol-compare','graph'): raise ValueError('未知通信任务类型。')
         if not isinstance(payload,dict): raise ValueError('任务参数无效。')
-        if kind not in ('branches','experiments','batch','classroom-recheck','branch-merge'):
+        if kind=='graph':
+            from src import communication_graph_v0411 as graph
+            built=graph.build(payload.get('graph'))
+            if payload.get('token')!=built['token']: raise ValueError('可视工程已更新，请重新 Build。')
+        elif kind not in ('branches','experiments','batch','classroom-recheck','branch-merge'):
             built=c.build(payload.get('program'))
             if payload.get('token')!=built['token']: raise ValueError('配置已改变，请重新 Build。')
         elif kind in ('branches','branch-merge'): studio.shared_prefix(payload.get('programs',[]))
@@ -109,6 +113,7 @@ class Jobs:
             parameter(built['program'],payload.get('settings'))
         with self.lock:
             active=[j for j in self.jobs.values() if j.status in ('queued','running','paused')]
+            if kind=='graph' and any(j.kind=='graph' and j.session==session for j in active): raise ValueError('请等待当前可视工程运行完成。')
             if len(active)>=c.CONFIG['max_studio_jobs']: raise ValueError('通信任务队列已满，请完成或取消已有任务。')
             # Retain bounded completed observations for paging.
             completed=sorted((j for j in self.jobs.values() if j not in active),key=lambda j:j.accessed,reverse=True)
@@ -183,6 +188,16 @@ class Jobs:
                     result=advanced_experiments.scenario(p['program'],p.get('settings',{}),progress,job.cancel,lambda observer:setattr(job,'ctx',observer))
                     if result.get('last_result'): result['last_result']['experience']['job_id']=job.id
                 else: result=advanced_experiments.recheck(p['submissions'],p.get('settings',{}),progress,job.cancel)
+            elif job.kind=='graph':
+                from src.communication_graph_v0411 import run as run_graph
+                with self.lock:
+                    cache=self.graph_caches.setdefault(job.session,{})
+                result=run_graph(p['graph'],p['token'],cache,p.get('partial',False),progress,job.cancel,job.contexts)
+                job.ctx=job.contexts[-1];result['merged_result']['experience']['job_id']=job.id
+                for index,branch in enumerate(result['branches']): branch['result']['experience'].update(job_id=job.id,branch=index)
+                with self.lock:
+                    # One frozen experiment per session, at most four sessions.
+                    while len(self.graph_caches)>4: self.graph_caches.pop(next(iter(self.graph_caches)))
             elif job.kind=='branch-merge':
                 from src.communication_flow_v0410 import merge_branches
                 result=merge_branches(p['programs'],p.get('settings'),progress,job.cancel,job.contexts)

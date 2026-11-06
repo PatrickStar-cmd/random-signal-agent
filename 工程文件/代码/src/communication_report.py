@@ -18,7 +18,16 @@ def printable(value):
 
 
 def facts(raw):
-    doc=validate_document(raw);built=c.build(doc['program']);result=doc.get('result')
+    doc=validate_document(raw)
+    if doc.get('graph'):
+        from src import communication_graph_v0411 as graph
+        graph_build=graph.build(doc['graph'])
+        value=doc.get('graphResult')
+        if value:
+            if value.get('graph_token')!=graph_build['token']: raise ValueError('可视工程结果已更新，请重新运行后生成报告。')
+            if value.get('input_version')!=graph_build['input_version']: raise ValueError('共享输入版本已更新，请重新运行。')
+            doc['program']=value['program'];doc['result']=value['merged_result']
+    built=c.build(doc['program']);result=doc.get('result')
     if result:
         frame=result.get('experience',{}).get('frame',0)
         if not isinstance(frame,int) or not 0<=frame<c.CONFIG['max_continuous_frames']: raise ValueError('结果帧序号无效。')
@@ -60,6 +69,34 @@ class Diagram(Flowable):
             if col<3 and i<len(self.labels)-1: canvas.line(x+111,y+16,x+121,y+16)
 
 
+class GraphDiagram(Flowable):
+    """Compact vector topology; the following table gives every node's settings."""
+    def __init__(self, graph):
+        super().__init__(); self.graph=graph; self.width=490
+        self.branch_height=max(65, 30+max(len(b['blocks']) for b in graph['branches'])*12)
+        self.height=170+self.branch_height
+
+    def draw(self):
+        cv=self.canv; g=self.graph; width=490; n=len(g['branches']); step=width/n
+        cv.setFont(pdf_report.FONT,7)
+        def box(x,y,w,h,title,lines,color):
+            cv.setStrokeColor(colors.HexColor('#7097ae'));cv.setFillColor(colors.HexColor(color));cv.roundRect(x,y,w,h,6,fill=1)
+            cv.setFillColor(colors.HexColor('#294c65'));cv.drawCentredString(x+w/2,y+h-14,printable(title))
+            for i,text in enumerate(lines): cv.drawCentredString(x+w/2,y+h-29-i*12,printable(text))
+        box(0,self.height-48,width,44,'共享信源 / 发送处理 / 信道',[' → '.join(printable(c.BLOCKS[b['kind']]['label']) for b in g['prefix'])[:98]],'#def1f3')
+        y=self.height-64-self.branch_height
+        for i,branch in enumerate(g['branches']):
+            x=i*step+4; center=x+(step-8)/2
+            box(x,y,step-8,self.branch_height,branch['name'],[c.BLOCKS[b['kind']]['label'][:16] for b in branch['blocks']],'#e8effb')
+            cv.line(width/2,self.height-48,center,y+self.branch_height)
+            if branch['id'] in g['merge']['inputs']:cv.line(center,y,width/2,89)
+        box(125,52,240,37,'双输入汇合 · '+g['merge']['domain'],[g['merge']['mode']+' / '+', '.join(g['merge']['inputs'])],'#f7edd6')
+        cv.line(width/2,52,width/2,41)
+        box(0,0,width,41,'公共解调 / 译码 / 信宿',[' → '.join(c.BLOCKS[b['kind']]['label'] for b in g['tail'])[:98]],'#eee9f8')
+        if g['analyses']:
+            cv.setFillColor(colors.HexColor('#75618f'));cv.drawString(5,51,'功率分析端口 → CA-CFAR · '+str(len(g['analyses']))+' 个节点')
+
+
 class Curve(Flowable):
     def __init__(self,curves): super().__init__();self.curves=curves;self.width=490;self.height=220
     def draw(self):
@@ -98,10 +135,36 @@ def render(raw):
         paragraph=lambda text,style='body':Paragraph(escape(printable(text)),styles[style])
         doc=f['document'];story=[paragraph(doc['name'],'title'),paragraph(f"通信原理实验报告 · v{VERSION}"),paragraph('实验链路与参数','heading')]
         blocks=doc['program']['blocks'];story.append(Diagram([printable(c.BLOCKS[b['kind']]['label']).strip() for b in blocks]))
+        if doc.get('graph'):
+            g=doc['graph'];value=doc.get('graphResult')
+            story.append(paragraph('可视接线拓扑与公共输入','heading'))
+            story.append(GraphDiagram(g))
+            story.append(Spacer(1,8))
+            story.append(paragraph('共享前段 → 接收分流 → 双输入汇合 → 公共尾段。'+('功率分析端口 → 二维 CA-CFAR。' if g['analyses'] else '')))
+            from src.communication_graph_v0411 import lanes
+            for lane, members in lanes(g):
+                name={'shared':'共享前段','tail':'公共尾段'}.get(lane,next((b['name'] for b in g['branches'] if b['id']==lane),lane))
+                story.append(paragraph(name+'：'+' → '.join(c.BLOCKS[b['kind']]['label'] for b in members)))
+            story.append(paragraph('双输入汇合：'+json.dumps(g['merge'],ensure_ascii=False)))
+            for analysis in g['analyses']:
+                story.append(paragraph('分析接线：'+analysis['source']+' [power] → '+analysis['id']+'；参数 '+json.dumps(analysis['params'],ensure_ascii=False)))
+            if value:
+                story.append(paragraph('工程版本 '+value['graph_token']+'；共享输入 SHA-256 '+value['input_hash']))
+                for branch in value['branches']:
+                    m=branch['result']['metrics'];story.append(paragraph(f"{branch['name']}：BER={m['ber']:.6g}；EVM={m['evm_percent']:.6g}%。"))
+                for section in value['execution']:
+                    story.append(paragraph(f"执行区段 {section['section']}：本次执行 {len(section['executed'])} 块，复用 {len(section['reused'])} 块。"))
+                for analysis in value['analyses']:
+                    story.append(paragraph(f"CA-CFAR {analysis['id']}：有效检测单元 {analysis['tested_cells']}；目标 Pfa={analysis['settings']['pfa']:.5g}；超门限比例={analysis['crossing_fraction']:.5g}。"))
+                    for target in analysis['detections']:
+                        story.append(paragraph(f"检测峰：距离 {target['range_m']:.5g} m，径向速度 {target['velocity_mps']:.5g} m/s，功率 {target['power']:.5g}，门限 {target['threshold']:.5g}，噪声 {target['noise']:.5g}。"))
         rows=[[paragraph('模块'),paragraph('参数')]]
-        for b in blocks:
+        parameter_blocks=[(None,b) for b in blocks]
+        if doc.get('graph'):
+            parameter_blocks=[(lane,b) for lane,members in lanes(doc['graph']) for b in members]
+        for lane,b in parameter_blocks:
             params='；'.join(f"{c.BLOCKS[b['kind']]['params'][k]['label']}={v}" for k,v in b['params'].items())
-            rows.append([paragraph(c.BLOCKS[b['kind']]['label']),paragraph(params or '默认配置')])
+            rows.append([paragraph((lane+' · ' if lane else '')+c.BLOCKS[b['kind']]['label']),paragraph(params or '默认配置')])
         table=Table(rows,colWidths=[135,355],repeatRows=1);table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#e3eafa')),('GRID',(0,0),(-1,-1),.3,colors.HexColor('#c7d4e8')),('VALIGN',(0,0),(-1,-1),'TOP')]))
         story.extend([table,Spacer(1,14),paragraph('接收结果与结论','heading')]);story.extend(paragraph(s) for s in f['summary'])
         comparisons=doc.get('comparisons') or {}

@@ -9,6 +9,7 @@ from src import communication_algorithms as algorithms
 from src import communication_rf as rf
 from src import communication_business as business
 from src import communication_wireless as wireless
+from src import communication_segments as segments
 
 SYMBOL_SCHEMES=set(rf.SCHEMES)|{'ook','dbpsk','dqpsk'}
 WAVE_SCHEMES={'fsk2','msk','gmsk'}
@@ -233,8 +234,22 @@ def run(compiled, source, texts, source_count, rng):
     reference=None if analog else source.copy(); stack=[]; info={}; snapshots=[]; recovery={}; gain=1+0j; prefix=0
     fs=p['symbol_rate']; tx=None; channel=None; tx_power=1.; in_channel=False; decoded_bits=None; clipped=corrections=0; eye=None;noise_estimate=None
     rf_stages=[];learning=[];algorithm_traces=[];wireless_state={'source_counts':f['source_counts'],'array_channel_params':f.get('array_channel',{}).get('params')}
+    encoded=scheme=modulation=transmitted_indices=mapped=preamble=None
+    demapped=decided_indices=decision_symbols=points=variance=decision_variance=None
+    start=source_count
+    resume=getattr(runtime.CURRENT.get(),'resume',None)
+    if resume:
+        (data,reference,stack,info,snapshots,recovery,gain,prefix,
+         fs,tx,channel,tx_power,in_channel,decoded_bits,clipped,
+         corrections,eye,noise_estimate,rf_stages,learning,
+         algorithm_traces,wireless_state,encoded,scheme,modulation,
+         transmitted_indices,mapped,preamble,demapped,decided_indices,
+         decision_symbols,points,variance,decision_variance) = (
+            resume['variables'][key] for key in segments.VARIABLES)
+        start=resume['index']+1
     receive_sps=f.get('receiver_sps',f.get('tx_rrc',{}).get('params',{}).get('sps',1))
-    for b in p['blocks'][source_count:]:
+    for block_index in range(start,len(p['blocks'])):
+        b=p['blocks'][block_index]
         runtime.enter(b)
         k,q=b['kind'],b['params']; before=len(data)
         trace_input=trace_values(data);trace=None;lesson_count=len(learning)
@@ -387,6 +402,7 @@ def run(compiled, source, texts, source_count, rng):
             key={'rx_carrier':'carrier','rx_frequency':'frequency','rx_timing':'timing','rx_frame':'frame','rx_equalizer':'equalizer','rx_cma':'equalizer','rx_fse':'equalizer'}.get(k)
             trace=recovery.get(key) if key else info.get(k)
         if trace is not None: algorithm_traces.append({'block_id':b['id'],'kind':k,'input':trace_input,'output':trace_values(data),'trace':trace})
+        segments.checkpoint(block_index,locals())
     if not analog: decoded_bits=data.astype(np.uint8)
     errors=int(np.count_nonzero(reference!=decoded_bits)); coded_errors=int(np.count_nonzero(encoded!=demapped))
     bit_count=len(reference); symbol_errors=int(np.count_nonzero(transmitted_indices!=decided_indices))

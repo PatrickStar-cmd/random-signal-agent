@@ -12,6 +12,7 @@ from src import communication_array_v049 as array_ext
 from src import communication_waveform_v049 as waveform_ext
 from src import communication_receiver_v0410 as receiver_v0410
 from src import communication_framing_v0410 as framing_v0410, communication_isac_v0410 as isac_v0410
+from src import communication_sensing_v0411 as sensing_v0411
 
 TX = {'tx_dsss', 'tx_simo', 'tx_alamouti', 'tx_mimo'}
 CHANNEL = {'dsss_multipath', 'spatial_channel'}
@@ -20,7 +21,7 @@ RX = {'rx_code_acquire', 'rx_despread', 'rx_rake', 'rx_selection', 'rx_mrc',
 KINDS = TX | CHANNEL | RX
 SPATIAL_TX = {'tx_simo', 'tx_alamouti', 'tx_mimo'}
 SPATIAL_RX = {'rx_selection', 'rx_mrc', 'rx_alamouti', 'rx_mimo_zf', 'rx_mimo_mmse'}
-EXTENSIONS=(spatial_ext,ofdma_ext,hopping_ext,receiver_ext,array_ext,waveform_ext,receiver_v0410,framing_v0410,isac_v0410)
+EXTENSIONS=(spatial_ext,ofdma_ext,hopping_ext,receiver_ext,array_ext,waveform_ext,receiver_v0410,framing_v0410,isac_v0410,sensing_v0411)
 for extension in EXTENSIONS:
     TX |= extension.TX
     CHANNEL |= extension.CHANNEL

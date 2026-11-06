@@ -35,7 +35,15 @@
   }
   function change(fn,message){if(busy||!catalog)return;checkpoint();fn();invalidate(message);renderProgram()}
   function setProgram(next,message){change(()=>{studio?.replaceProgram();program=clone(next);selectedId=program.blocks[0]?.id},message)}
-  function history(direction){if(busy)return;const from=direction==='undo'?undo:redo,to=direction==='undo'?redo:undo;if(!from.length)return;to.push({program:clone(program),experience:studio?.editSnapshot()});const item=from.pop();program=item.program||item;if(item.experience)studio?.restoreEdit(item.experience);invalidate('已'+(direction==='undo'?'撤销':'重做')+'，重新 Build 后即可运行。');renderProgram()}
+  function history(direction){
+    if(busy)return;const from=direction==='undo'?undo:redo,to=direction==='undo'?redo:undo;if(!from.length)return;
+    const previous={program:clone(program),experience:studio?.editSnapshot()};to.push(previous);const item=from.pop();
+    const a=previous.experience?.graph,b=item.experience?.graph,key=window.CommunicationGraphModel?.numericKey;
+    const preserve=!!(a&&b&&key&&key(a)===key(b));program=item.program||item;
+    if(item.experience)studio?.restoreEdit(item.experience,preserve);
+    if(preserve){persist();buttons();status('已'+(direction==='undo'?'撤销':'重做')+'视图调整。');}
+    else invalidate('已'+(direction==='undo'?'撤销':'重做')+'，重新 Build 后即可运行。');renderProgram();
+  }
   async function api(action,payload){
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),60000);
     try{
@@ -407,7 +415,9 @@
       const response=await fetch('/api/communications/catalog');if(!response.ok)throw Error('积木箱加载失败，请刷新重试。');catalog=await response.json();definitions=Object.fromEntries(catalog.blocks.map(b=>[b.kind,b]));program=empty();
       studio=window.createCommunicationExperience?.({root,byId,esc,api,clone,uid,
         get:()=>({program,compiled,result,catalog,definitions,selectedId,busy,sweeps}),
-        mutate:(fn,message)=>change(fn,message),setProgram,selectBlock,palette,renderProgram,status,
+        mutate:(fn,message)=>change(fn,message),
+        mutateLayout:(fn,message)=>{if(busy)return;checkpoint();fn();persist();buttons();if(message)status(message)},
+        setProgram,selectBlock,palette,renderProgram,status,
         setBusy:value=>{busy=value;buttons()},setResult:value=>{result=value;showResult()},
         applyDocument:doc=>change(()=>{program=clone(doc.program);selectedId=program.blocks[0].id;studio.loadState(doc);sweeps=clone(doc.sweeps||[])},'工程已载入。'),
         restoreResult:(built,value)=>{compiled=built;result=value;showResult();buttons()},

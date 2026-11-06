@@ -35,7 +35,7 @@ def contract(kind):
         if kind[6:] in ('am','dsb','ssb','vsb','fm','pm'): return ['模拟复包络'],'模拟样本'
         return ['复波形'] if kind in ('demod_fsk2','demod_msk','demod_gmsk') else ['复符号'],'比特'
     special={'tx_self_frame':(['复符号'],'复波形'),'frame_stream_channel':(['复波形'],'复波形'),'rx_self_frame':(['复波形','复采样波形'],'复符号'),
-        'tx_isac_ofdm':(['复符号'],'OFDM 波形'),'isac_echo':(['OFDM 波形'],'OFDM 波形'),'rx_isac_ofdm':(['OFDM 波形'],'复符号'),
+        'tx_isac_ofdm':(['复符号'],'OFDM 波形'),'isac_echo':(['OFDM 波形'],'OFDM 波形'),'isac_echo_multi':(['OFDM 波形'],'OFDM 波形'),'rx_isac_ofdm':(['OFDM 波形'],'复符号'),
         'rx_mlse':(['复符号'],'复符号'),'rx_music':(['多天线符号'],'多天线符号'),'rx_music_mvdr':(['多天线符号'],'复符号'),
         'tdl_channel':(['复符号','复波形','OFDM 波形'],'同输入'),
         'tx_rrc':(['复符号'],'复波形'),'tx_ofdm':(['复符号'],'OFDM 波形'),
@@ -227,7 +227,18 @@ def validate_document(raw):
     if not isinstance(raw,dict): raise ValueError('工程文档须为 JSON 对象。')
     if raw.get('schema')==1 and 'blocks' in raw: raw={'document_schema':2,'name':'导入的通信工程','program':raw}
     if raw.get('document_schema')!=2: raise ValueError('工程文档版本不匹配。')
-    document=copy.deepcopy(raw); document['program']=c.normalize(document.get('program'),draft=True)
+    document=copy.deepcopy(raw)
+    if document.get('graph'):
+        from src import communication_graph_v0411 as graph
+        document['graph']=graph.normalize(document['graph'])
+        active=document.get('graphActiveBranch',document['graph']['branches'][0]['id'])
+        if active not in [b['id'] for b in document['graph']['branches']]: raise ValueError('请选择工程内的接收分支。')
+        document['graphActiveBranch']=active
+        document['program']=graph.projection(document['graph'],active)
+        document['branches']=[]
+        saved=document.get('graphResult')
+        if saved and saved.get('graph_token')!=graph.identity(document['graph']): document['graphResult']=None
+    document['program']=c.normalize(document.get('program'),draft=True)
     from src.communication_subprojects import validate_document as validate_subprojects
     validate_subprojects(document)
     name=document.get('name','我的通信工程')

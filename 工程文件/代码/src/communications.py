@@ -423,10 +423,15 @@ def run(raw, token):
     p = compiled['program']; analog = compiled['source_kind'] == 'analog'
     noise_rng = np.random.default_rng(np.random.SeedSequence(p['seed']).spawn(2)[1])
     ctx=runtime.CURRENT.get()
-    if ctx: ctx.source_active=True
-    try: source, texts, source_count = source_data(p)
-    finally:
-        if ctx: ctx.source_active=False
+    resume=getattr(ctx,'resume',None)
+    if resume:
+        source,texts,source_count=resume['source'],resume['texts'],resume['source_count']
+        noise_rng.bit_generator.state=resume['rng_state']
+    else:
+        if ctx: ctx.source_active=True
+        try: source, texts, source_count = source_data(p)
+        finally:
+            if ctx: ctx.source_active=False
     if compiled.get('transport') == 'advanced':
         return advanced_communications.run(compiled, source, texts, source_count, noise_rng)
     if compiled.get('transport') == 'baseband':

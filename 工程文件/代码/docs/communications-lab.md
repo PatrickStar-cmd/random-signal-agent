@@ -160,3 +160,7 @@ POST 使用 `Content-Type: application/json`。参数/链路/token 错误返回 
 空白工程效果：
 
 ![固定信宿与无信号雪花屏](../../../docs/images/communications-empty.png)
+
+## 🪸 可视接线与分支实验（v0.4.11）
+
+在原编程区下方展开全宽接线工作区，创建 2–4 路接收对比、双输入汇合和公共译码尾段。完整运行只执行一次共享信源与信道，局部重跑复用冻结输入。新增多目标回波、二维 CA-CFAR 和功率分析端口；完整操作及复现见 [v0.4.11 指南](communications-v0411.md)。

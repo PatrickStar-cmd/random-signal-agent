@@ -36,7 +36,7 @@ window.createCommunicationLayout = function(core) {
   const drawer=make('dialog','cm-parameter-drawer','<header><strong>🎛️ 积木参数</strong><button type="button">完成</button></header><fieldset></fieldset>');drawer.setAttribute('aria-label','选中积木参数');root.append(drawer);
   drawer.querySelector('button').onclick=()=>drawer.close();
   drawer.addEventListener('close',()=>{sideTabs.after(inspector);side('params')});
-  function edit(){side('params');if(small.matches){drawer.querySelector('fieldset').append(inspector);if(!drawer.open)drawer.showModal();}}
+  function edit(force=false){side('params');if(force===true||small.matches){drawer.querySelector('fieldset').append(inspector);if(!drawer.open)drawer.showModal();}}
   root.addEventListener('cm-select',edit);
   mobile.addEventListener('click',e=>{const name=e.target.dataset.mobile;if(!name)return;if(name==='params')edit();else{mobilePane(name);if(name==='results')openAnalysis()}});
   small.addEventListener('change',()=>{if(!small.matches&&drawer.open)drawer.close();redraw()});

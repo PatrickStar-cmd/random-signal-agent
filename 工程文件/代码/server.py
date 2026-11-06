@@ -211,10 +211,17 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
             if job.ctx is None or bid not in job.ctx.values: raise ValueError('选择本次运行中已记录的复采样观察点。')
             observation=next(o for o in job.ctx.observations if o['id']==bid)
             return await run_in_threadpool(iq.export_recording,job.ctx.values[bid],observation['sample_rate'],job.ctx.compiled['program'],bid,observation['domain'])
-        studio_actions={'v0410-inspect','v0410-classroom','describe','receiver','pair','document-check','project-list','project-save','project-load','job-start','job-status','job-control','window','report-preview','report-pdf'}
+        studio_actions={'graph-build','graph-create','graph-export','v0410-inspect','v0410-classroom','describe','receiver','pair','document-check','project-list','project-save','project-load','job-start','job-status','job-control','window','report-preview','report-pdf'}
         if action in studio_actions:
             if request.headers.get('content-type','').split(';')[0]!='application/json': raise ValueError('通信实验请求须使用 JSON。')
             payload=await body(request);session=session_key(payload.get('session_id'))
+            if action.startswith('graph-'):
+                from src import communication_graph_v0411 as graph
+                if action=='graph-create':
+                    value=await run_in_threadpool(graph.from_programs,payload['programs'],payload.get('names'),payload.get('domain','llr')) if 'programs' in payload else graph.demo(payload.get('demo','equalizer'))
+                    return {'graph':value}
+                if action=='graph-export': return {'filename':'可视接线实验.py','code':await run_in_threadpool(graph.python_export,payload.get('graph'))}
+                return await run_in_threadpool(graph.build,payload.get('graph'))
             if action=='v0410-inspect':
                 from src.communication_experiment_v0410 import inspect_run
                 return await run_in_threadpool(inspect_run,payload.get('program'),payload.get('result'))
