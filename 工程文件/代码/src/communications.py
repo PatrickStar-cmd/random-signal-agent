@@ -152,17 +152,17 @@ PRESETS = {
     'text': {'label': '文字传输', 'program': preset(['text', 'repeat_encode', 'mod_bpsk', 'awgn', 'demod_bpsk', 'repeat_decode', 'sink'])}
 }
 for scheme, label in analog_modulation.LABELS.items():
-    PRESETS['analog_' + scheme] = {'label': ('非线性 · ' if scheme in ('fm', 'pm') else '线性 · ') + label,
+    PRESETS['analog_' + scheme] = {'label': ('非线性   ' if scheme in ('fm', 'pm') else '线性   ') + label,
                                   'program': preset(['sine', 'mod_' + scheme, 'analog_awgn', 'demod_' + scheme, 'sink'])}
-PRESETS['fm_narrow'] = {'label': '非线性 · 窄带 FM', 'program': preset(['sine', 'mod_fm', 'analog_awgn', 'demod_fm', 'sink'], {1: {'sensitivity': 1}})}
+PRESETS['fm_narrow'] = {'label': '非线性   窄带 FM', 'program': preset(['sine', 'mod_fm', 'analog_awgn', 'demod_fm', 'sink'], {1: {'sensitivity': 1}})}
 for scheme,label in baseband.LINE_CODES.items():
-    PRESETS['line_'+scheme]={'label':'线路码 · '+label,'program':preset(['bit_pattern','line_'+scheme+'_encode','mod_baseband','ideal','demod_baseband','line_'+scheme+'_decode','sink'],{0:{'pattern':'11010010000000001011'}})}
-PRESETS['pam4']={'label':'基带 · 4-PAM / RRC / 带限 AWGN','program':preset(['random_bits','mod_pam','bandlimited_awgn','demod_pam','sink'],{1:{'pulse':5}})}
-PRESETS['baseband_isi']={'label':'基带 · ISI 与迫零均衡','program':preset(['random_bits','line_nrz_polar_encode','mod_baseband','isi_channel','demod_baseband','line_nrz_polar_decode','sink'],{3:{'taps':'-0.25,1,0.3333333333333333','origin':1},4:{'equalizer':1}})}
+    PRESETS['line_'+scheme]={'label':'线路码   '+label,'program':preset(['bit_pattern','line_'+scheme+'_encode','mod_baseband','ideal','demod_baseband','line_'+scheme+'_decode','sink'],{0:{'pattern':'11010010000000001011'}})}
+PRESETS['pam4']={'label':'基带   4-PAM / RRC / 带限 AWGN','program':preset(['random_bits','mod_pam','bandlimited_awgn','demod_pam','sink'],{1:{'pulse':5}})}
+PRESETS['baseband_isi']={'label':'基带   ISI 与迫零均衡','program':preset(['random_bits','line_nrz_polar_encode','mod_baseband','isi_channel','demod_baseband','line_nrz_polar_decode','sink'],{3:{'taps':'-0.25,1,0.3333333333333333','origin':1},4:{'equalizer':1}})}
 for mode,label in [(1,'非线性时钟提取'),(2,'早迟门自动同步'),(3,'Gardner 自动同步')]:
-    PRESETS['recovery_timing_'+str(mode)]={'label':'同步 · '+label,'program':preset(['random_bits','line_nrz_polar_encode','mod_baseband','timing_offset','clock_drift','sample_awgn','demod_baseband','line_nrz_polar_decode','sink'],{0:{'count':2048},2:{'pulse':5,'rolloff':.6,'training_symbols':256},3:{'offset':.35},4:{'ppm':0 if mode==1 else 300},5:{'snr_db':25},6:{'timing_mode':mode,'loop_bandwidth':.005}})}
+    PRESETS['recovery_timing_'+str(mode)]={'label':'同步   '+label,'program':preset(['random_bits','line_nrz_polar_encode','mod_baseband','timing_offset','clock_drift','sample_awgn','demod_baseband','line_nrz_polar_decode','sink'],{0:{'count':2048},2:{'pulse':5,'rolloff':.6,'training_symbols':256},3:{'offset':.35},4:{'ppm':0 if mode==1 else 300},5:{'snr_db':25},6:{'timing_mode':mode,'loop_bandwidth':.005}})}
 for key,label,mode,algorithm in [('fixed_dfe','已知响应 DFE',3,1),('linear_nlms','NLMS 自适应线性',4,1),('dfe_nlms','NLMS 自适应 DFE',5,1),('dfe_rls','RLS 自适应 DFE',5,2)]:
-    PRESETS['recovery_'+key]={'label':'均衡 · '+label,'program':preset(['random_bits','line_nrz_polar_encode','mod_baseband','isi_channel','sample_awgn','demod_baseband','line_nrz_polar_decode','sink'],{0:{'count':2048},2:{'training_symbols':0 if mode==3 else 1024},3:{'taps':'1,0.7' if mode==4 else '1,0.9'},4:{'snr_db':25},5:{'equalizer':mode,'adaptive_algorithm':algorithm,'half_taps':4 if mode==4 else 1}})}
+    PRESETS['recovery_'+key]={'label':'均衡   '+label,'program':preset(['random_bits','line_nrz_polar_encode','mod_baseband','isi_channel','sample_awgn','demod_baseband','line_nrz_polar_decode','sink'],{0:{'count':2048},2:{'training_symbols':0 if mode==3 else 1024},3:{'taps':'1,0.7' if mode==4 else '1,0.9'},4:{'snr_db':25},5:{'equalizer':mode,'adaptive_algorithm':algorithm,'half_taps':4 if mode==4 else 1}})}
 
 
 PRESETS.update(communication_catalog.presets(preset))
@@ -310,9 +310,9 @@ def build(raw):
         plan.append({'id': b['id'], 'kind': k, 'label': BLOCKS[k]['label'], 'input_count': before, 'count': count, 'output': domain})
     if items[-1]['kind'] != 'sink': raise ValueError('链路末端需要信宿。')
     token = hashlib.sha256(json.dumps(p, sort_keys=True, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode()).hexdigest()
-    result = {'program': p, 'token': token, 'plan': plan, 'summary': f'{len(sources)} 个信源 · {len(items)} 个积木 · {count} ' + ('个接收样本' if analog else '个接收比特'), 'source_kind': 'analog' if analog else 'digital', 'model': '复基带 · 1 样本/符号 · 理想定时 · 硬判决'}
+    result = {'program': p, 'token': token, 'plan': plan, 'summary': f'{len(sources)} 个信源   {len(items)} 个积木   {count} ' + ('个接收样本' if analog else '个接收比特'), 'source_kind': 'analog' if analog else 'digital', 'model': '复基带   1 样本/符号   理想定时   硬判决'}
     if analog_transmit is not None:
-        result.update(transport='analog', model='模拟复包络 · 采样时钟 · 理想帧滤波 · ' + analog_modulation.LABELS[scheme])
+        result.update(transport='analog', model='模拟复包络   采样时钟   理想帧滤波   ' + analog_modulation.LABELS[scheme])
     return result
 
 

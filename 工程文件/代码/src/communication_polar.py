@@ -27,8 +27,8 @@ def register(block, number, field, blocks):
 
 def presets(preset):
     kinds=['random_bits','polar_encode','mod_bpsk','awgn','soft_bpsk','polar_decode','sink']
-    return {'polar_sc':{'label':'现代编码 · Polar SC', 'program':preset(kinds,{3:{'esn0_db':5},5:{'method':0}})},
-            'polar_scl':{'label':'现代编码 · Polar CRC-SCL', 'program':preset(kinds,{3:{'esn0_db':5}})}}
+    return {'polar_sc':{'label':'现代编码   Polar SC', 'program':preset(kinds,{3:{'esn0_db':5},5:{'method':0}})},
+            'polar_scl':{'label':'现代编码   Polar CRC-SCL', 'program':preset(kinds,{3:{'esn0_db':5}})}}
 
 
 def dimensions(q):

@@ -44,12 +44,12 @@ def presets(preset):
     def entry(label,tx,ch,rx,scheme='qpsk',changes=None):
         return {'label':label,'program':preset(['random_bits','mod_'+scheme,tx,ch,rx,'demod_'+scheme,'sink'],changes)}
     return {
-        'mimo_zf_sic':entry('多天线 · 排序 ZF-SIC','tx_mimo','spatial_channel','rx_mimo_zf_sic',changes={3:{'snr_db':22}}),
-        'mimo_mmse_sic':entry('多天线 · 排序 MMSE-SIC','tx_mimo','spatial_channel','rx_mimo_mmse_sic',changes={3:{'snr_db':22}}),
-        'mimo_mobile_tracking':entry('移动多天线 · 周期导频跟踪','tx_mimo_tracking','spatial_dynamic','rx_mimo_tracking'),
-        'mimo_correlated_tracking':entry('移动多天线 · 空间相关与 SIC','tx_mimo_tracking','spatial_dynamic','rx_mimo_tracking',changes={3:{'tx_correlation':.7,'rx_correlation':.6,'snr_db':32},4:{'detector':3}}),
-        'mimo_ofdm_zf':entry('宽带多天线 · MIMO-OFDM ZF','tx_mimo_ofdm','spatial_multipath','rx_mimo_ofdm',changes={4:{'detector':0}}),
-        'mimo_ofdm_mmse':entry('宽带多天线 · MIMO-OFDM MMSE-SIC','tx_mimo_ofdm','spatial_multipath','rx_mimo_ofdm','qam16',{3:{'snr_db':38},4:{'detector':3}}),
+        'mimo_zf_sic':entry('多天线   排序 ZF-SIC','tx_mimo','spatial_channel','rx_mimo_zf_sic',changes={3:{'snr_db':22}}),
+        'mimo_mmse_sic':entry('多天线   排序 MMSE-SIC','tx_mimo','spatial_channel','rx_mimo_mmse_sic',changes={3:{'snr_db':22}}),
+        'mimo_mobile_tracking':entry('移动多天线   周期导频跟踪','tx_mimo_tracking','spatial_dynamic','rx_mimo_tracking'),
+        'mimo_correlated_tracking':entry('移动多天线   空间相关与 SIC','tx_mimo_tracking','spatial_dynamic','rx_mimo_tracking',changes={3:{'tx_correlation':.7,'rx_correlation':.6,'snr_db':32},4:{'detector':3}}),
+        'mimo_ofdm_zf':entry('宽带多天线   MIMO-OFDM ZF','tx_mimo_ofdm','spatial_multipath','rx_mimo_ofdm',changes={4:{'detector':0}}),
+        'mimo_ofdm_mmse':entry('宽带多天线   MIMO-OFDM MMSE-SIC','tx_mimo_ofdm','spatial_multipath','rx_mimo_ofdm','qam16',{3:{'snr_db':38},4:{'detector':3}}),
     }
 
 

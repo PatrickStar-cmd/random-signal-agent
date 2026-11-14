@@ -277,7 +277,7 @@ def build(program):
     token = hashlib.sha256(json.dumps(program, sort_keys=True, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode()).hexdigest()
     auto = any(b['kind'] in ('demod_baseband','demod_pam') and b['params'].get('timing_mode',0) for b in items)
     return {'program': program, 'token': token, 'plan': plan, 'source_kind': 'analog' if analog else 'digital', 'transport': 'baseband',
-            'model': '实基带波形 · 多点/码元 · '+('自动符号同步 / 已知帧粗定位' if auto else '已知帧边界')+' · 有限帧滤波', 'summary': f'{len(sources)} 个信源 · {len(items)} 个积木 · {count} 个接收'+('样本' if analog else '比特')}
+            'model': '实基带波形   多点/码元   '+('自动符号同步 / 已知帧粗定位' if auto else '已知帧边界')+'   有限帧滤波', 'summary': f'{len(sources)} 个信源   {len(items)} 个积木   {count} 个接收'+('样本' if analog else '比特')}
 
 
 def run(compiled, source, texts, source_count, rng):

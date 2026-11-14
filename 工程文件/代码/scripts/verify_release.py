@@ -78,6 +78,11 @@ def main():
         assert (code / 'docs/communications-v049.md').is_file()
         assert (code / 'docs/communications-v0410.md').is_file()
         assert (code / 'docs/communications-v0411.md').is_file()
+        assert (code / 'docs/communications-v0412.md').is_file()
+        for name in ('communication_workbench_v0412.py','communication_delivery_v0412.py'):
+            assert (code / 'src' / name).is_file()
+        for name in ('communication-scratch-v0412.css','communication-workbench-v0412.js','communication-workbench-plots-v0412.js','communication-workbench-v0412.css','communication-delivery-v0412.js','communication-delivery-v0412.css'):
+            assert (code / 'web' / name).is_file()
         for name in ('communication_graph_v0411','communication_segments','communication_sensing_v0411'):
             assert (code / 'src' / (name+'.py')).is_file()
         for name in ('communication-graph-model-v0411.js','communication-graph-v0411.js','communication-graph-v0411.css'):
@@ -129,7 +134,7 @@ def main():
             run([python, 'scripts/test_communications_learning.py'])
             for suite in ('closedloop','spatial','iq','experiments','v048_integration'):
                 run([python, 'scripts/test_communications_'+suite+'.py'])
-            for suite in sorted([*(code / 'scripts').glob('test_communications_*v049*.py'),*(code / 'scripts').glob('test_communications_*v0410*.py'),*(code / 'scripts').glob('test_communications_*v0411*.py')]):
+            for suite in sorted([*(code / 'scripts').glob('test_communications_*v049*.py'),*(code / 'scripts').glob('test_communications_*v0410*.py'),*(code / 'scripts').glob('test_communications_*v0411*.py'),*(code / 'scripts').glob('test_communications_*v0412*.py')]):
                 run([python, str(suite)])
             run([python, 'scripts/benchmark_algorithms.py'])
             report['benchmark'] = json.loads((code / 'outputs/benchmark/summary.json').read_text(encoding='utf-8'))
@@ -165,7 +170,9 @@ def main():
                                     'communication_v049_experiments','communication_v049_integration',
                                     'communication_v0410_receiver','communication_v0410_framing','communication_v0410_turbo','communication_v0410_harq',
                                     'communication_v0410_iq','communication_v0410_experiment','communication_v0410_flow_isac','communication_v0410_integration',
-                                    'communication_v0411_graph','communication_v0411_segments','communication_v0411_cfar','communication_v0411_exports']
+                                    'communication_v0411_graph','communication_v0411_segments','communication_v0411_cfar','communication_v0411_exports',
+                                    'communication_v0412_workbench','communication_v0412_tools','communication_v0412_courses',
+                                    'communication_v0412_delivery','communication_v0412_report','communication_v0412_integration']
             finally:
                 if process is not None and process.poll() is None:
                     if os.name == 'nt':

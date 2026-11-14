@@ -129,8 +129,8 @@ def check(base_url):
     data = request(f'/api/experiments/export?session_id={session}&format=csv')
     package = request(f'/api/experiments/export?session_id={session}&format=zip')
     assert package.startswith(b'PK') and len(data.splitlines()) == config['sample_rate'] * config['duration'] + 1
-    renamed = json.loads(request('/api/experiments/rename',{'session_id':session,'id':saved['id'],'name':'Deployment · renamed'}))
-    assert renamed['name']=='Deployment · renamed'
+    renamed = json.loads(request('/api/experiments/rename',{'session_id':session,'id':saved['id'],'name':'Deployment   renamed'}))
+    assert renamed['name']=='Deployment   renamed'
     copied = json.loads(request('/api/experiments/duplicate',{'session_id':session,'id':saved['id'],'name':'Temporary copy'}))
     compare_payload={'session_id':session,'ids':[saved['id'],copied['id']]}
     comparison=json.loads(request('/api/experiments/compare',compare_payload))
@@ -141,7 +141,7 @@ def check(base_url):
     assert json.loads(request('/api/experiments/delete',deletion))['deleted']
     assert json.loads(request('/api/experiments/delete',deletion))['deleted']
     remaining = json.loads(request(f'/api/experiments?session_id={session}'))['experiments']
-    assert [e['id'] for e in remaining]==[saved['id']] and remaining[0]['name']=='Deployment · renamed'
+    assert [e['id'] for e in remaining]==[saved['id']] and remaining[0]['name']=='Deployment   renamed'
     assert data==request(f'/api/experiments/export?session_id={session}&format=csv')
     mapped='time_ms,unused,value\n'+'\n'.join(f'{i*5},label,{math.sin(i)}' for i in range(50))
     def mapped_form(token=None):

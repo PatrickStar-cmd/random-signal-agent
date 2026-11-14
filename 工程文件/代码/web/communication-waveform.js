@@ -27,31 +27,31 @@ window.createCommunicationWaveform = function(core,ctx) {
       const values=mode==='amplitude'?v.output_amplitude:v.output_phase_deg;
       if(!v.input_amplitude||!values){caption('选择功放回环采集、数字预失真器或记忆功放查看响应。');return;}
       lines([{name:item.label,x:v.input_amplitude,y:values}],'输入幅度',mode==='amplitude'?'输出幅度':'相位变化 / °',true);
-      caption(`${values.length} 个实测样本 · ${v.memory_depth?'记忆深度 '+v.memory_depth:'输入输出对应样本'}`);
+      caption(`${values.length} 个实测样本   ${v.memory_depth?'记忆深度 '+v.memory_depth:'输入输出对应样本'}`);
     }else if(mode==='spectrum'){
       if(!v.before||!v.after){caption('选择数字预失真器或记忆功放查看处理前后频谱。');return;}
       lines([{name:'处理前',x:v.before.frequency_hz,y:v.before.density_db},{name:'处理后',x:v.after.frequency_hz,y:v.after.density_db}],'频率 / Hz','Welch PSD / dB/Hz');
-      caption(`功率 ${format(v.before.power)} → ${format(v.after.power)} · PAPR ${format(v.before.papr_db)} → ${format(v.after.papr_db)} dB`);
+      caption(`功率 ${format(v.before.power)} → ${format(v.after.power)}   PAPR ${format(v.before.papr_db)} → ${format(v.after.papr_db)} dB`);
     }else if(mode==='sync'){
       if(!v.timing_metric){caption('选择突发捕获与采样时钟恢复积木。');return;}
       lines([{name:'重复前导度量',x:v.offsets,y:v.timing_metric},{name:'公开模板相关',x:v.offsets,y:v.correlation}],'搜索偏移 / 样本','归一化度量');
-      caption(`${v.method} · 起点 ${format(v.start_sample)} · CFO ${format(v.frequency_hz)} Hz · SFO ${format(v.clock_ppm)} ppm`);
+      caption(`${v.method}   起点 ${format(v.start_sample)}   CFO ${format(v.frequency_hz)} Hz   SFO ${format(v.clock_ppm)} ppm`);
       byId('cmWaveformTable').innerHTML=table(['捕获','前导拟合误差','前后标记位置','有效波形样本'],[[v.detected?'已捕获':'继续调整接收参数',v.marker_error,v.marker_positions.map(format).join(' / '),v.payload_samples]]);
     }else if(mode==='carriers'){
       if(!v.carriers){caption('选择 SC-FDMA 映射或接收积木查看资源分配。');return;}
       const gains=v.channel_i?v.channel_i.map((x,i)=>Math.hypot(x,v.channel_q[i])):v.carriers.map(()=>1);
-      lines([{name:v.mapping||'估计信道',x:v.carriers,y:gains}],'FFT 载波索引','幅度',true);caption(`${v.carriers.length} 个分配载波 · ${v.mapping||'公开训练估计与逐载波均衡'}`);
+      lines([{name:v.mapping||'估计信道',x:v.carriers,y:gains}],'FFT 载波索引','幅度',true);caption(`${v.carriers.length} 个分配载波   ${v.mapping||'公开训练估计与逐载波均衡'}`);
       byId('cmWaveformTable').innerHTML=table(['分配序号','FFT 索引','信道幅度'],v.carriers.map((n,i)=>[i,n,gains[i]]));
     }else if(mode==='coefficients'){
       if(!v.coefficients_i){caption('选择 DPD 逆模型估计或预失真器查看系数。');return;}
       lines([{name:'系数实部',x:sequence(v.coefficients_i),y:v.coefficients_i},{name:'系数虚部',x:sequence(v.coefficients_q),y:v.coefficients_q}],'系数序号','系数');
-      caption(`延迟从小到大、每支路奇数阶从低到高排列${v.fit_error!==undefined?' · 训练归一化误差 '+format(v.fit_error):''}`);
+      caption(`延迟从小到大、每支路奇数阶从低到高排列${v.fit_error!==undefined?'   训练归一化误差 '+format(v.fit_error):''}`);
       byId('cmWaveformTable').innerHTML=table(['序号','实部','虚部'],v.coefficients_i.map((x,i)=>[i,x,v.coefficients_q[i]]));
     }else if(mode==='polar'){
       if(!v.learning?.history){caption('选择 Polar 译码器查看幸存路径与冻结位。');return;}
       const rows=v.learning.history,width=Math.max(...rows.map(r=>r.path_metrics.length));
       lines(Array.from({length:Math.min(width,4)},(_,i)=>({name:'路径 '+(i+1),x:rows.map(r=>r.bit),y:rows.map(r=>r.path_metrics[Math.min(i,r.path_metrics.length-1)])})),'极化位序号','累积路径度量');
-      caption(`Polar (${v.n}, ${v.k}) · L=${v.list_size} · ${v.codewords} 个码字 · CRC 通过 ${v.codewords-v.failed_codewords}/${v.codewords} · ${format(v.seconds)} s`);
+      caption(`Polar (${v.n}, ${v.k})   L=${v.list_size}   ${v.codewords} 个码字   CRC 通过 ${v.codewords-v.failed_codewords}/${v.codewords}   ${format(v.seconds)} s`);
       byId('cmWaveformTable').innerHTML=table(['位序号','位置类型','幸存路径数','最小度量'],rows.map(r=>[r.bit,r.frozen?'冻结位':'信息 / CRC 位',r.path_metrics.length,r.path_metrics[0]]));
     }
   }

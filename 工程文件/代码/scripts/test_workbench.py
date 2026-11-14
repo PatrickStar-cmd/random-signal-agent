@@ -129,10 +129,10 @@ class WorkbenchTests(unittest.TestCase):
         self.experiment()
         store = self.app.state.store
         samples = self.app.state.agent.get_session('a').bundle.observed.copy()
-        saved = self.post('/api/experiments/save', {'name':'A · 信号 <实验>'})
+        saved = self.post('/api/experiments/save', {'name':'A   信号 <实验>'})
         copied = self.post('/api/experiments/duplicate', {'id':saved['id'], 'name':'Copy'})
-        renamed = self.post('/api/experiments/rename', {'id':saved['id'], 'name':' New · name '})
-        self.assertEqual(renamed['name'], 'New · name')
+        renamed = self.post('/api/experiments/rename', {'id':saved['id'], 'name':' New   name '})
+        self.assertEqual(renamed['name'], 'New   name')
         for operation in ('rename', 'delete'):
             other = self.client.post('/api/experiments/'+operation, json={'session_id':'b','id':saved['id'],'name':'Hidden'})
             self.assertEqual(other.status_code,400,other.text)

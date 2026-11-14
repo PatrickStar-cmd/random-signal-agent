@@ -40,17 +40,17 @@ def presets(preset):
     def entry(label,kinds,changes=None):return {'label':label,'program':preset(kinds,changes)}
     out={}
     for scheme,taps,gains in [('bpsk',2,'1,0.9'),('qpsk',3,'1,0.65+0.25j,-0.25j')]:
-        out['mlse_'+scheme]=entry('序列检测 · '+scheme.upper()+' / MLSE',
+        out['mlse_'+scheme]=entry('序列检测   '+scheme.upper()+' / MLSE',
             ['random_bits','mod_'+scheme,'tx_mlse_frame','complex_multipath','awgn','rx_mlse','demod_'+scheme,'sink'],
             {3:{'taps':gains},4:{'esn0_db':20},5:{'taps':taps}})
-    out['music_mvdr']=entry('阵列 · MUSIC 测角与自动 MVDR',
+    out['music_mvdr']=entry('阵列   MUSIC 测角与自动 MVDR',
         ['random_bits','mod_qpsk','tx_array','array_channel','array_interference','rx_music','rx_music_mvdr','demod_qpsk','sink'],
         {0:{'count':2048},2:{'training':256},3:{'branches':8,'arrival':'17.5','snr_db':24},4:{'angle':-28,'amplitude':3}})
-    out['music_smoothing']=entry('阵列 · 相干多径与空间平滑',
+    out['music_smoothing']=entry('阵列   相干多径与空间平滑',
         ['random_bits','mod_qpsk','tx_array','array_channel','array_interference','rx_music','rx_music_mvdr','demod_qpsk','sink'],
         {0:{'count':2048},2:{'training':256},3:{'branches':8,'arrival':'12,42','departure':'0,0','gains':'1,0.35j','snr_db':28},4:{'angle':-30},5:{'sources':3,'subarray':5}})
     for index,name in enumerate('ABC'):
-        out['tdl_'+name.lower()]=entry('标准信道 · TDL-'+name+' / OFDM 导频接收',
+        out['tdl_'+name.lower()]=entry('标准信道   TDL-'+name+' / OFDM 导频接收',
             ['random_bits','mod_qpsk','tx_ofdm','tdl_channel','complex_awgn','rx_ofdm_tracking','demod_qpsk','sink'],
             {0:{'count':2048},2:{'cp':32,'active_count':48,'pilot_interval':4},3:{'profile':index,'delay_spread_ns':3000,'doppler_hz':2},4:{'snr_db':30},5:{'method':0,'tracking_gain':.8}})
     return out

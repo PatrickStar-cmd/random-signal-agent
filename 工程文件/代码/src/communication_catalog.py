@@ -72,25 +72,25 @@ def register(block, number, field, blocks):
 def presets(preset):
     result={}
     def add(key,label,kinds,changes=None): result[key]={'label':label,'program':preset(kinds,changes)}
-    add('crc_scramble','检错 · CRC / PRBS / 扰码',['pn_bits','crc_append','scramble','mod_bpsk','awgn','demod_bpsk','descramble','crc_check','sink'],{4:{'esn0_db':12}})
-    add('soft_viterbi','软译码 · 卷积码 / QPSK LLR',['random_bits','conv_encode','mod_qpsk','awgn','soft_qpsk','conv_soft_decode','sink'])
-    add('ldpc','软译码 · LDPC (128,64)',['random_bits','ldpc_encode','mod_bpsk','awgn','soft_bpsk','ldpc_decode','sink'])
+    add('crc_scramble','检错   CRC / PRBS / 扰码',['pn_bits','crc_append','scramble','mod_bpsk','awgn','demod_bpsk','descramble','crc_check','sink'],{4:{'esn0_db':12}})
+    add('soft_viterbi','软译码   卷积码 / QPSK LLR',['random_bits','conv_encode','mod_qpsk','awgn','soft_qpsk','conv_soft_decode','sink'])
+    add('ldpc','软译码   LDPC (128,64)',['random_bits','ldpc_encode','mod_bpsk','awgn','soft_bpsk','ldpc_decode','sink'])
     for scheme,label in MODULATIONS.items():
         waveform=scheme in ('fsk2','msk','gmsk')
-        add('digital_'+scheme,'数字调制 · '+label,['random_bits','mod_'+scheme,'complex_awgn' if waveform else 'awgn','demod_'+scheme,'sink'])
+        add('digital_'+scheme,'数字调制   '+label,['random_bits','mod_'+scheme,'complex_awgn' if waveform else 'awgn','demod_'+scheme,'sink'])
     for kind,label in [('compand','μ 律 PCM'),('dpcm','DPCM'),('delta','增量调制')]:
-        add('source_'+kind,'信源编码 · '+label,['sine',kind+'_encode','mod_qpsk','awgn','demod_qpsk',kind+'_decode','sink'],{3:{'esn0_db':30},0:{'frequency':2}})
-    add('source_alaw','信源编码 · A 律 PCM',['sine','compand_encode','mod_qpsk','ideal','demod_qpsk','compand_decode','sink'],{1:{'law':1},5:{'law':1}})
-    add('complex_receiver','同步 · 分步 QPSK 接收机',['random_bits','mod_qpsk','tx_frame','tx_rrc','frequency_offset','sample_delay','complex_awgn','rx_frequency','rx_matched','rx_timing','rx_carrier','rx_frame','demod_qpsk','sink'])
-    add('complete_receiver','同步 · 一体化 QPSK 接收机',['text','mod_qpsk','tx_frame','tx_rrc','frequency_offset','sample_delay','complex_awgn','rx_complete','demod_qpsk','sink'])
-    add('complex_nlms','均衡 · 复基带 NLMS',['random_bits','mod_qpsk','tx_frame','complex_multipath','awgn','rx_frame','rx_equalizer','demod_qpsk','sink'],{2:{'length':1024},3:{'taps':'1,0.35+0.1j'},4:{'esn0_db':24}})
-    add('blind_cma','均衡 · CMA / QPSK',['random_bits','mod_qpsk','tx_frame','complex_multipath','awgn','rx_cma','rx_frame','demod_qpsk','sink'],{0:{'count':4096},2:{'length':1024},3:{'taps':'1,0.2j'},4:{'esn0_db':24}})
+        add('source_'+kind,'信源编码   '+label,['sine',kind+'_encode','mod_qpsk','awgn','demod_qpsk',kind+'_decode','sink'],{3:{'esn0_db':30},0:{'frequency':2}})
+    add('source_alaw','信源编码   A 律 PCM',['sine','compand_encode','mod_qpsk','ideal','demod_qpsk','compand_decode','sink'],{1:{'law':1},5:{'law':1}})
+    add('complex_receiver','同步   分步 QPSK 接收机',['random_bits','mod_qpsk','tx_frame','tx_rrc','frequency_offset','sample_delay','complex_awgn','rx_frequency','rx_matched','rx_timing','rx_carrier','rx_frame','demod_qpsk','sink'])
+    add('complete_receiver','同步   一体化 QPSK 接收机',['text','mod_qpsk','tx_frame','tx_rrc','frequency_offset','sample_delay','complex_awgn','rx_complete','demod_qpsk','sink'])
+    add('complex_nlms','均衡   复基带 NLMS',['random_bits','mod_qpsk','tx_frame','complex_multipath','awgn','rx_frame','rx_equalizer','demod_qpsk','sink'],{2:{'length':1024},3:{'taps':'1,0.35+0.1j'},4:{'esn0_db':24}})
+    add('blind_cma','均衡   CMA / QPSK',['random_bits','mod_qpsk','tx_frame','complex_multipath','awgn','rx_cma','rx_frame','demod_qpsk','sink'],{0:{'count':4096},2:{'length':1024},3:{'taps':'1,0.2j'},4:{'esn0_db':24}})
     for kind in ('rayleigh','rician'):
-        add('fading_'+kind,'衰落 · '+kind+' / 导频 LS',['random_bits','mod_qpsk','tx_pilots',kind,'awgn','rx_pilots','demod_qpsk','sink'],{3:{'doppler':1},4:{'esn0_db':25}})
-    add('ofdm','多载波 · OFDM / 多径 / LS',['random_bits','mod_qam16','tx_ofdm','complex_multipath','complex_awgn','rx_ofdm','demod_qam16','sink'],{3:{'taps':'1,0.35+0.15j,0.1'},4:{'snr_db':30}})
-    add('agc_soft','接收估计 · AGC / 自动 N₀ / 软译码',['random_bits','conv_encode','mod_qpsk','tx_frame','attenuation','awgn','rx_agc','rx_frame','rx_noise_estimate','soft_qpsk','conv_soft_decode','sink'],{4:{'db':12},5:{'esn0_db':28},9:{'automatic_variance':True}})
-    add('resample_receiver','重采样 · 8→12 点 / 码元',['random_bits','mod_qpsk','tx_frame','tx_rrc','ideal','resample','rx_matched','rx_timing','rx_frame','demod_qpsk','sink'],{5:{'up':3,'down':2}})
-    add('fractional_equalizer','均衡 · T/2 NLMS',['random_bits','mod_qpsk','tx_frame','tx_rrc','complex_multipath','complex_awgn','rx_matched','rx_fse','rx_frame','demod_qpsk','sink'],{2:{'length':512},4:{'taps':'1,0.3+0.1j','spacing':4},5:{'snr_db':25}})
-    add('ofdm_cfo_tracking','OFDM · 频偏 / 时变路径 / 导频跟踪',['random_bits','mod_qpsk','tx_ofdm','frequency_offset','time_multipath','complex_awgn','rx_ofdm_frequency','rx_ofdm_tracking','demod_qpsk','sink'],{0:{'count':2048},3:{'hz':230},4:{'doppler':10},5:{'snr_db':30},7:{'tracking_gain':1}})
-    add('burst_interleave','突发噪声 · 交织 / 卷积码 / CRC',['random_bits','crc_append','conv_encode','interleave','mod_bpsk','burst_noise','soft_bpsk','deinterleave','conv_soft_decode','crc_check','sink'],{5:{'bad_snr':2,'good_to_bad':.003},6:{'noise_variance':.1}})
+        add('fading_'+kind,'衰落   '+kind+' / 导频 LS',['random_bits','mod_qpsk','tx_pilots',kind,'awgn','rx_pilots','demod_qpsk','sink'],{3:{'doppler':1},4:{'esn0_db':25}})
+    add('ofdm','多载波   OFDM / 多径 / LS',['random_bits','mod_qam16','tx_ofdm','complex_multipath','complex_awgn','rx_ofdm','demod_qam16','sink'],{3:{'taps':'1,0.35+0.15j,0.1'},4:{'snr_db':30}})
+    add('agc_soft','接收估计   AGC / 自动 N₀ / 软译码',['random_bits','conv_encode','mod_qpsk','tx_frame','attenuation','awgn','rx_agc','rx_frame','rx_noise_estimate','soft_qpsk','conv_soft_decode','sink'],{4:{'db':12},5:{'esn0_db':28},9:{'automatic_variance':True}})
+    add('resample_receiver','重采样   8→12 点 / 码元',['random_bits','mod_qpsk','tx_frame','tx_rrc','ideal','resample','rx_matched','rx_timing','rx_frame','demod_qpsk','sink'],{5:{'up':3,'down':2}})
+    add('fractional_equalizer','均衡   T/2 NLMS',['random_bits','mod_qpsk','tx_frame','tx_rrc','complex_multipath','complex_awgn','rx_matched','rx_fse','rx_frame','demod_qpsk','sink'],{2:{'length':512},4:{'taps':'1,0.3+0.1j','spacing':4},5:{'snr_db':25}})
+    add('ofdm_cfo_tracking','OFDM   频偏 / 时变路径 / 导频跟踪',['random_bits','mod_qpsk','tx_ofdm','frequency_offset','time_multipath','complex_awgn','rx_ofdm_frequency','rx_ofdm_tracking','demod_qpsk','sink'],{0:{'count':2048},3:{'hz':230},4:{'doppler':10},5:{'snr_db':30},7:{'tracking_gain':1}})
+    add('burst_interleave','突发噪声   交织 / 卷积码 / CRC',['random_bits','crc_append','conv_encode','interleave','mod_bpsk','burst_noise','soft_bpsk','deinterleave','conv_soft_decode','crc_check','sink'],{5:{'bad_snr':2,'good_to_bad':.003},6:{'noise_variance':.1}})
     return result

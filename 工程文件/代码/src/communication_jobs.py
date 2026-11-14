@@ -14,10 +14,10 @@ class Job:
     def __init__(self,session,kind,payload):
         self.id=uuid.uuid4().hex;self.session=session;self.kind=kind;self.payload=copy.deepcopy(payload)
         self.cancel=threading.Event();self.condition=threading.Condition();self.status='queued';self.revision=0
-        self.progress={};self.result=None;self.error=None;self.ctx=None;self.mode='step' if kind=='debug' else 'run';self.permits=0
-        self.created=time.monotonic();self.accessed=self.created;self.contexts=[]
+        self.progress={};self.result=None;self.error=None;self.ctx=None;self.mode='step' if kind in ('debug','workbench-debug') else 'run';self.permits=0
+        self.created=time.monotonic();self.accessed=self.created;self.contexts=[];self.trace=[];self.debug_total=None
         self.breakpoints=payload.get('breakpoints',[])
-        if kind=='debug' and payload.get('debug_mode')=='continue': self.mode='run'
+        if kind in ('debug','workbench-debug') and payload.get('debug_mode')=='continue': self.mode='run'
     def update(self,**changes):
         with self.condition:
             for k,v in changes.items(): setattr(self,k,copy.deepcopy(v))
@@ -25,7 +25,10 @@ class Job:
     def gate(self,observation=None):
         from src import communications as c
         if observation is not None:
-            self.update(progress={'observation':observation,'completed':len(self.ctx.observations),'total':len(self.ctx.compiled['program']['blocks'])})
+            if self.kind=='workbench-debug': self.trace.append(copy.deepcopy(observation))
+            self.update(progress={'observation':observation,
+                'completed':len(self.trace) if self.kind=='workbench-debug' else len(self.ctx.observations),
+                'total':self.debug_total if self.kind=='workbench-debug' else len(self.ctx.compiled['program']['blocks'])})
         with self.condition:
             hit=next((rule for rule in self.breakpoints if observation and runtime.breakpoint_match(rule,observation)),None)
             if hit:
@@ -47,7 +50,7 @@ class Job:
             self.accessed=time.monotonic()
             return {'id':self.id,'kind':self.kind,'status':self.status,'revision':self.revision,'progress':copy.deepcopy(self.progress),
                 'result':copy.deepcopy(self.result) if include_result else None,'error':self.error,
-                'observations':copy.deepcopy(self.ctx.observations) if self.ctx else []}
+                'observations':copy.deepcopy(self.trace if self.kind=='workbench-debug' else self.ctx.observations if self.ctx else [])}
 
 
 class Jobs:
@@ -82,9 +85,15 @@ class Jobs:
         for old in sorted(p.parent.glob('*.json'),key=lambda q:q.stat().st_mtime,reverse=True)[30:]: old.unlink()
     def start(self,session,kind,payload):
         from src import communications as c
-        if kind not in ('debug','run','sweep','continuous','branches','experiments','rf-task','sweep2d','protocol','amc','classroom','classroom-stage','batch','batch-replay','target-search','pareto','scenario','classroom-recheck','branch-merge','protocol-compare','graph'): raise ValueError('未知通信任务类型。')
+        if kind not in ('debug','run','sweep','continuous','branches','experiments','rf-task','sweep2d','protocol','amc','classroom','classroom-stage','batch','batch-replay','target-search','pareto','scenario','classroom-recheck','branch-merge','protocol-compare','graph','workbench-run','workbench-debug','workbench-task'): raise ValueError('未知通信任务类型。')
         if not isinstance(payload,dict): raise ValueError('任务参数无效。')
-        if kind=='graph':
+        if kind.startswith('workbench-'):
+            from src import communication_workbench_v0412 as workbench
+            built=workbench.build_document(payload.get('document'))
+            if payload.get('token')!=built['token']: raise ValueError('工程已更新，请重新 Build。')
+            if kind=='workbench-debug':
+                runtime.validate_breakpoints(payload.get('breakpoints',[]), {'plan':built['nodes']})
+        elif kind=='graph':
             from src import communication_graph_v0411 as graph
             built=graph.build(payload.get('graph'))
             if payload.get('token')!=built['token']: raise ValueError('可视工程已更新，请重新 Build。')
@@ -113,13 +122,14 @@ class Jobs:
             parameter(built['program'],payload.get('settings'))
         with self.lock:
             active=[j for j in self.jobs.values() if j.status in ('queued','running','paused')]
-            if kind=='graph' and any(j.kind=='graph' and j.session==session for j in active): raise ValueError('请等待当前可视工程运行完成。')
+            if kind in ('graph','workbench-run','workbench-debug') and any(j.kind in ('graph','workbench-run','workbench-debug') and j.session==session for j in active): raise ValueError('请等待当前工程运行完成。')
             if len(active)>=c.CONFIG['max_studio_jobs']: raise ValueError('通信任务队列已满，请完成或取消已有任务。')
             # Retain bounded completed observations for paging.
             completed=sorted((j for j in self.jobs.values() if j not in active),key=lambda j:j.accessed,reverse=True)
             for j in completed[12:]: self.jobs.pop(j.id,None)
             job=Job(session,kind,payload);self.jobs[job.id]=job
-            if kind in ('sweep','sweep2d','batch','target-search'):
+            if kind=='workbench-debug': job.debug_total=len(built['nodes'])
+            if kind in ('sweep','sweep2d','batch','target-search','workbench-task'):
                 self.persist(job,{'complete':False,'not_started':True})
             self.executor.submit(self.execute,job)
         return job.public(False)
@@ -144,11 +154,27 @@ class Jobs:
     def window(self,session,key,block,offset,count,branch=None):
         from src import communications as c
         job=self.get(session,key)
+        requested=block
+        if isinstance(block,str) and '/' in block:
+            scope,local=block.split('/',1)
+            candidates=[v for v in job.contexts if getattr(v,'scope',None)==scope and local in v.values]
+            if not candidates and scope=='shared': candidates=[v for v in job.contexts if local in v.values]
+            if job.ctx and getattr(job.ctx,'scope',None)==scope and local in job.ctx.values: branch=None
+            elif candidates: branch=job.contexts.index(candidates[-1])
+            else:
+                raise KeyError('该分支积木执行后即可观察。')
+            block=local
+        elif block=='merge':
+            candidates=[v for v in job.contexts if 'merge-output' in v.values]
+            if job.ctx and 'merge-output' in job.ctx.values: branch=None
+            elif candidates: branch=job.contexts.index(candidates[-1])
+            else: raise KeyError('汇合执行后即可观察。')
+            block='merge-output'
         ctx=job.ctx if branch is None else job.contexts[c.numeric(branch,'分支序号',0,max(0,len(job.contexts)-1),True)] if job.contexts else None
         if not ctx or block not in ctx.values: raise KeyError('该积木尚未执行或数据已过期。')
         data=ctx.values[block];offset=c.numeric(offset,'窗口起点',0,max(0,len(data)-1),True);count=c.numeric(count,'窗口长度',1,1024,True)
         values=data[offset:offset+count].astype(complex);base=next(v for v in ctx.observations if v['id']==block)
-        return {**base,'offset':offset,'i':values.real.tolist(),'q':values.imag.tolist(),'plot_count':len(values)}
+        return {**base,'id':requested,'local_id':block,'offset':offset,'i':values.real.tolist(),'q':values.imag.tolist(),'plot_count':len(values)}
     def execute(self,job):
         from src import communications as c
         acquired=False
@@ -158,11 +184,25 @@ class Jobs:
             if not acquired: raise runtime.Cancelled('任务已取消。')
             job.update(status='running')
             p=job.payload
-            durable=job.kind in ('sweep','sweep2d','batch','target-search')
+            durable=job.kind in ('sweep','sweep2d','batch','target-search','workbench-task')
             def progress(value):
                 job.update(progress=value)
                 if durable: self.persist(job,value)
-            if job.kind=='sweep':
+            if job.kind.startswith('workbench-'):
+                from src import communication_workbench_v0412 as workbench
+                if job.kind=='workbench-task':
+                    result=workbench.run_task(p['document'],p.get('settings',{}),progress,job.cancel,p.get('resume'))
+                else:
+                    with self.lock: cache=self.graph_caches.setdefault(job.session,{})
+                    result=workbench.run_document(p['document'],cache=cache,partial=p.get('partial',False),progress=None if job.kind=='workbench-debug' else progress,cancel=job.cancel,contexts=job.contexts,gate=job.gate if job.kind=='workbench-debug' else None,on_context=lambda ctx:setattr(job,'ctx',ctx))
+                    result['result'].setdefault('experience',{})['job_id']=job.id
+                    for obs in result.get('observations',[]): obs['job_id']=job.id
+                    if result.get('graph_result'):
+                        for index,entry in enumerate(result['graph_result']['branches']): entry['result']['experience'].update(job_id=job.id,branch=index)
+                        result['graph_result']['merged_result']['experience']['job_id']=job.id
+                    with self.lock:
+                        while len(self.graph_caches)>4: self.graph_caches.pop(next(iter(self.graph_caches)))
+            elif job.kind=='sweep':
                 from src.communication_sweep import sweep
                 result=sweep(p['program'],p['token'],p['settings'],progress,job.cancel,p.get('resume'))
             elif job.kind=='sweep2d':
@@ -234,6 +274,7 @@ class Jobs:
                 if job.kind=='debug': job.gate()
                 with runtime.execution(ctx): result=c.run(compiled['program'],compiled['token'])
                 result['experience']={'observations':ctx.observations,'contract':1,'job_id':job.id}
+            if p.get('source_scope'): result['source_scope']=p['source_scope']
             job.update(result=result,status='cancelled' if job.cancel.is_set() else 'completed')
             if durable: self.persist(job,result)
         except runtime.Cancelled as exc: job.update(status='cancelled',error=str(exc))

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>谛听 · 随机信号智能体</title>
+  <title>谛听   随机信号智能体</title>
   <link rel="stylesheet" href="app.css">
   <link rel="stylesheet" href="workbench.css">
   <link rel="stylesheet" href="studio.css">
@@ -13,6 +13,9 @@
   <link rel="stylesheet" href="communications.css">
   <link rel="stylesheet" href="communication-graph-v0411.css">
   <link rel="stylesheet" href="communication-layout.css">
+  <link rel="stylesheet" href="communication-scratch-v0412.css">
+  <link rel="stylesheet" href="communication-workbench-v0412.css">
+  <link rel="stylesheet" href="communication-delivery-v0412.css">
   <link rel="stylesheet" href="communication-learning.css">
   <link rel="stylesheet" href="communication-experiments.css">
   <link rel="stylesheet" href="communication-report.css">
@@ -21,8 +24,8 @@
 <body>
   <a class="skip-link" href="#layoutRoot">跳到工作区</a>
   <header class="app-header">
-    <a class="brand" href="#layoutRoot" data-view-link="workspace"><span class="brand-icon" aria-hidden="true">🐳</span><div><h1>谛听<span class="title-suffix">随机信号智能体</span></h1><div class="sub">SIGNAL EXPLORER · By YangCheng</div></div></a>
-    <div class="header-meta"><span class="local-badge">信号工具 · 本地计算</span><div class="session" id="sessionLabel">时间初始化中</div></div>
+    <a class="brand" href="#layoutRoot" data-view-link="workspace"><span class="brand-icon" aria-hidden="true">🐳</span><div><h1>谛听<span class="title-suffix">随机信号智能体</span></h1><div class="sub">SIGNAL EXPLORER   By YangCheng</div></div></a>
+    <div class="header-meta"><span class="local-badge">信号工具   本地计算</span><div class="session" id="sessionLabel">时间初始化中</div></div>
   </header>
   <nav class="workflow-nav" aria-label="工作区导航">
     <a href="#layoutRoot" data-view-link="workspace"><span class="nav-emoji" aria-hidden="true">🌊</span><span>信号工作区</span></a>
@@ -38,7 +41,7 @@
     <div><span class="eyebrow">YOUR LITTLE SIGNAL LAB</span><h2>让每一段信号，讲出自己的故事。<span class="hero-spark" aria-hidden="true">✨</span></h2><p>从一条波形开始，探索噪声、规律与藏在细节里的异常。</p><div class="hero-actions"><a class="ocean-primary" href="#workbenchPanel" data-view-link="templates">开始一个实验 <span aria-hidden="true">→</span></a><a href="#dataPanel" data-view-link="data">带上我的数据</a><span class="hero-note"><span aria-hidden="true">🐚</span> 无需 API Key 即可体验</span></div></div>
     <img src="ocean-whale.webp" class="ocean-mascot" alt="" width="1536" height="1024" decoding="async">
   </section>
-  <div class="workspace-caption"><div><span class="eyebrow">WORKSPACE</span><h2>信号工作区</h2></div><span id="dataSummary">还没有信号 · 试试模板或导入数据</span></div>
+  <div class="workspace-caption"><div><span class="eyebrow">WORKSPACE</span><h2>信号工作区</h2></div><span id="dataSummary">还没有信号   试试模板或导入数据</span></div>
   <main id="layoutRoot">
     <section class="panel chat"><div class="panel-heading"><span class="heading-icon" aria-hidden="true">💬</span><div><h2>和谛听聊聊</h2><p>提问、采集，或说出你的分析需求</p></div></div>
       <div class="upload">
@@ -53,11 +56,11 @@
             <span class="agent-mode-switch" aria-hidden="true"></span>
             <span class="agent-mode-text">
               <b>Agent 模式</b>
-              <small id="agentModeLabel">关闭 · 命令式交互</small>
+              <small id="agentModeLabel">关闭   命令式交互</small>
             </span>
           </button>
         </div>
-        <div class="gateway-status" id="gatewayStatus">麦克风采集 · 支持 localhost 与 HTTPS 页面</div>
+        <div class="gateway-status" id="gatewayStatus">麦克风采集   支持 localhost 与 HTTPS 页面</div>
       </div>
       <div class="agent-progress-panel" id="agentProgressPanel" aria-live="polite">
         <div class="agent-progress-head">
@@ -141,7 +144,7 @@
 </section>
 <section data-view="templates" class="tool-view" aria-label="实验从这里开始"><div class="view-heading"><div><span class="eyebrow">SIGNAL LAB / TEMPLATES</span><h2>实验从这里开始</h2><p>用可复现的模板探索信号，保存你值得回看的发现。</p></div><a href="#layoutRoot" data-view-link="workspace">查看工作区 →</a></div>
   <section id="workbenchPanel" class="workbench" aria-label="实验工作台">
-    <div class="wb-heading"><strong>2 · 处理与保存 <small>v0.4.4</small></strong><span id="wbStatus" role="status">每次操作后自动保存</span><button id="wbRecover" type="button">恢复未完成请求</button></div>
+    <div class="wb-heading"><strong>2   处理与保存 <small>v0.4.4</small></strong><span id="wbStatus" role="status">每次操作后自动保存</span><button id="wbRecover" type="button">恢复未完成请求</button></div>
     <details id="wbPanel" open><summary>模板与实验管理</summary>
       <form id="wbForm" class="wb-fields">
         <label>信号模板<select id="wbTemplate"><option value="sine">正弦 + 高斯噪声</option><option value="impulse">正弦 + 脉冲干扰</option><option value="ar">AR(1) 随机过程</option><option value="current">当前信号</option></select></label>
@@ -168,7 +171,7 @@
           <label>分组顺序<select id="reportOrder"><option value="newest">最近结果在前</option><option value="oldest">按时间先后</option></select></label>
           <label>报告标题<input id="reportTitle" value="信号处理与分析报告" maxlength="120" required></label>
           <label>作者（可选）<input id="reportAuthor" maxlength="80" placeholder="姓名或团队"></label>
-          <label>报告篇幅<select id="reportEdition"><option value="standard">标准版 · 完整分析与复现信息</option><option value="brief">简版 · 概览、波形与频谱</option></select></label>
+          <label>报告篇幅<select id="reportEdition"><option value="standard">标准版   完整分析与复现信息</option><option value="brief">简版   概览、波形与频谱</option></select></label>
           <label>信号量纲<input id="reportUnit" value="a.u." maxlength="20" required></label>
           <label class="report-purpose">分析目的（可选）<textarea id="reportPurpose" maxlength="1200" rows="3" placeholder="想了解哪些特征，或比较哪些处理效果？"></textarea></label>
           <button id="reportPreview" type="submit">预览摘要与章节</button>
@@ -188,7 +191,7 @@
 </section>
 <section data-view="data" class="tool-view" aria-label="带上你的信号"><div class="view-heading"><div><span class="eyebrow">SIGNAL LAB / DATA</span><h2>带上你的信号</h2><p>选择数据列、核对采样信息，让真实数据加入实验。</p></div><a href="#layoutRoot" data-view-link="workspace">查看工作区 →</a></div>
   <section class="studio" aria-label="导入数据">
-    <details id="dataPanel" open><summary>1 · 数据导入向导</summary>
+    <details id="dataPanel" open><summary>1   数据导入向导</summary>
       <p class="studio-hint">预览前 20 行，选择时间列与信号列。</p>
       <label class="file-choice">CSV / TXT 文件<input id="diFile" type="file" accept=".csv,.txt"></label>
       <div class="studio-fields">
@@ -206,7 +209,7 @@
 
 </section>
 <section data-view="comparison" class="tool-view" aria-label="把不同尝试放在一起"><div class="view-heading"><div><span class="eyebrow">SIGNAL LAB / COMPARISON</span><h2>把不同尝试放在一起</h2><p>并排观察实验结果，找到适合当前信号的方法。</p></div><a href="#layoutRoot" data-view-link="workspace">查看工作区 →</a></div>
-  <section class="studio"><details id="comparisonPanel" open><summary>3 · 跨实验对比与报告</summary>
+  <section class="studio"><details id="comparisonPanel" open><summary>3   跨实验对比与报告</summary>
     <p class="studio-hint">选择 2–4 个实验快照，叠加波形与频谱，查看指标和参数。</p>
     <div id="compareChoices" class="compare-choices"></div><div class="studio-actions"><button id="compareRun">对比所选实验</button><button id="compareExport" disabled>下载对比 HTML 报告</button></div>
     <p id="compareStatus" role="status"></p><div id="compareResult"></div>
@@ -214,7 +217,7 @@
 
 </section>
 <section data-view="diagnostics" class="tool-view" aria-label="找一找，信号里的小异常"><div class="view-heading"><div><span class="eyebrow">SIGNAL LAB / DIAGNOSTICS</span><h2>找一找，信号里的小异常</h2><p>从时频线索出发，定位事件，再用试验验证判断。</p></div><a href="#layoutRoot" data-view-link="workspace">查看工作区 →</a></div>
-  <section class="studio diagnostic-lab" id="diagnosticPanel"><details open><summary>4 · 信号诊断实验室</summary>
+  <section class="studio diagnostic-lab" id="diagnosticPanel"><details open><summary>4   信号诊断实验室</summary>
     <p class="studio-hint">定位异常 → 查看证据 → 验证处理。时间从首个采样点起计。</p>
     <div class="studio-fields">
       <label>诊断来源<select id="dgSource"><option value="observed">原始观测</option><option value="processed">处理结果</option></select></label>
@@ -226,8 +229,8 @@
     <div class="studio-actions"><button id="dgAnalyze">诊断所选区间</button><button id="dgFull">选择全段</button><button id="dgDemo">载入故障演示</button><button id="dgReport">下载诊断 HTML</button></div>
     <p id="dgStatus" role="status">生成或导入信号后即可诊断，也可载入 8 秒故障演示。</p>
     <div id="dgResolution"></div>
-    <figure class="dg-figure"><figcaption>时频图 · 在图中拖动选择时间区间</figcaption><canvas id="dgHeat" width="1000" height="300" aria-label="时频图，时间选择也可使用上方数值输入"></canvas><p id="dgLegend">紫色低 → 蓝色 → 绿色 → 黄色高；PSD 相对本区间最大值 −80 至 0 dB</p></figure>
-    <figure class="dg-figure"><figcaption>联动波形 · 橙色为所选事件区间</figcaption><canvas id="dgWave" width="1000" height="180"></canvas></figure>
+    <figure class="dg-figure"><figcaption>时频图   在图中拖动选择时间区间</figcaption><canvas id="dgHeat" width="1000" height="300" aria-label="时频图，时间选择也可使用上方数值输入"></canvas><p id="dgLegend">紫色低 → 蓝色 → 绿色 → 黄色高；PSD 相对本区间最大值 −80 至 0 dB</p></figure>
+    <figure class="dg-figure"><figcaption>联动波形   橙色为所选事件区间</figcaption><canvas id="dgWave" width="1000" height="180"></canvas></figure>
     <div id="dgEvents" class="dg-events"></div>
     <section id="dgVerification" hidden><h3>验证实验</h3><p id="dgVerdict"></p><pre id="dgMetrics"></pre><canvas id="dgTrial" width="1000" height="180"></canvas><p class="studio-hint">青色：处理前；绿色：试验后。采用结果后，可在工作台保存实验快照。</p><button id="dgAdopt">采用验证结果为当前处理信号</button></section>
     <details class="dg-challenge"><summary>故障注入与盲测</summary>
@@ -239,7 +242,7 @@
 
 </section>
 <section data-view="communications" class="cm-view" aria-label="通信原理仿真实验室">
-  <div class="view-heading"><div><span class="eyebrow">SIGNAL LAB / COMMUNICATIONS</span><h2>通信实验室 📡</h2><p>信源 · 转换 · 调制 · 信道 · 解调 · 还原</p></div><img class="cm-mascot" src="ocean-whale.webp" alt="" width="1536" height="1024" decoding="async"></div>
+  <div class="view-heading"><div><span class="eyebrow">SIGNAL LAB / COMMUNICATIONS</span><h2>通信实验室 📡</h2><p>信源   转换   调制   信道   解调   还原</p></div><img class="cm-mascot" src="ocean-whale.webp" alt="" width="1536" height="1024" decoding="async"></div>
   <form id="cmForm" novalidate><fieldset id="cmFields">
     <section class="cm-panel cm-project-bar" aria-label="通信工程工具栏">
       <header class="cm-panel-heading"><div class="cm-project-title"><span class="cm-heading-icon" aria-hidden="true">🧩</span><div><h3 id="cmProjectName">我的通信工程</h3><span class="cm-kicker">OCEAN LINK / BLOCK STUDIO</span></div></div><span id="cmBuildBadge" class="cm-badge">等待构建</span></header>
@@ -264,9 +267,9 @@
       <div class="cm-analysis-tabs" role="group" aria-label="接收信号的其他视图"><button type="button" data-cm-plot="constellation" aria-pressed="true">接收星座图</button><button type="button" data-cm-plot="transmitter" aria-pressed="false" hidden>已调 I / Q</button><button type="button" data-cm-plot="spectrum" aria-pressed="false" hidden>已调频谱</button><button type="button" data-cm-plot="channel" aria-pressed="false">信道 I / Q</button><button type="button" data-cm-plot="eye" aria-pressed="false" hidden>接收眼图</button><button type="button" data-cm-plot="timing" aria-pressed="false" hidden>时钟跟踪</button><button type="button" data-cm-plot="convergence" aria-pressed="false" hidden>均衡收敛</button></div>
       <div class="cm-analysis-tabs"><button type="button" data-cm-plot="correlation" hidden>前导 / PN 相关</button><button type="button" data-cm-plot="ofdm" hidden>OFDM 资源网格</button><label id="cmStageLabel" hidden>🔎 处理中间结果 <select id="cmStage"><option value="">选择处理积木…</option></select></label></div>
       <canvas id="cmAnalysisCanvas" width="640" height="260" aria-label="接收星座图、波形、频谱、眼图、时钟跟踪或均衡收敛"></canvas><p id="cmAnalysisCaption" class="cm-analysis-caption">运行后显示判决前星座点与理想星座。</p>
-      <details class="cm-trace"><summary>链路检查与实验指标</summary><p id="cmModel">复基带 · 1 样本/符号 · 理想定时 · 硬判决</p><div id="cmTrace" class="cm-trace-scroll"></div><p id="cmDetails"></p></details>
+      <details class="cm-trace"><summary>链路检查与实验指标</summary><p id="cmModel">复基带   1 样本/符号   理想定时   硬判决</p><div id="cmTrace" class="cm-trace-scroll"></div><p id="cmDetails"></p></details>
       <div class="cm-downloads"><button id="cmDownloadCSV" type="button" disabled>下载信宿 CSV</button><button id="cmDownloadResult" type="button" disabled>下载结果 JSON</button></div>
-      <details class="cm-sweep"><summary>📊 批量性能实验 · BER / SER / FER</summary><div class="cm-sweep-fields">
+      <details class="cm-sweep"><summary>📊 批量性能实验   BER / SER / FER</summary><div class="cm-sweep-fields">
         <label>扫描噪声积木<select id="cmSweepNoise"></select></label><label>横轴<select id="cmSweepMode"><option value="native">积木原生 SNR / Es/N₀</option><option value="ebn0">信息比特 Eb/N₀</option></select></label>
         <label>起始 dB<input id="cmSweepStart" type="number" min="-10" max="40" value="0" step="0.25"></label><label>结束 dB<input id="cmSweepStop" type="number" min="-10" max="40" value="12" step="0.25"></label><label>步长 dB<input id="cmSweepStep" type="number" min="0.25" max="20" value="2" step="0.25"></label>
         <label>每点最多帧数<input id="cmSweepFrames" type="number" min="1" max="100" value="10"></label><label>每点目标误比特<input id="cmSweepErrors" type="number" min="1" max="100000" value="100"></label><label>曲线名称<input id="cmSweepName" type="text" maxlength="60" placeholder="当前链路"></label>
@@ -330,6 +333,9 @@
   <script src="communication-views-v0410.js"></script>
   <script src="communication-graph-model-v0411.js"></script>
   <script src="communication-graph-v0411.js"></script>
+  <script src="communication-workbench-plots-v0412.js"></script>
+  <script src="communication-workbench-v0412.js"></script>
+  <script src="communication-delivery-v0412.js"></script>
   <script src="communication-experience.js"></script>
   <script src="communications.js"></script>
 </body>

@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const scope={window:{}};vm.runInNewContext(fs.readFileSync(__dirname+'/../web/communication-workbench-plots-v0412.js','utf8'),scope);
+const plot=scope.window.communicationWorkbenchPlot;
+const rows=[0,1].flatMap(document_index=>[0,1].map(x=>({document_index,name:'工程 '+document_index,parameters:{x,y:0},metrics:{ber:(x+document_index)/10}})));
+let output=plot({settings:{axes:[{path:'x',values:[0,1]}]},summaries:rows},'ber',[{path:'x',label:'信噪比'}]);
+assert.equal((output.match(/<figure/g)||[]).length,2);assert.equal((output.match(/<circle/g)||[]).length,4);assert.ok(output.includes('信噪比'));assert.ok(!output.includes('NaN'));
+console.log('PASS measured scan curves separate projects and retain axis labels');
+output=plot({settings:{axes:[{path:'x',values:[0,1]},{path:'y',values:[0]}]},summaries:rows.slice(0,2)},'ber');
+assert.equal((output.match(/<rect/g)||[]).length,2);assert.ok(output.includes('参数热图'));assert.ok(!output.includes('NaN'));
+console.log('PASS two-parameter heatmap includes each measured cell');
+assert.equal(plot({settings:{axes:[{path:'x',values:[0,1]}]},summaries:rows},'missing'),'');
+console.log('PASS absent metric leaves the measured table as the result view');

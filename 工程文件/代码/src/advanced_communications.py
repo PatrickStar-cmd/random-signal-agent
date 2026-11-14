@@ -215,7 +215,7 @@ def build(p):
         plan.append({'id':b['id'],'kind':k,'label':c.BLOCKS[k]['label'],'input_count':before,'count':count,'output':domain})
     if items[-1]['kind']!='sink' or scheme is None: raise ValueError('请完成收发链路并以信宿结束。')
     token=hashlib.sha256(json.dumps(p,sort_keys=True,ensure_ascii=False,allow_nan=False,separators=(',',':')).encode()).hexdigest()
-    return {'program':p,'token':token,'plan':plan,'source_kind':'analog' if analog else 'digital','transport':'advanced','features':features,'model':'数字复基带 · 独立处理积木 · 帧 / 导频 / 软信息', 'summary':f'{len(sources)} 个信源 · {len(items)} 个积木 · {count} 个接收'+('样本' if analog else '比特')}
+    return {'program':p,'token':token,'plan':plan,'source_kind':'analog' if analog else 'digital','transport':'advanced','features':features,'model':'数字复基带   独立处理积木   帧 / 导频 / 软信息', 'summary':f'{len(sources)} 个信源   {len(items)} 个积木   {count} 个接收'+('样本' if analog else '比特')}
 
 
 def view(data, limit, fs):

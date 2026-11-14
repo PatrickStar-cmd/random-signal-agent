@@ -509,7 +509,7 @@ def program_amc(program, settings, progress=None, cancel=None):
     hysteresis = c.numeric(settings.get('hysteresis', 1), '切换滞回 / dB', 0, 10)
     profiles = copy.deepcopy(PROFILES if coding=='convolutional' else [PROFILES[i] for i in (0,1,3,4)])
     if coding=='preserve':
-        for profile in profiles: profile.update(name=profile['scheme'].upper()+' · 工程编码', code_rate=None)
+        for profile in profiles: profile.update(name=profile['scheme'].upper()+'   工程编码', code_rate=None)
     profile_index = 0; rows = []; estimates = []; total_bits = total_errors = delivered = failed = switches = 0; elapsed = 0.; states = {}; actual = None
     for frame in range(count):
         cancelled(cancel)
@@ -534,7 +534,7 @@ def program_amc(program, settings, progress=None, cancel=None):
                       'noise_block_id':noise_id,'noise_parameter':parameter,'symbol_rate':p['symbol_rate'],
                       'actual_chain':' → '.join(c.BLOCKS[b['kind']]['label'] for b in actual['blocks']),
                       'feedback_timing':'实际接收测量在下一帧可用，再增加配置的反馈延迟帧数',
-                      'snr_reference':c.BLOCKS[noise['kind']]['label']+' · '+spec['label'],
+                      'snr_reference':c.BLOCKS[noise['kind']]['label']+'   '+spec['label'],
                       'seed_policy':'按工程种子与帧序号配对实际链路随机流'},
             'source_program':p,'actual_program':actual,'frames':rows,'complete':True,
             'metrics':{'frames':count,'bit_count':total_bits,'bit_errors':total_errors,'ber':total_errors/total_bits,'fer':failed/count,

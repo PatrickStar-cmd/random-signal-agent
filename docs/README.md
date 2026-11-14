@@ -1,11 +1,11 @@
-# Experiment data · 实验数据
+# Experiment data   实验数据
 
 <details name="readme-language">
 <summary><strong>简体中文</strong></summary>
 
 <div align="justify">
 
-[在线演示](https://patrickstar-cmd.github.io/random-signal-agent/) · [项目首页](../README.md)
+[在线演示](https://patrickstar-cmd.github.io/random-signal-agent/)   [项目首页](../README.md)
 
 本实验比较六种预处理方法对随机过程与混合噪声的处理效果，使用相同的输入样本和固定参数。
 
@@ -45,7 +45,7 @@ SNR 以仿真干净信号为参考。`sample.csv` 仅包含观测值，上传后
 
 <div align="left">
 
-[Live demo](https://patrickstar-cmd.github.io/random-signal-agent/) · [Project home](../README.en.md)
+[Live demo](https://patrickstar-cmd.github.io/random-signal-agent/)   [Project home](../README.en.md)
 
 This experiment compares six preprocessing methods on a random process with mixed noise, using the same input samples and fixed parameters.
 

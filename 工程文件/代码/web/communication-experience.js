@@ -44,7 +44,11 @@ window.createCommunicationExperience = function (core) {
     createBranch:(program,label)=>core.setProgram(program,'已载入诊断对照：'+label),
     locateObservation:id=>{const index=observations.findIndex(o=>o.id===id);if(index>=0){byId('cmProbeA').value=String(index);loadWindows();layout.showAnalysis('signals');}}};
   const graphEditor=window.createCommunicationGraphV0411?.(core,nextContext);
-  const enhancements=[window.createCommunicationReceiverV0410(core,nextContext),window.createCommunicationFramingV0410(core,nextContext),window.createCommunicationExperimentV0410(core,nextContext),window.createCommunicationFlowV0410(core,nextContext),window.createCommunicationViewsV0410(core,nextContext),graphEditor].filter(Boolean);
+  Object.assign(nextContext,{graphEditor,restoreDocument:importDocument,observe:setObservations,session});
+  const workbench=window.createCommunicationWorkbenchV0412?.(core,nextContext);
+  nextContext.runDocument=doc=>workbench.runDocument(doc);
+  const delivery=window.createCommunicationDeliveryV0412?.(core,nextContext);
+  const enhancements=[window.createCommunicationReceiverV0410(core,nextContext),window.createCommunicationFramingV0410(core,nextContext),window.createCommunicationExperimentV0410(core,nextContext),window.createCommunicationFlowV0410(core,nextContext),window.createCommunicationViewsV0410(core,nextContext),graphEditor,workbench,delivery].filter(Boolean);
   const report=window.createCommunicationReport(core,{meta:()=>meta,persist,documentValue,request,session});
   const savedFormIds=/^cm(?:Scan|Protocol|Packet|Retries|Feedback|HARQBudget|AMC|Breakpoint(?:Metric|Operator|Value)|ContinuousFrames|Sweep(?:Start|Stop|Step|Frames|Errors|Values|Name))/;
   function rememberForm(event){const e=event.target;if(e.id&&savedFormIds.test(e.id)&&['INPUT','SELECT','TEXTAREA'].includes(e.tagName)&&e.type!=='file'){(meta.formValues||(meta.formValues={}))[e.id]=e.value;persist();}}
@@ -94,7 +98,7 @@ window.createCommunicationExperience = function (core) {
       const kind=button.dataset.cmKind,b=get().definitions[kind],accepts=b.inputs||[],compatible=accepts.includes(domain)||b.category==='source'&&index===0;
       const wrapper=document.createElement('div');wrapper.className='cm-palette-entry';button.before(wrapper);wrapper.append(button);
       const star=document.createElement('button');star.type='button';star.className='cm-favorite';star.dataset.cmFavorite=kind;star.setAttribute('aria-label',(meta.favorites.includes(kind)?'取消收藏 ':'收藏 ')+b.label);star.textContent=meta.favorites.includes(kind)?'★':'☆';wrapper.append(star);
-      button.classList.toggle('cm-port-compatible',compatible);button.title=`输入：${accepts.join(' / ')}；输出：${b.output}${compatible?' · 可接当前位置':''}`;
+      button.classList.toggle('cm-port-compatible',compatible);button.title=`输入：${accepts.join(' / ')}；输出：${b.output}${compatible?'   可接当前位置':''}`;
     });
   }
   function markError(text){
@@ -107,7 +111,7 @@ window.createCommunicationExperience = function (core) {
       byId('cmProgram').querySelectorAll('[data-cm-id]').forEach(card=>{
         const p=ports.find(p=>p.id===card.dataset.cmId);if(!p)return;
         let line=card.querySelector('.cm-port-line');if(!line){line=document.createElement('div');line.className='cm-port-line';card.append(line)}
-        line.textContent=`${p.input} → ${p.output}${p.count!==undefined?' · '+p.count+' 点':''}${p.sample_rate?' · '+Number(p.sample_rate.toPrecision(6))+' Hz':''}${p.filter_delay_seconds?' · 群时延 '+(1000*p.filter_delay_seconds).toPrecision(3)+' ms':''}`;
+        line.textContent=`${p.input} → ${p.output}${p.count!==undefined?'   '+p.count+' 点':''}${p.sample_rate?'   '+Number(p.sample_rate.toPrecision(6))+' Hz':''}${p.filter_delay_seconds?'   群时延 '+(1000*p.filter_delay_seconds).toPrecision(3)+' ms':''}`;
         card.classList.toggle('cm-invalid-block',info.error?.id===p.id);card.title=info.error?.id===p.id?info.error.message:line.textContent;
       });
       byId('cmConnectionHint').textContent=info.error?.message||'链路类型与参数检查通过。';core.palette();
@@ -131,7 +135,7 @@ window.createCommunicationExperience = function (core) {
   function exposedWidget(b,key){
     const spec=get().definitions[b.kind].params[key];if(!spec)return '';const value=b.params[key]??spec.default,data=`data-block-id="${esc(b.id)}" data-param="${esc(key)}"`;
     const input=spec.type==='boolean'?`<input ${data} type="checkbox" ${value?'checked':''}>`:spec.type==='select'?`<select ${data}>${spec.choices.map(v=>`<option value="${v}" ${v===value?'selected':''}>${esc(spec.choice_labels?.[v]??v)}</option>`).join('')}</select>`:spec.type==='text'?`<input ${data} value="${esc(value)}" maxlength="${spec.max_length}">`:`<input ${data} type="number" value="${value}" min="${spec.min}" max="${spec.max}" step="${spec.type==='integer'?'1':'any'}">`;
-    return `<label>${esc(get().definitions[b.kind].label+' · '+spec.label)}${input}</label>`;
+    return `<label>${esc(get().definitions[b.kind].label+'   '+spec.label)}${input}</label>`;
   }
   function syncBranches(){
     if(meta.graph)return;
@@ -156,22 +160,22 @@ window.createCommunicationExperience = function (core) {
       const cards=g.members.map(id=>[...byId('cmProgram').querySelectorAll('[data-cm-id]')].find(card=>card.dataset.cmId===id));if(cards.some(c=>!c))continue;
       const group=document.createElement('details');group.className='cm-group';group.dataset.groupId=g.id;group.open=!g.collapsed;
       group.innerHTML=`<summary>🧩 ${esc(g.name)} <small>${g.members.length} 个积木</small></summary><div class="cm-group-fields">${(g.exposed||[]).map(v=>{const [id,key]=v.split(':');const b=blocks.find(b=>b.id===id);return b?exposedWidget(b,key):''}).join('')}</div><div class="cm-group-body"></div>`;
-      cards[0].before(group);cards.forEach(card=>group.querySelector('.cm-group-body').append(card));group.addEventListener('toggle',()=>{g.collapsed=!group.open;persist()});
+      cards[0].before(group);cards.forEach(card=>group.querySelector('.cm-group-body').append(card));group.addEventListener('toggle',()=>{const collapsed=!group.open;if(g.collapsed!==collapsed)core.mutateLayout(()=>{g.collapsed=collapsed;});});
     }
-    byId('cmLibrary').innerHTML=meta.library.length?meta.library.map((g,i)=>`<button type="button" data-cm-library="${i}">🧩 ${esc(g.name)} · ${g.blocks.length} 块</button>`).join(''):'勾选相邻积木，封装后即可复用。';
-    byId('cmGroupExpose').innerHTML=blocks.filter(b=>selected.has(b.id)).flatMap(b=>Object.entries(get().definitions[b.kind].params).map(([key,spec])=>`<option value="${esc(b.id+':'+key)}">${esc(get().definitions[b.kind].label+' · '+spec.label)}</option>`)).join('');
+    byId('cmLibrary').innerHTML=meta.library.length?meta.library.map((g,i)=>`<button type="button" data-cm-library="${i}">🧩 ${esc(g.name)}   ${g.blocks.length} 块</button>`).join(''):'勾选相邻积木，封装后即可复用。';
+    byId('cmGroupExpose').innerHTML=blocks.filter(b=>selected.has(b.id)).flatMap(b=>Object.entries(get().definitions[b.kind].params).map(([key,spec])=>`<option value="${esc(b.id+':'+key)}">${esc(get().definitions[b.kind].label+'   '+spec.label)}</option>`)).join('');
     byId('cmBranchSelect').innerHTML=meta.branches.length?meta.branches.map((b,i)=>`<option value="${i}">${esc(b.name)}</option>`).join(''):'<option value="0">主链路</option>';byId('cmBranchSelect').value=String(meta.activeBranch);
     renderFlow();renderSweepParameters();selection();scheduleDescribe();learning.render();experiments.render();spatial.render();waveform.render();enhancements.forEach(x=>x.render());renderExecution();restoreFormValues();
   }
   function renderFlow(){
     const blocks=get().program.blocks,split=blocks.findIndex(b=>['demodulator','rx_converter'].includes(get().definitions[b.kind].category));
-    const label=b=>`<span>${esc(get().definitions[b.kind].label)}</span>`;
+    const label=b=>`<span>${esc(get().definitions[b.kind]?.label||({branch_merge:'双输入汇合',analysis_cfar2d:'CFAR分析'})[b.kind]||b.kind)}</span>`;
     byId('cmFlow').innerHTML=meta.branches.length>1?`<div class="cm-flow-prefix">${blocks.slice(0,split).map(label).join(' → ')}</div><div class="cm-flow-branches">${meta.branches.map((b,i)=>{const idx=b.program.blocks.findIndex(v=>['demodulator','rx_converter'].includes(get().definitions[v.kind].category));return `<div><strong>${esc(b.name)}</strong><div>${b.program.blocks.slice(idx).map(label).join(' → ')}</div></div>`}).join('')}</div>`:`<div class="cm-flow-prefix">${blocks.map(label).join(' → ')}</div>`;
   }
   function renderSweepParameters(changed=false){
     const previous=meta.sweepSettings||{},selectedBlock=previous.block_id||byId('cmSweepNoise').value;
     const candidates=get().program.blocks.filter(b=>Object.values(get().definitions[b.kind].params).some(numeric));
-    byId('cmSweepNoise').innerHTML=candidates.map(b=>`<option value="${esc(b.id)}">${esc(get().definitions[b.kind].label)}</option>`).join('')+'<option value="@global">全局参数</option>';
+    byId('cmSweepNoise').innerHTML=candidates.map(b=>`<option value="${esc(b.id)}">${esc(get().definitions[b.kind]?.label||({branch_merge:'双输入汇合',analysis_cfar2d:'CFAR分析'})[b.kind]||b.kind)}</option>`).join('')+'<option value="@global">全局参数</option>';
     byId('cmSweepNoise').value=candidates.some(b=>b.id===selectedBlock)||selectedBlock==='@global'?selectedBlock:(candidates.find(b=>noiseKeys[b.kind])?.id||candidates[0]?.id||'@global');
     const block=get().program.blocks.find(b=>b.id===byId('cmSweepNoise').value),specs=block?get().definitions[block.kind].params:{seed:{label:'随机种子',type:'integer',min:0,max:4294967294,default:42},sample_rate:{label:'模拟采样率 / Hz',type:'number',min:16,max:48000,default:256},sample_count:{label:'模拟样本数',type:'integer',min:32,max:get().catalog.limits.max_samples,default:256},symbol_rate:{label:'码元率 / OFDM 子载波间隔',type:'number',min:1,max:100000,default:1000}};
     const old=changed?'':byId('cmSweepParameter').value||previous.parameter;
@@ -197,7 +201,7 @@ window.createCommunicationExperience = function (core) {
     for(const id of ['cmCompleteReceiver','cmProjectOpen','cmProjectSave','cmProjectCopy','cmProjectExport','cmReport','cmGroupCreate','cmBranchAdd','cmGroupUnpack'])byId(id).disabled=busy;
     if(meta.graph)for(const id of ['cmBranchAdd','cmBranchesRun','cmBranchSelect'])byId(id).disabled=true;
     else byId('cmBranchSelect').disabled=busy;
-    byId('cmDebugStep').disabled=!activeJob||activeJob.status!=='paused';byId('cmDebugContinue').disabled=!activeJob||terminal(activeJob.status);byId('cmDebugPause').disabled=!activeJob||activeJob.kind!=='debug'||activeJob.status!=='running';
+    byId('cmDebugStep').disabled=!activeJob||activeJob.status!=='paused';byId('cmDebugContinue').disabled=!activeJob||terminal(activeJob.status);byId('cmDebugPause').disabled=!activeJob||!['debug','workbench-debug'].includes(activeJob.kind)||activeJob.status!=='running';
     byId('cmJobCancel').disabled=!activeJob||terminal(activeJob.status);byId('cmSweepResume').disabled=busy||!receipt;
   }
   async function watch(job){
@@ -205,9 +209,9 @@ window.createCommunicationExperience = function (core) {
     while(true){
       job=await request('job-status',{id:job.id});activeJob=job;buttons(get().busy);
       if(job.revision!==lastRevision){lastRevision=job.revision;const p=job.progress||{},completed=p.completed_frames??p.completed??job.observations.length,total=p.total_frames??p.total??get().program.blocks.length;
-        rememberJob(job);if(p.breakpoint){const hit=p.breakpoint;byId('cmBreakpointStatus').textContent=`🛑 ${hit.label} · ${hit.rule.metric==='always'?'已到达断点':hit.rule.metric+' = '+hit.actual} · 点击继续或下一积木`;core.selectBlock(hit.block_id);}
-        byId('cmJobProgress').textContent=`${({queued:'排队中',running:'执行中',paused:'已暂停',completed:'已完成',cancelled:'已停止',failed:'执行失败',interrupted:'可续跑'})[job.status]||job.status} · ${completed} / ${total}${job.error?' · '+job.error:''}`;byId('cmJobBar').max=Math.max(1,total);byId('cmJobBar').value=completed;
-        if(job.observations.length)setObservations(job.observations,job.id);
+        rememberJob(job);if(p.breakpoint){const hit=p.breakpoint;byId('cmBreakpointStatus').textContent=`🛑 ${hit.label}   ${hit.rule.metric==='always'?'已到达断点':hit.rule.metric+' = '+hit.actual}   点击继续或下一积木`;if(meta.graph)graphEditor?.select(hit.block_id,true);else core.selectBlock(hit.block_id.replace(/^linear\//,''));}
+        byId('cmJobProgress').textContent=`${({queued:'排队中',running:'执行中',paused:'已暂停',completed:'已完成',cancelled:'已停止',failed:'执行失败',interrupted:'可续跑'})[job.status]||job.status}   ${completed} / ${total}${job.error?'   '+job.error:''}`;byId('cmJobBar').max=Math.max(1,total);byId('cmJobBar').value=completed;
+        if(job.observations.length)setObservations(job.observations,job.id);if(job.kind==='workbench-debug'&&p.observation){graphEditor?.select(p.observation.id,true);}
         if(job.kind==='sweep'&&p.points){byId('cmSweepStatus').textContent=`正在累计：${p.points.length} 个参数点，${p.completed_frames||0} 帧。可停止并保留检查点。`}
         if(p.frames&&job.kind==='continuous')renderFrames(p);
       }
@@ -218,18 +222,24 @@ window.createCommunicationExperience = function (core) {
     rememberJob(job);persist();
     if(job.status==='failed')throw Error(job.error||'实验执行失败。');if(job.status==='cancelled'&&!job.result)throw Error(job.error||'实验已停止。');
     if(job.result&&typeof job.result==='object')job.result.job_id=job.id;
-    if(job.result?.branches)setObservations(job.result.branches.flatMap((branch,index)=>branch.result.experience.observations.map(v=>({...v,label:branch.name+' · '+v.label,branch:index}))),job.id);
+    if(job.result?.branches)setObservations(job.result.branches.flatMap((branch,index)=>branch.result.experience.observations.map(v=>({...v,label:branch.name+'   '+v.label,branch:index}))),job.id);
     return job.result;
   }
-  async function runJob(kind,payload){const job=await request('job-start',{kind,payload});rememberJob(job);persist();return watch(job)}
-  function rememberJob(job){if(!['sweep','sweep2d','batch','target-search'].includes(job.kind))return;const rows=meta.jobReceipts||(meta.jobReceipts=[]),p=job.result||job.progress||{},entry={id:job.id,kind:job.kind,status:job.status,completed:p.completed_frames??p.completed??0,total:p.total_frames??p.total??0,time:new Date().toISOString()};const index=rows.findIndex(r=>r.id===job.id);if(index>=0)rows[index]=entry;else rows.unshift(entry);meta.jobReceipts=rows.slice(0,20);renderExecution();}
-  function renderExecution(){const previous=byId('cmBreakpointBlock').value,blocks=get().program.blocks;byId('cmBreakpointBlock').innerHTML=blocks.map(b=>`<option value="${esc(b.id)}">${esc(get().definitions[b.kind].label)}</option>`).join('');byId('cmBreakpointBlock').value=blocks.some(b=>b.id===previous)?previous:get().selectedId;const rules=(meta.breakpoints||[]).filter(r=>blocks.some(b=>b.id===r.block_id));meta.breakpoints=rules;byId('cmBreakpointList').innerHTML=rules.map((r,i)=>`<div class="cm-experiment-queue"><span>${esc(get().definitions[blocks.find(b=>b.id===r.block_id)?.kind]?.label||r.block_id)} · ${r.metric==='always'?'执行到此处':esc(r.metric+' '+r.operator+' '+r.value)}</span><button type="button" data-remove-breakpoint="${i}">移除</button></div>`).join('');const old=byId('cmResumeJobs').value,items=(meta.jobReceipts||[]).filter(r=>r.status!=='completed'),names={sweep:'一维扫描',sweep2d:'二维扫描',batch:'批量实验','target-search':'目标搜索'};byId('cmResumeJobs').innerHTML='<option value="">选择任务…</option>'+items.map(r=>`<option value="${r.id}">${names[r.kind]} · ${r.completed}/${r.total} · ${new Date(r.time).toLocaleString()}</option>`).join('');if(items.some(r=>r.id===old))byId('cmResumeJobs').value=old;byId('cmJobResume').disabled=get().busy||!byId('cmResumeJobs').value;}
-  function onResult(result){rf.onResult(result);learning.onResult(result);experiments.onResult(result);spatial.onResult(result);waveform.onResult(result);enhancements.forEach(x=>x.onResult(result));if(result){meta.result=clone(result);if(result.experience)setObservations(result.experience.observations.map(v=>result.experience.branch===undefined?v:{...v,branch:result.experience.branch}),result.experience.job_id||result.job_id);persist()}}
+  async function runJob(kind,payload){
+    let wrapped=false;
+    if((kind==='graph'||kind==='run')&&(meta.tools||[]).length){const document=documentValue(),b=await request('workbench-build',{document});payload={document,token:b.token,partial:payload.partial};kind='workbench-run';wrapped=true;}
+    if(meta.graph&&['continuous','protocol','amc','protocol-compare','scenario'].includes(kind)){const document=workbench.physicalDocument(),b=await api('build',{program:document.program});payload={...payload,program:b.program,token:b.token,source_scope:{...document.source_scope,graph_token:meta.graphResult?.graph_token}};message('本次物理层 '+document.source_scope.name);}
+    const job=await request('job-start',{kind,payload});rememberJob(job);persist();const value=await watch(job);
+    if(wrapped){meta.workbenchResult=workbench.resultSummary(value);workbench.render();return value.graph_result||value.result;}return value;
+  }
+  function rememberJob(job){if(!['sweep','sweep2d','batch','target-search','workbench-task'].includes(job.kind))return;const rows=meta.jobReceipts||(meta.jobReceipts=[]),p=job.result||job.progress||{},entry={id:job.id,kind:job.kind,status:job.status,completed:p.completed_frames??p.completed??0,total:p.total_frames??p.total??0,time:new Date().toISOString()};const index=rows.findIndex(r=>r.id===job.id);if(index>=0)rows[index]=entry;else rows.unshift(entry);meta.jobReceipts=rows.slice(0,20);renderExecution();}
+  function renderExecution(){const previous=byId('cmBreakpointBlock').value,blocks=meta.graph?window.CommunicationGraphModel.nodes(meta.graph).map(n=>({...n,id:n.key})):get().program.blocks;byId('cmBreakpointBlock').innerHTML=blocks.map(b=>`<option value="${esc(b.id)}">${esc(get().definitions[b.kind]?.label||({branch_merge:'双输入汇合',analysis_cfar2d:'CFAR分析'})[b.kind]||b.kind)}</option>`).join('');byId('cmBreakpointBlock').value=blocks.some(b=>b.id===previous)?previous:get().selectedId;const rules=(meta.breakpoints||[]).filter(r=>blocks.some(b=>b.id===r.block_id));meta.breakpoints=rules;byId('cmBreakpointList').innerHTML=rules.map((r,i)=>`<div class="cm-experiment-queue"><span>${esc(get().definitions[blocks.find(b=>b.id===r.block_id)?.kind]?.label||r.block_id)}   ${r.metric==='always'?'执行到此处':esc(r.metric+' '+r.operator+' '+r.value)}</span><button type="button" data-remove-breakpoint="${i}">移除</button></div>`).join('');const old=byId('cmResumeJobs').value,items=(meta.jobReceipts||[]).filter(r=>r.status!=='completed'),names={sweep:'一维扫描',sweep2d:'二维扫描',batch:'批量实验','target-search':'目标搜索','workbench-task':'完整工程实验'};byId('cmResumeJobs').innerHTML='<option value="">选择任务…</option>'+items.map(r=>`<option value="${r.id}">${names[r.kind]}   ${r.completed}/${r.total}   ${new Date(r.time).toLocaleString()}</option>`).join('');if(items.some(r=>r.id===old))byId('cmResumeJobs').value=old;byId('cmJobResume').disabled=get().busy||!byId('cmResumeJobs').value;}
+  function onResult(result){rf.onResult(result);learning.onResult(result);experiments.onResult(result);spatial.onResult(result);waveform.onResult(result);enhancements.forEach(x=>x.onResult?.(result));if(result){meta.result=clone(result);if(result.experience)setObservations(result.experience.observations.map(v=>result.experience.branch===undefined?v:{...v,branch:result.experience.branch}),result.experience.job_id||result.job_id);persist()}}
   function setObservations(values,jobId){
     observations=values.map(v=>({...v,job_id:jobId}));const a=byId('cmProbeA').value,b=byId('cmProbeB').value;
-    const options=observations.map((v,i)=>`<option value="${i}">${meta.probes.includes(v.id)?'📌 ':''}${esc(v.label)} · ${esc(v.domain)} · ${v.count}</option>`).join('');byId('cmProbeA').innerHTML=options;byId('cmProbeB').innerHTML=options;
+    const options=observations.map((v,i)=>`<option value="${i}">${meta.probes.includes(v.id)?'📌 ':''}${esc(v.label)}   ${esc(v.domain)}   ${v.count}</option>`).join('');byId('cmProbeA').innerHTML=options;byId('cmProbeB').innerHTML=options;
     const first=observations.findIndex(v=>meta.probes.includes(v.id));byId('cmProbeA').value=Number(a)<values.length&&a!==''?a:String(Math.max(0,first));byId('cmProbeB').value=Number(b)<values.length&&b!==''?b:String(Math.max(0,values.length-1));
-    windowA=observations[Number(byId('cmProbeA').value)];windowB=observations[Number(byId('cmProbeB').value)];byId('cmExecutionSummary').textContent=`${values.length} 个已执行积木 · ${values.reduce((n,v)=>n+v.elapsed_ms,0).toFixed(1)} ms`;
+    windowA=observations[Number(byId('cmProbeA').value)];windowB=observations[Number(byId('cmProbeB').value)];byId('cmExecutionSummary').textContent=`${values.length} 个已执行积木   ${values.reduce((n,v)=>n+v.elapsed_ms,0).toFixed(1)} ms`;
     const executed=new Set(values.map(v=>v.id));byId('cmProgram').querySelectorAll('[data-cm-id]').forEach(card=>card.classList.toggle('cm-executed',executed.has(card.dataset.cmId)));drawScopes();
   }
   function persistScope(){meta.scope={align:byId('cmScopeAlign').checked,a:byId('cmProbeA').value,b:byId('cmProbeB').value,plot:byId('cmProbePlot').value,offset:byId('cmProbeOffset').value,scale:byId('cmScopeScale').checked,difference:byId('cmScopeDifference').checked,cursor:byId('cmScopeCursor').value};persist()}
@@ -253,16 +263,16 @@ window.createCommunicationExperience = function (core) {
     x.textAlign='left';x.fillStyle='#60718a';const start=v.offset||0,end=start+Math.max(0,v.i.length-1);x.fillText(mode==='spectrum'?'归一化频率 −0.5 → 0.5':v.sample_rate?`${(start/v.sample_rate).toPrecision(4)} → ${(end/v.sample_rate).toPrecision(4)} s`:`序号 ${start} → ${end}`,p.l,height-7);
   }
   function drawScopes(){
-    if(root.hidden)return;const aligned=window.communicationAlign(windowA,windowB,byId('cmScopeAlign').checked),a=aligned.a,b=aligned.b;byId('cmAlignmentStatus').textContent=aligned.text+' · 叠加图：紫蓝 A-I，绿色 B-I；差值图保留 I/Q';const all=[...(a?.i||[]),...(a?.q||[]),...(b?.i||[]),...(b?.q||[])],low=Math.min(-.1,...all),high=Math.max(.1,...all),margin=Math.max(.05,(high-low)*.08),shared=[low-margin,high+margin];
+    if(root.hidden)return;const aligned=window.communicationAlign(windowA,windowB,byId('cmScopeAlign').checked),a=aligned.a,b=aligned.b;byId('cmAlignmentStatus').textContent=aligned.text+'   叠加图：紫蓝 A-I，绿色 B-I；差值图保留 I/Q';const all=[...(a?.i||[]),...(a?.q||[]),...(b?.i||[]),...(b?.q||[])],low=Math.min(-.1,...all),high=Math.max(.1,...all),margin=Math.max(.05,(high-low)*.08),shared=[low-margin,high+margin];
     for(const [id,v,label] of [['cmScopeA',a,'A'],['cmScopeB',b,'B']]){
       const values=[...(v?.i||[]),...(v?.q||[])],range=byId('cmScopeScale').checked?shared:[Math.min(-.1,...values)-.1,Math.max(.1,...values)+.1];plotWindow(id,v,range);
-      byId('cmScopeInfo'+label).textContent=v?`${v.label} · ${v.domain} · ${v.dtype} · ${v.count} 点${v.sample_rate?' · '+Number(v.sample_rate.toPrecision(6))+' Hz':''} · RMS ${v.rms.toPrecision(4)}`:'等待执行';
+      byId('cmScopeInfo'+label).textContent=v?`${v.label}   ${v.domain}   ${v.dtype}   ${v.count} 点${v.sample_rate?'   '+Number(v.sample_rate.toPrecision(6))+' Hz':''}   RMS ${v.rms.toPrecision(4)}`:'等待执行';
     }
     const difference=byId('cmScopeDifference').checked&&a&&b&&a.unit===b.unit&&a.domain===b.domain;byId('cmScopeDiff').hidden=!difference;
     if(difference){const n=Math.min(a.i.length,b.i.length),v={...a,i:a.i.slice(0,n).map((a,i)=>a-b.i[Math.min(b.i.length-1,Math.round(i/Math.max(1,n-1)*(b.i.length-1)))]),q:a.q.slice(0,n).map((v,i)=>v-b.q[i])};const bound=Math.max(.1,...v.i.map(Math.abs),...v.q.map(Math.abs))*1.1;plotWindow('cmScopeDiff',v,[-bound,bound])}
     byId('cmScopeOverlay').hidden=!difference||byId('cmProbePlot').value!=='wave';
     if(difference&&byId('cmProbePlot').value==='wave'){plotWindow('cmScopeOverlay',{...a,i:a.i,q:b.i},shared)}
-    const ratio=Number(byId('cmScopeCursor').value)/255,values=[a,b].map(v=>v?`${v.label}: I=${v.i[Math.round(ratio*Math.max(0,v.i.length-1))]?.toPrecision(4)}`:'');byId('cmScopeCursorInfo').textContent=values.join(' · ');
+    const ratio=Number(byId('cmScopeCursor').value)/255,values=[a,b].map(v=>v?`${v.label}: I=${v.i[Math.round(ratio*Math.max(0,v.i.length-1))]?.toPrecision(4)}`:'');byId('cmScopeCursorInfo').textContent=values.join('   ');
   }
   async function loadWindows(){
     const revision=++windowRevision,selectedA=observations[Number(byId('cmProbeA').value)],selectedB=observations[Number(byId('cmProbeB').value)];if(!selectedA||!selectedB)return;
@@ -272,18 +282,19 @@ window.createCommunicationExperience = function (core) {
     try{const [a,b]=await Promise.all([load(selectedA),load(selectedB)]);if(revision!==windowRevision)return;windowA=a;windowB=b;drawScopes()}catch(e){message(e.message)}
   }
   function renderFrames(value){rf.frames(value);byId('cmFrameTable').innerHTML='<table><thead><tr><th>帧</th><th>BER</th><th>EVM</th><th>保留状态数</th></tr></thead><tbody>'+value.frames.map(r=>`<tr><td>${r.frame}</td><td>${r.ber?.toPrecision(4)??'—'}</td><td>${r.evm_percent?.toPrecision(4)??'—'}</td><td>${r.state_count}</td></tr>`).join('')+'</tbody></table>'}
-  async function refreshProjects(){const data=await request('project-list');byId('cmProjectList').innerHTML='<option value="">选择工程…</option>'+data.projects.map(p=>`<option value="${p.id}">${esc(p.name)} · v${p.version}</option>`).join('');if(meta.projectId)byId('cmProjectList').value=meta.projectId;byId('cmProjectList')._projects=data.projects;versions()}
-  function versions(){const p=(byId('cmProjectList')._projects||[]).find(p=>p.id===byId('cmProjectList').value);byId('cmProjectVersions').innerHTML='<option value="">最新版本</option>'+(p?.versions||[]).slice().reverse().map(v=>`<option value="${v.version}">v${v.version} · ${esc(new Date(v.updated).toLocaleString())}</option>`).join('')}
+  async function refreshProjects(){const data=await request('project-list');byId('cmProjectList').innerHTML='<option value="">选择工程…</option>'+data.projects.map(p=>`<option value="${p.id}">${esc(p.name)}   v${p.version}</option>`).join('');if(meta.projectId)byId('cmProjectList').value=meta.projectId;byId('cmProjectList')._projects=data.projects;versions()}
+  function versions(){const p=(byId('cmProjectList')._projects||[]).find(p=>p.id===byId('cmProjectList').value);byId('cmProjectVersions').innerHTML='<option value="">最新版本</option>'+(p?.versions||[]).slice().reverse().map(v=>`<option value="${v.version}">v${v.version}   ${esc(new Date(v.updated).toLocaleString())}</option>`).join('')}
   function save(copyProject=false){clearTimeout(saveTimer);saves=saves.catch(()=>{}).then(()=>performSave(copyProject));return saves}
   async function performSave(copyProject=false){
-    const doc=documentValue();doc.name=byId('cmDocumentName').value.trim()||'我的通信工程';if(copyProject)doc.name+=' · 副本';
+    const doc=documentValue();doc.name=byId('cmDocumentName').value.trim()||'我的通信工程';if(copyProject)doc.name+='   副本';
     const saved=await request('project-save',{document:doc,id:copyProject?null:meta.projectId,version:copyProject?null:meta.projectVersion});meta.name=saved.document.name;meta.projectId=saved.id;meta.projectVersion=saved.version;byId('cmDocumentName').value=meta.name;
     try{localStorage.setItem(storage,JSON.stringify(documentValue()))}catch{}message(`已保存「${meta.name}」快照 v${meta.projectVersion}。`);await refreshProjects();
   }
   async function importDocument(doc,detach=false){
     if(detach)doc={...doc,projectId:null,projectVersion:null};
-    const checked=await request('document-check',{document:doc});restoring=true;core.applyDocument(checked.document);restoring=false;render();
-    if(checked.document.result){try{const built=await api('build',{program:get().program});core.restoreResult(built,checked.document.result)}catch{message('工程已打开，保存的结果可导出；修改链路后请重新 Build。')}}
+    const checked=await request('document-check',{document:doc});restoring=true;const wasBusy=get().busy;if(wasBusy)core.setBusy(false);try{core.applyDocument(checked.document);}finally{restoring=false;if(wasBusy)core.setBusy(true);}render();
+    if(meta.workbenchResult){await workbench.restoreSaved();}
+    else if(checked.document.result){try{const built=await api('build',{program:get().program});if(checked.document.result.token===built.token)core.restoreResult(built,checked.document.result);else meta.result=null;}catch{message('工程已打开，点击 Build 开始新的运行。')}}
     else if(checked.document.sweeps?.length)core.repaintSweeps();persist();
   }
   function make(kind,id=null,params={}){return {id:id||uid(),kind,params:Object.fromEntries(Object.entries(get().definitions[kind].params).map(([k,s])=>[k,params[k]??s.default]))}}
@@ -334,19 +345,19 @@ window.createCommunicationExperience = function (core) {
   byId('cmProjectList').onchange=versions;byId('cmProjectSave').onclick=()=>action(()=>save(false));byId('cmProjectCopy').onclick=()=>action(()=>save(true));
   byId('cmProjectOpen').onclick=()=>action(async()=>{const key=byId('cmProjectList').value;if(!key)throw Error('请选择已保存工程。');const version=byId('cmProjectVersions').value;const saved=await request('project-load',{id:key,version:version?Number(version):undefined});saved.document.projectId=saved.id;saved.document.projectVersion=version?null:saved.version;if(version)saved.document.projectId=null;await importDocument(saved.document);message(version?'已打开历史快照，保存时创建新的工程。':'工程、参数和结果已恢复。')});
   byId('cmProjectExport').onclick=()=>core.download('communication-project-v2.json',JSON.stringify(documentValue(),null,2)+'\n','application/json');
-  async function debug(mode){core.setBusy(true);try{const built=get().compiled;if(!built)throw Error('先 Build 当前链路。');const result=await runJob('debug',{program:built.program,token:built.token,breakpoints:meta.breakpoints||[],debug_mode:mode});core.setResult(result)}finally{core.setBusy(false)}}
+  async function debug(mode){core.setBusy(true);try{if(meta.graph){await workbench.debug(mode);return;}const built=get().compiled;if(!built)throw Error('先 Build 当前链路。');const result=await runJob('debug',{program:built.program,token:built.token,breakpoints:meta.breakpoints||[],debug_mode:mode});core.setResult(result)}finally{core.setBusy(false)}}
   byId('cmDebugStart').onclick=()=>action(()=>debug('step'));
   byId('cmBreakpointRun').onclick=()=>action(()=>debug('continue'));
   byId('cmBreakpointAdd').onclick=()=>action(async()=>{const rule={block_id:byId('cmBreakpointBlock').value,metric:byId('cmBreakpointMetric').value,operator:byId('cmBreakpointOperator').value,value:Number(byId('cmBreakpointValue').value)};if(!Number.isFinite(rule.value))throw Error('填写有限的断点阈值。');(meta.breakpoints||(meta.breakpoints=[])).push(rule);renderExecution();persist()});
   byId('cmBreakpointList').onclick=e=>{const index=e.target.closest('[data-remove-breakpoint]')?.dataset.removeBreakpoint;if(index!==undefined&&!get().busy){meta.breakpoints.splice(Number(index),1);renderExecution();persist()}};
   byId('cmResumeJobs').onchange=()=>buttons(get().busy);
-  byId('cmJobResume').onclick=()=>action(async()=>{const id=byId('cmResumeJobs').value;if(!id)return;core.setBusy(true);try{const existing=await request('job-status',{id}),job=['queued','running','paused','completed'].includes(existing.status)?existing:await request('job-control',{id,control:'resume'});rememberJob(job);persist();const result=await watch(job);meta.jobReceipts=meta.jobReceipts.filter(r=>r.id!==id);if(job.kind==='sweep'){result.resume_of=id;result.name=meta.name;core.addCurves([result])}else if(job.kind==='sweep2d'){(meta.learning||(meta.learning={})).scan=result;learning.render()}else experiments.acceptResumed(job.kind,result);renderExecution();persist();message(result.complete?'任务续跑完成。':'当前测量与检查点已保存。')}finally{core.setBusy(false)}});
+  byId('cmJobResume').onclick=()=>action(async()=>{const id=byId('cmResumeJobs').value;if(!id)return;core.setBusy(true);try{const existing=await request('job-status',{id}),job=['queued','running','paused','completed'].includes(existing.status)?existing:await request('job-control',{id,control:'resume'});rememberJob(job);persist();const result=await watch(job);meta.jobReceipts=meta.jobReceipts.filter(r=>r.id!==id);if(job.kind==='sweep'){result.resume_of=id;result.name=meta.name;core.addCurves([result])}else if(job.kind==='sweep2d'){(meta.learning||(meta.learning={})).scan=result;learning.render()}else if(job.kind==='workbench-task'){meta.workbenchTaskResult=result;workbench.render();}else experiments.acceptResumed(job.kind,result);renderExecution();persist();message(result.complete?'任务续跑完成。':'当前测量与检查点已保存。')}finally{core.setBusy(false)}});
   for(const [id,control] of [['cmDebugStep','step'],['cmDebugContinue','continue'],['cmDebugPause','pause'],['cmJobCancel','cancel']])byId(id).onclick=()=>action(async()=>{if(activeJob)activeJob=await request('job-control',{id:activeJob.id,control})});
   byId('cmContinuous').onclick=()=>action(async()=>{const input=byId('cmContinuousFrames');if(!input.checkValidity()){input.reportValidity();return}core.setBusy(true);try{const b=get().compiled,value=await runJob('continuous',{program:b.program,token:b.token,frames:Number(input.value)});renderFrames(value);if(value.last)core.setResult(value.last);message(`多帧完成 ${value.frames.length} 帧，累计 BER ${value.ber.toPrecision(5)}，保留 ${value.state_count} 组算法状态。`)}finally{core.setBusy(false)}});
   byId('cmSweepResume').onclick=()=>action(async()=>{if(!receipt)return;core.setBusy(true);try{const prior=receipt,job=await request('job-control',{id:prior,control:'resume-sweep'}),curve=await watch(job);curve.name=byId('cmSweepName').value||meta.name;curve.resume_of=prior;core.addCurves([curve]);byId('cmSweepStatus').textContent=curve.complete?'续跑完成。':'已保存新的续跑检查点。'}finally{core.setBusy(false)}});
   byId('cmProbePin').onclick=()=>core.mutate(()=>{const id=get().selectedId;meta.probes=meta.probes.includes(id)?meta.probes.filter(v=>v!==id):[...meta.probes,id]},'观察点已更新。');
-  byId('cmGroupCreate').onclick=()=>action(async()=>{const blocks=get().program.blocks.filter(b=>selected.has(b.id)),indices=blocks.map(b=>get().program.blocks.indexOf(b));if(!blocks.length||indices.some((v,i)=>v!==indices[0]+i))throw Error('请勾选相邻积木后封装。');const name=byId('cmGroupName').value.trim()||'我的组合积木';const exposed=[...byId('cmGroupExpose').selectedOptions].map(o=>o.value);core.mutate(()=>{meta.groups=meta.groups.filter(g=>!g.members.some(id=>selected.has(id)));const group={id:uid(),name,members:blocks.map(b=>b.id),exposed,collapsed:false};meta.groups.push(group);meta.library.push({name,blocks:clone(blocks),exposed});if(meta.library.length>16)meta.library.shift();selected.clear()},'组合积木已保存，可展开和复用。')});
-  byId('cmGroupExpand').onclick=()=>{meta.groups.forEach(g=>g.collapsed=false);core.renderProgram();persist()};byId('cmGroupUnpack').onclick=()=>core.mutate(()=>{meta.groups=meta.groups.filter(g=>!g.members.includes(get().selectedId))},'组合已展开为普通积木。');
+  byId('cmGroupCreate').onclick=()=>action(async()=>{const blocks=get().program.blocks.filter(b=>selected.has(b.id)),indices=blocks.map(b=>get().program.blocks.indexOf(b));if(!blocks.length||indices.some((v,i)=>v!==indices[0]+i))throw Error('请勾选相邻积木后封装。');const name=byId('cmGroupName').value.trim()||'我的组合积木';const exposed=[...byId('cmGroupExpose').selectedOptions].map(o=>o.value);core.mutateLayout(()=>{meta.groups=meta.groups.filter(g=>!g.members.some(id=>selected.has(id)));const group={id:uid(),name,members:blocks.map(b=>b.id),exposed,collapsed:false};meta.groups.push(group);meta.library.push({name,blocks:clone(blocks),exposed});if(meta.library.length>16)meta.library.shift();selected.clear()},'组合积木已保存，可展开和复用。');core.renderProgram()});
+  byId('cmGroupExpand').onclick=()=>{core.mutateLayout(()=>meta.groups.forEach(g=>g.collapsed=false));core.renderProgram()};byId('cmGroupUnpack').onclick=()=>{core.mutateLayout(()=>{meta.groups=meta.groups.filter(g=>!g.members.includes(get().selectedId))},'组合已展开为普通积木。');core.renderProgram()};
   byId('cmBranchAdd').onclick=()=>action(async()=>{if(meta.branches.length>=4)throw Error('最多保留 4 个接收分支。');core.mutate(()=>{if(!meta.branches.length)meta.branches.push({name:'接收方案 A',program:clone(get().program)});meta.branches.push({name:byId('cmBranchName').value.trim()||`接收方案 ${meta.branches.length+1}`,program:clone(get().program)});meta.activeBranch=meta.branches.length-1},'已添加接收分支，发送与信道参数保持联动。')});
   byId('cmBranchSelect').onchange=()=>{const index=Number(byId('cmBranchSelect').value);syncBranches();if(meta.branches[index]){core.mutate(()=>{meta.activeBranch=index;Object.assign(get().program,clone(meta.branches[index].program))},'已切换接收分支。')}};
   byId('cmBranchesRun').onclick=()=>action(async()=>{syncBranches();if(meta.branches.length<2)throw Error('请先添加一个接收分支。');core.setBusy(true);try{meta.comparisons=await runJob('branches',{programs:meta.branches.map(b=>b.program),names:meta.branches.map(b=>b.name)});renderComparisons();persist()}finally{core.setBusy(false)}});
@@ -356,6 +367,6 @@ window.createCommunicationExperience = function (core) {
   byId('cmReport').onclick=()=>report.open();
   const hint=document.createElement('p');hint.id='cmConnectionHint';hint.className='cm-connection-hint';byId('cmInspector').after(hint);
   window.addEventListener('resize',drawScopes);document.addEventListener('visibilitychange',()=>{if(!document.hidden)drawScopes()});
-  async function ready(){receipt=meta.sweepReceipt||null;renderComparisons();try{await refreshProjects()}catch(e){message(e.message)}if(meta.result){try{const b=await api('build',{program:get().program});core.restoreResult(b,meta.result)}catch{}}const saved=meta.scope||{};for(const [key,id] of [['a','cmProbeA'],['b','cmProbeB'],['plot','cmProbePlot'],['offset','cmProbeOffset'],['cursor','cmScopeCursor']])if(saved[key]!==undefined)byId(id).value=saved[key];if(saved.align!==undefined)byId('cmScopeAlign').checked=saved.align;if(saved.scale!==undefined)byId('cmScopeScale').checked=saved.scale;if(saved.difference!==undefined)byId('cmScopeDifference').checked=saved.difference;buttons(get().busy);if(observations.length)loadWindows()}
-  return {matches,decoratePalette,render,selection,insertionIndex,used,parameterChanged,persist,invalidate,editSnapshot,restoreEdit,loadState,restoreDraft,replaceProgram,ready,buttons,runJob,onResult,markError,sweepSettings,importDocument,prepare:learning.prepare};
+  async function ready(){receipt=meta.sweepReceipt||null;renderComparisons();try{await refreshProjects()}catch(e){message(e.message)}if(meta.workbenchResult){try{await workbench.restoreSaved();}catch{message('工程已恢复，点击 Build 开始新的运行。');}}else if(meta.result){try{const b=await api('build',{program:get().program});if(meta.result.token===b.token)core.restoreResult(b,meta.result);else meta.result=null;}catch{}}const saved=meta.scope||{};for(const [key,id] of [['a','cmProbeA'],['b','cmProbeB'],['plot','cmProbePlot'],['offset','cmProbeOffset'],['cursor','cmScopeCursor']])if(saved[key]!==undefined)byId(id).value=saved[key];if(saved.align!==undefined)byId('cmScopeAlign').checked=saved.align;if(saved.scale!==undefined)byId('cmScopeScale').checked=saved.scale;if(saved.difference!==undefined)byId('cmScopeDifference').checked=saved.difference;buttons(get().busy);if(observations.length)loadWindows()}
+  return {meta:()=>meta,workbench,graphEditor,delivery,matches,decoratePalette,render,selection,insertionIndex,used,parameterChanged,persist,invalidate,editSnapshot,restoreEdit,loadState,restoreDraft,replaceProgram,ready,buttons,runJob,onResult,markError,sweepSettings,importDocument,prepare:async()=>{const resolved=await learning.prepare();if(meta.tools?.length)await request('workbench-build',{document:{...documentValue(),program:resolved||get().program}});return resolved;}};
 };

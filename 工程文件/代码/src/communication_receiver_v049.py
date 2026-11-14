@@ -28,12 +28,12 @@ def register(block, number, field, blocks):
 def presets(preset):
     def entry(label, kinds, changes=None): return {'label':label, 'program':preset(kinds, changes)}
     return {
-        'receiver_lmmse':entry('接收估计 · LMMSE / MIMO', ['random_bits','mod_qpsk','tx_mimo','spatial_channel','rx_mimo_lmmse','demod_qpsk','sink'], {3:{'snr_db':10}}),
-        'receiver_kalman':entry('接收估计 · Kalman 因果跟踪', ['random_bits','mod_qpsk','tx_mimo_tracking','spatial_dynamic','rx_mimo_kalman','demod_qpsk','sink'], {0:{'count':2048},3:{'velocity_kmh':1,'snr_db':24}}),
-        'receiver_soft_ldpc':entry('软检测 · MIMO / LDPC', ['random_bits','ldpc_encode','mod_qpsk','tx_mimo','spatial_channel','rx_mimo_soft','soft_qpsk','ldpc_decode','sink'], {4:{'snr_db':14}}),
-        'receiver_soft_viterbi':entry('软检测 · MIMO-OFDM / 软 Viterbi', ['random_bits','conv_encode','mod_qpsk','tx_mimo_ofdm','spatial_multipath','rx_mimo_soft','soft_qpsk','conv_soft_decode','sink'], {4:{'snr_db':24}}),
-        'receiver_ofdm_lmmse':entry('接收估计 · MIMO-OFDM / LMMSE', ['random_bits','mod_qpsk','tx_mimo_ofdm','spatial_multipath','rx_mimo_lmmse','demod_qpsk','sink'], {3:{'snr_db':18}}),
-        'receiver_kalman_soft':entry('软检测 · Kalman / MIMO / LDPC', ['random_bits','ldpc_encode','mod_qpsk','tx_mimo_tracking','spatial_dynamic','rx_mimo_soft','soft_qpsk','ldpc_decode','sink'], {4:{'velocity_kmh':.5,'snr_db':24},5:{'estimator':2}}),
+        'receiver_lmmse':entry('接收估计   LMMSE / MIMO', ['random_bits','mod_qpsk','tx_mimo','spatial_channel','rx_mimo_lmmse','demod_qpsk','sink'], {3:{'snr_db':10}}),
+        'receiver_kalman':entry('接收估计   Kalman 因果跟踪', ['random_bits','mod_qpsk','tx_mimo_tracking','spatial_dynamic','rx_mimo_kalman','demod_qpsk','sink'], {0:{'count':2048},3:{'velocity_kmh':1,'snr_db':24}}),
+        'receiver_soft_ldpc':entry('软检测   MIMO / LDPC', ['random_bits','ldpc_encode','mod_qpsk','tx_mimo','spatial_channel','rx_mimo_soft','soft_qpsk','ldpc_decode','sink'], {4:{'snr_db':14}}),
+        'receiver_soft_viterbi':entry('软检测   MIMO-OFDM / 软 Viterbi', ['random_bits','conv_encode','mod_qpsk','tx_mimo_ofdm','spatial_multipath','rx_mimo_soft','soft_qpsk','conv_soft_decode','sink'], {4:{'snr_db':24}}),
+        'receiver_ofdm_lmmse':entry('接收估计   MIMO-OFDM / LMMSE', ['random_bits','mod_qpsk','tx_mimo_ofdm','spatial_multipath','rx_mimo_lmmse','demod_qpsk','sink'], {3:{'snr_db':18}}),
+        'receiver_kalman_soft':entry('软检测   Kalman / MIMO / LDPC', ['random_bits','ldpc_encode','mod_qpsk','tx_mimo_tracking','spatial_dynamic','rx_mimo_soft','soft_qpsk','ldpc_decode','sink'], {4:{'velocity_kmh':.5,'snr_db':24},5:{'estimator':2}}),
     }
 
 

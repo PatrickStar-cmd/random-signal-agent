@@ -35,13 +35,13 @@ def presets(preset):
     result = {}
     def add(key,label,kinds,changes=None,settings=None):
         p=preset(kinds,changes); p.update(settings or {}); result[key]={'label':label,'program':p}
-    add('business_audio','业务 · 音频 / ADPCM',['audio_source','adpcm_encode','mod_qpsk','awgn','demod_qpsk','adpcm_decode','sink'],{3:{'esn0_db':30}}, {'sample_rate':8000,'sample_count':1024})
-    add('business_image','业务 · 图像 / RS 纠错',['image_source','rs_encode','mod_qpsk','awgn','demod_qpsk','rs_decode','sink'],{3:{'esn0_db':14}})
-    add('business_file','业务 · 文件 / CRC / BCH',['file_source','crc_append','bch_encode','mod_bpsk','awgn','demod_bpsk','bch_decode','crc_check','sink'],{4:{'esn0_db':12}})
-    add('business_huffman','信源编码 · 概率 / Huffman 编码树',['discrete_source','huffman_encode','mod_qpsk','ideal','demod_qpsk','huffman_decode','sink'])
-    add('business_bch','纠错 · BCH 双错纠正',['random_bits','bch_encode','mod_bpsk','awgn','demod_bpsk','bch_decode','sink'],{3:{'esn0_db':5}})
-    add('business_rs_burst','纠错 · RS / 交织 / 突发噪声',['image_source','rs_encode','interleave','mod_bpsk','burst_noise','demod_bpsk','deinterleave','rs_decode','sink'],{4:{'good_to_bad':.002,'bad_to_good':.2,'good_snr':30,'bad_snr':0}})
-    add('business_packets','业务 · 文件分包 / BCH / 重组',['file_source','packet_encode','bch_encode','mod_qpsk','awgn','demod_qpsk','bch_decode','packet_decode','sink'],{4:{'esn0_db':14}})
+    add('business_audio','业务   音频 / ADPCM',['audio_source','adpcm_encode','mod_qpsk','awgn','demod_qpsk','adpcm_decode','sink'],{3:{'esn0_db':30}}, {'sample_rate':8000,'sample_count':1024})
+    add('business_image','业务   图像 / RS 纠错',['image_source','rs_encode','mod_qpsk','awgn','demod_qpsk','rs_decode','sink'],{3:{'esn0_db':14}})
+    add('business_file','业务   文件 / CRC / BCH',['file_source','crc_append','bch_encode','mod_bpsk','awgn','demod_bpsk','bch_decode','crc_check','sink'],{4:{'esn0_db':12}})
+    add('business_huffman','信源编码   概率 / Huffman 编码树',['discrete_source','huffman_encode','mod_qpsk','ideal','demod_qpsk','huffman_decode','sink'])
+    add('business_bch','纠错   BCH 双错纠正',['random_bits','bch_encode','mod_bpsk','awgn','demod_bpsk','bch_decode','sink'],{3:{'esn0_db':5}})
+    add('business_rs_burst','纠错   RS / 交织 / 突发噪声',['image_source','rs_encode','interleave','mod_bpsk','burst_noise','demod_bpsk','deinterleave','rs_decode','sink'],{4:{'good_to_bad':.002,'bad_to_good':.2,'good_snr':30,'bad_snr':0}})
+    add('business_packets','业务   文件分包 / BCH / 重组',['file_source','packet_encode','bch_encode','mod_qpsk','awgn','demod_qpsk','bch_decode','packet_decode','sink'],{4:{'esn0_db':14}})
     return result
 
 

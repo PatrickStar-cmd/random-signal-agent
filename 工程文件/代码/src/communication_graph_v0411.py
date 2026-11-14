@@ -264,17 +264,26 @@ def _merge_snapshots(g, entries):
     return base, details, output
 
 
-def run(raw, token, cache=None, partial=False, progress=None, cancel=None, contexts=None):
+def run(raw, token, cache=None, partial=False, progress=None, cancel=None, contexts=None,
+        gate=None, on_context=None):
     built = build(raw)
     if token != built['token']: raise ValueError('连接或参数已更新，请重新构建可视工程。')
     g = built['graph']; cache = cache if cache is not None else {}
-    input_version = built['input_version']; reuse = partial and cache.get('input_version') == input_version
+    input_version = built['input_version']; reuse = partial and gate is None and cache.get('input_version') == input_version
+    def scoped_gate(scope, index):
+        if gate is None: return None
+        def observe(row):
+            key = 'merge' if row['id'] == 'merge-output' else scope + '/' + row['id']
+            gate({**row, 'id': key, 'node_id': key, 'local_id': row['id'],
+                  'scope': 'merge' if key == 'merge' else scope, 'context_index': index})
+        return observe
     execution = []; entries = cache.get('branches', {}) if reuse else {}
     if reuse:
         frozen = cache['frozen']
         execution.append({'section': 'shared', 'executed': [], 'reused': [b['id'] for b in g['prefix']]})
     else:
-        _, ctx, actual = segments.execute(built['builds'][0], stop_after=len(g['prefix']) - 1, cancel=cancel)
+        _, ctx, actual = segments.execute(built['builds'][0], stop_after=len(g['prefix']) - 1, cancel=cancel,
+                                         gate=scoped_gate('shared', 0), on_context=on_context, scope='shared')
         frozen = ctx.snapshot
         execution.append({'section': 'shared', 'executed': actual, 'reused': []})
     source_hash = segments.input_hash(frozen)
@@ -288,9 +297,10 @@ def run(raw, token, cache=None, partial=False, progress=None, cancel=None, conte
             actual = []
         else:
             stop = len(g['prefix']) + len(branch['blocks']) - 1
-            _, ctx, actual = segments.execute(compiled, frozen, stop, cancel)
+            _, ctx, actual = segments.execute(compiled, frozen, stop, cancel,
+                                             gate=scoped_gate(branch['id'], i), on_context=on_context, scope=branch['id'])
             entry = {'key': key, 'snapshot': ctx.snapshot}
-            result, final_ctx, tail_actual = segments.execute(compiled, ctx.snapshot, cancel=cancel)
+            result, final_ctx, tail_actual = segments.execute(compiled, ctx.snapshot, cancel=cancel, scope=branch['id'])
             entry['result'] = result
             entry['observer'] = final_ctx
             actual += tail_actual
@@ -308,12 +318,10 @@ def run(raw, token, cache=None, partial=False, progress=None, cancel=None, conte
     base_index = next(i for i, b in enumerate(g['branches']) if b['id'] == base_id)
     compiled = built['builds'][base_index]
     merged['index'] = len(g['prefix']) + len(g['branches'][base_index]['blocks']) - 1
-    result, ctx, actual = segments.execute(compiled, merged, cancel=cancel)
-    ctx.plan['merge-output'] = {'output': 'LLR' if g['merge']['domain'] == 'llr' else '复符号'}
-    ctx.record({'id': 'merge-output', 'kind': 'branch_merge'}, merge_values, g['globals']['symbol_rate'])
-    observation = ctx.observations.pop()
-    observation.update(label='🔗 双输入汇合', elapsed_ms=0.)
-    ctx.observations.insert(len(merged['observations']), observation)
+    result, ctx, actual = segments.execute(compiled, merged, cancel=cancel,
+        gate=scoped_gate('tail', len(g['branches'])), on_context=on_context, scope='tail',
+        initial=({'id': 'merge-output', 'kind': 'branch_merge', 'label': '🔗 双输入汇合'},
+                 merge_values, 'LLR' if g['merge']['domain'] == 'llr' else '复符号'))
     merge['observation_id'] = 'merge-output'
     result['experience']['graph'] = {'token': token, 'branch': 'merge', 'input_version': input_version, 'input_hash': source_hash}
     result['experience']['merge'] = merge

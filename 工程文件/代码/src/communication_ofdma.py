@@ -21,7 +21,7 @@ def register(block,number,field,blocks):
 
 def presets(preset):
     out={}
-    for key,label,policy in [('ofdma_fair','多用户 · OFDMA 加权公平',2),('ofdma_round_robin','多用户 · OFDMA 轮询',1),('ofdma_queue','多用户 · OFDMA 最长队列',3)]:
+    for key,label,policy in [('ofdma_fair','多用户   OFDMA 加权公平',2),('ofdma_round_robin','多用户   OFDMA 轮询',1),('ofdma_queue','多用户   OFDMA 最长队列',3)]:
         out[key]={'label':label,'program':preset(['random_bits','pn_bits','bit_pattern','mod_qpsk','tx_ofdma','ofdma_channel','rx_ofdma','demod_qpsk','sink'],
             {0:{'count':256},1:{'count':384},2:{'pattern':'10110010'*32},4:{'scheduler':policy}})}
     return out

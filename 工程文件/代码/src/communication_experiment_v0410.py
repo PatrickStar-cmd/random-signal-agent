@@ -123,7 +123,7 @@ def inspect_run(program, result):
                 if value != channel['params'][key]:
                     candidate = copy.deepcopy(program); _change(candidate, channel['id'], key, value)
                     c.build(candidate)
-                    diagnostic['comparison'] = {'label': f'{c.BLOCKS[channel["kind"]]["label"]} · {key}={value}',
+                    diagnostic['comparison'] = {'label': f'{c.BLOCKS[channel["kind"]]["label"]}   {key}={value}',
                                                 'program': candidate, 'change': {'block_id': channel['id'], 'parameter': key,
                                                                                'before': channel['params'][key], 'after': value}}
         diagnostics.append(diagnostic)

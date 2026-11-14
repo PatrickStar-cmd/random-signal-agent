@@ -56,31 +56,31 @@ window.createCommunicationReceiverV0410=function(core,ctx){
       const step=Number(byId('cmReceiver410Step').value),m=v.mlse,row=m.metric_history[step],state=m.survivor_states[step];
       plot([{name:'归一化路径度量',x:row.map((_,i)=>i),y:row,stems:true}],'状态编号','累计距离（减最小值）',[{x:state,label:'最终路径状态'}]);
       byId('cmReceiver410Table').innerHTML=table(['状态','前驱','度量','最终路径'],row.map((value,i)=>[i,m.predecessors[step][i],value,i===state?'●':'']));
-      caption(`步骤 ${step+1} / ${m.steps} · ${m.state_count} 状态 · 每步 ${m.branch_count} 分支 · ${m.metric_evaluations} 次距离计算 · 展示前 ${m.trace_steps} 步。`);
+      caption(`步骤 ${step+1} / ${m.steps}   ${m.state_count} 状态   每步 ${m.branch_count} 分支   ${m.metric_evaluations} 次距离计算   展示前 ${m.trace_steps} 步。`);
     }else if(mode==='path'){
       const m=v.mlse;plot([{name:'幸存状态',x:m.survivor_states.map((_,i)=>i+1),y:m.survivor_states}],'检测步骤','状态编号');
       byId('cmReceiver410Table').innerHTML=table(['步骤','幸存状态','输入符号索引'],m.survivor_states.map((state,i)=>[i+1,state,m.input_indices[i]]));
-      caption(`初始状态 ${m.initial_state} · 完整序列距离 ${format(m.sequence_metric)} · 公开终止符号约束最终回溯。`);
+      caption(`初始状态 ${m.initial_state}   完整序列距离 ${format(m.sequence_metric)}   公开终止符号约束最终回溯。`);
     }else if(mode==='taps'){
       const h=v.channel_estimate,x=h.i.map((_,i)=>i);plot([{name:'实部',x,y:h.i},{name:'虚部',x,y:h.q}],'FIR 抽头延迟 / 符号','估计系数');
-      caption(`${v.training_symbols} 个公开训练符号 · 训练残差噪声方差 ${format(v.estimated_noise_variance)} · 输出为最大似然判决符号。`);
+      caption(`${v.training_symbols} 个公开训练符号   训练残差噪声方差 ${format(v.estimated_noise_variance)}   输出为最大似然判决符号。`);
     }else if(mode==='music'){
       const m=v.music;plot([{name:'MUSIC 角谱',x:m.angles,y:m.spectrum_db}],'到达角 / °','归一化角谱 / dB',[{x:m.target_angle,label:'导频目标'}]);
       byId('cmReceiver410Table').innerHTML=table(['估计峰 / °','公开导频增益实部','虚部','目标'],m.estimated_angles.map((angle,i)=>[angle,m.pilot_coefficients.i[i],m.pilot_coefficients.q[i],i===m.target_index?'●':'']));
-      caption(`${m.snapshots} 个接收快照 · 子阵长度 ${m.subarray_length} · 目标角 ${format(m.target_angle)}° · 导频相关增益选择目标峰。`);
+      caption(`${m.snapshots} 个接收快照   子阵长度 ${m.subarray_length}   目标角 ${format(m.target_angle)}°   导频相关增益选择目标峰。`);
     }else if(mode==='eigenvalues'){
       const m=v.music;plot([{name:'接收协方差特征值',x:m.eigenvalues.map((_,i)=>i+1),y:m.eigenvalues,stems:true}],'升序特征值编号','特征值');
-      caption(`信号子空间 ${m.source_count} 维 · 噪声子空间 ${m.subarray_length-m.source_count} 维。`);
+      caption(`信号子空间 ${m.source_count} 维   噪声子空间 ${m.subarray_length-m.source_count} 维。`);
     }else if(mode==='beam'){
       plot(v.beam_pattern.db.map((row,i)=>({name:'MVDR '+(i+1),x:v.beam_pattern.angles,y:row})),'到达角 / °','方向图 / dB',[{x:v.music.target_angle,label:'估计目标'}]);
-      caption(`自动观察角 ${format(v.music.target_angle)}° · 训练残差干扰噪声抑制 ${format(v.rejection_db)} dB。`);
+      caption(`自动观察角 ${format(v.music.target_angle)}°   训练残差干扰噪声抑制 ${format(v.rejection_db)} dB。`);
     }else if(mode==='pdp'){
       plot([{name:v.profile,x:v.delays_ns,y:v.powers_db,stems:true}],'路径延迟 / ns','标准相对功率 / dB');
       byId('cmReceiver410Table').innerHTML=table(['路径','延迟 / ns','延迟 / 采样点','标准功率 / dB','归一化功率','本帧平均增益功率'],v.delays_ns.map((delay,i)=>[i+1,delay,v.delays_samples[i],v.powers_db[i],v.powers[i],v.measured_path_power[i]]));
-      caption(`${v.profile} · RMS 时延扩展 ${format(v.rms_delay_ns)} ns · 最大多普勒 ${format(v.doppler_hz)} Hz · ${v.interpolation} · 公共滤波延迟 ${v.filter_delay_samples} 点 · 帧末保护 ${v.guard_samples} 点。`);
+      caption(`${v.profile}   RMS 时延扩展 ${format(v.rms_delay_ns)} ns   最大多普勒 ${format(v.doppler_hz)} Hz   ${v.interpolation}   公共滤波延迟 ${v.filter_delay_samples} 点   帧末保护 ${v.guard_samples} 点。`);
     }else if(mode==='fading'){
       const path=Number(byId('cmReceiver410Path').value);plot([{name:'路径增益实部',x:v.sample_indices,y:v.path_gains.i.map(row=>row[path])},{name:'路径增益虚部',x:v.sample_indices,y:v.path_gains.q.map(row=>row[path])}],'连续采样编号','复增益');
-      caption(`路径 ${path+1} · 延迟 ${format(v.delays_ns[path])} ns · 截至本帧已处理 ${v.processed_samples} 点 · 相位与滤波历史跨帧延续。`);
+      caption(`路径 ${path+1}   延迟 ${format(v.delays_ns[path])} ns   截至本帧已处理 ${v.processed_samples} 点   相位与滤波历史跨帧延续。`);
     }
   }
   function onResult(result){current=result||null;const data=result?.advanced?.wireless||{};entries=Object.entries(data).filter(([,v])=>v.mlse||v.music||v.profile?.startsWith('TDL-')).map(([kind,value])=>({kind,value}));options('cmReceiver410Stage',entries.map(v=>[v.kind,get().definitions?.[v.kind]?.label||v.kind]));setup();buttons(get().busy);}

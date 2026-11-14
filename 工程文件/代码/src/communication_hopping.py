@@ -19,9 +19,9 @@ def register(block,number,field,blocks):
 
 def presets(preset):
     return {
-        'fhss_antijamming':{'label':'跳频 · 同步与抗窄带干扰','program':preset(['random_bits','mod_qpsk','tx_fhss','narrowband','sample_delay','complex_awgn','rx_hop_sync','rx_dehop','demod_qpsk','sink'],
+        'fhss_antijamming':{'label':'跳频   同步与抗窄带干扰','program':preset(['random_bits','mod_qpsk','tx_fhss','narrowband','sample_delay','complex_awgn','rx_hop_sync','rx_dehop','demod_qpsk','sink'],
             {3:{'hz':0,'amplitude':1.5},4:{'samples':37,'fraction':0},5:{'snr_db':28},6:{'threshold':.05}})},
-        'fhss_acquisition':{'label':'跳频 · 未知码相位与帧延迟','program':preset(['random_bits','mod_qam16','tx_fhss','sample_delay','complex_awgn','rx_hop_sync','rx_dehop','demod_qam16','sink'],
+        'fhss_acquisition':{'label':'跳频   未知码相位与帧延迟','program':preset(['random_bits','mod_qam16','tx_fhss','sample_delay','complex_awgn','rx_hop_sync','rx_dehop','demod_qam16','sink'],
             {2:{'phase':19},3:{'samples':53,'fraction':0},4:{'snr_db':30}})},
     }
 

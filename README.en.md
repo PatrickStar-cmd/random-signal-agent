@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🌊 Random Signal Agent · 谛听
+# 🌊 Random Signal Agent   谛听
 
 [![Release](https://img.shields.io/github/v/release/PatrickStar-cmd/random-signal-agent?style=flat-square)](https://github.com/PatrickStar-cmd/random-signal-agent/releases/latest)
 [![Python 3.12–3.14](https://img.shields.io/badge/Python-3.12%E2%80%933.14-3776AB?style=flat-square&logo=python&logoColor=white)](RELEASE.md)
@@ -11,13 +11,15 @@
 
 [简体中文 / English](README.md)
 
+<div align="left">
+
 **💬 Analyze random signals through conversation. 🧩 Build communication pipelines with blocks.**
 
 Diting brings Random Signals and Communication Principles experiments into one ocean-themed workspace. Generate noisy signals, compare filters and inspect time-frequency features, or connect coding, modulation, channel and receiver blocks to explore an end-to-end transmission.
 
 🎓 Built for **UESTC Random Signals and Communication Principles coursework**, with local computation, seeded reproduction and optional model-assisted dialogue.
 
-[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/) · [📦 Download v0.4.7](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.7) · [📘 Installation guide](RELEASE.md)
+[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/)   [📦 Download v0.4.12](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.12)   [📘 Installation guide](RELEASE.md)
 
 ## 🧭 Explore
 
@@ -37,9 +39,9 @@ Diting brings Random Signals and Communication Principles experiments into one o
 | Capability | What you can do |
 | --- | --- |
 | 🐳 Ocean UI | Layered ocean/lilac gradients and AI-generated 3D whale art for desktop, tablet and mobile. |
-| 📡 Communication lab (v0.4.7) | 178 blocks and 78 presets: search, real stepping, named projects, composite blocks, shared-channel branches, resumable sweeps, stateful frames and PDF reports. |
+| 📡 Communication lab (v0.4.12) | 231 signal blocks, 122 presets, 4 experiment tools and 12 courses: Scratch-style assembly, whole-graph experiments, baseline replay and verified bundles. |
 | 🔑 Model API setup | Choose a provider/model, enter a key and test/apply in the UI; optional per-session persistence. |
-| 📄 PDF analysis reports (v0.4.7) | Preview and export Chinese brief/standard reports with vector plots, measured metrics, optional diagnosis and reproduction details. |
+| 📄 PDF analysis reports (v0.4.12) | Preview and export Chinese brief/standard reports with vector plots, measured metrics, optional diagnosis and reproduction details. |
 | 🩺 Diagnostic laboratory | Linked STFT and event timeline, six seeded fault types, blind challenge evaluation, and reversible evidence-based processing trials. |
 | 💾 Experiment workbench | Create from templates, save, reopen, duplicate, search, rename or delete snapshots, and resume after a restart. |
 | 📥 Data import wizard | Preview CSV/TXT, select time and signal columns, convert time units and locate invalid rows. |
@@ -56,9 +58,9 @@ Diting brings Random Signals and Communication Principles experiments into one o
 
 <a id="en-communications"></a>
 
-## 📡 Communication-principles lab · Build a transmitter and receiver with blocks
+## 📡 Communication-principles lab   Build a transmitter and receiver with blocks
 
-Drag in blocks, edit their parameters, click **🔨 Build** to check the pipeline, then **▶️ Run** to inspect the transmission. Six block categories provide **178 modules + a fixed sink and 78 presets**.
+Drag in blocks, edit their parameters, click **🔨 Build** to check the pipeline, then **▶️ Run** to inspect the transmission. Six block categories provide **231 addable blocks + a fixed sink and 122 presets**.
 
 **🎲 Sources → 🔀 Transmit converters → 📡 Modulators → 🌊 Channels → 🎛️ Demodulators → 🔄 Receive converters → 📺 Sink**
 
@@ -72,18 +74,42 @@ Drag in blocks, edit their parameters, click **🔨 Build** to check the pipelin
 | 🔄 Receive converters | Line decoding, deinterleaving, descrambling, CRC checks, repetition/Hamming correction, hard/soft Viterbi, iterative LDPC and PCM/companding/DPCM/delta reconstruction. Huffman/ADPCM/BCH/RS decoding, reassembly, code acquisition, despreading, RAKE, SC/MRC, Alamouti and MIMO ZF/MMSE. |
 | 📺 Sink | Received bits, text and analog waveforms, with source overlays, bit-error markers and full-sequence browsing. Audio playback, image reconstruction/PSNR and downloadable files with SHA256 comparison. |
 
+- 🧩 **v0.4.12 Scratch-style assembly:** snapping blocks, inline parameters, parallel receiver containers, copy/cut/paste, folded groups and notes preserve the ocean theme and existing algorithms.
+- 🔬 **v0.4.12 whole-project experiments:** probes, reference comparisons, metric summaries and acceptance conditions run with the complete graph across seeded batches, scans, constrained searches and classroom checks.
+- 📚 **v0.4.12 courses and delivery:** 12 complete lessons, named baselines, configuration/result differences and exact-seed replay; verified ZIP bundles contain the project, executable Python, measured CSV/JSON, inputs, charts, PDF and manifest. Report previews display the final PDF with saved material order.
+
+📘 [v0.4.12 complete guide](工程文件/代码/docs/communications-v0412.md)
+
+- 🪸 **v0.4.11 visual wiring:** 2–4 receiver branches, a two-input symbol / LLR merge and one common decoder tail. Editable ports, saved positions and undo share one canonical graph; partial runs reuse the actual frozen channel input.
+- 🎯 **v0.4.11 multi-target sensing:** target lists, two-dimensional CA-CFAR, measured power / threshold / noise grids and detection tables, with complete JSON, Python and PDF exports.
+- 🆕 **v0.4.10 autonomous reception:** MLSE, MUSIC-guided MVDR and 3GPP TDL-A/B/C; protected self-describing headers recover packet lengths, MCS and payload offsets directly from continuous I/Q recordings.
+- 🔁 **v0.4.10 coding and feedback:** Turbo Log-MAP / Max-log BCJR, convolutional IR-HARQ and equal-budget Chase comparisons, with actual extrinsic messages, RV indices, mother-code coverage and resource counts.
+- 🔬 **v0.4.10 experiments and teaching:** actual-run algorithm replay, measurement diagnostics and block timing, constrained two-parameter Pareto design, teacher batch review and frame-level event/recovery scenarios.
+- 🔱 **v0.4.10 merging and sensing:** two receive paths share channel samples and merge symbols or LLRs; single-target OFDM sensing estimates range and velocity alongside communication decoding. Themed analysis pages retain the ocean design and project workflow.
+- 🔍 **v0.4.9 advanced receivers:** LMMSE, Kalman, per-stream soft MIMO, Polar SC/CRC-SCL, angular array channels, MRT/SVD precoding and MVDR beamforming.
+- 🌊 **v0.4.9 waveform and RF:** DFT-s-OFDM/SC-FDMA, memory polynomial PA and measured-loopback DPD, Schmidl–Cox/Zadoff–Chu burst synchronization and sampling-clock recovery.
+- 🧰 **v0.4.9 experiments:** conditional breakpoints, durable batch/grid/search checkpoints, statistical plots and trial replay, staged student submissions, linked spatial views and configurable PDF reports.
+- 🔁 **v0.4.8 closed-loop links:** run ARQ, Chase HARQ and AMC through your current block pipeline, measuring ACK/NACK, retries, soft combining, airtime and goodput.
+- 🛰️ **v0.4.8 spatial communication:** ZF-SIC/MMSE-SIC, dynamic correlated MIMO and pilot tracking, MIMO-OFDM, independent-user OFDMA and FHSS; inspect antenna samples, stream constellations, channel matrices and SIC layers.
+- 🧩 **v0.4.8 projects and teaching:** versioned subprojects with typed ports and public parameters, an assignment editor, multi-project seeded batches and minimum-SNR search; import SigMF/raw I/Q into receiver blocks and export recordings.
 - 🎙️ **v0.4.7 business payloads:** audio, images, files and probabilistic sources; Huffman, IMA ADPCM, BCH, RS and packet assembly; playback, image reconstruction and SHA256 verification.
 - 📡 **v0.4.7 spread spectrum and antennas:** DSSS, code acquisition, despreading, RAKE, SIMO SC/MRC, Alamouti 2×1 and 2×2 MIMO ZF/MMSE with correlation, path and pilot-estimation views.
 - 🎓 **v0.4.7 teaching experiments:** shared formulas, 2D sweeps, algorithm traces, nine challenges, experiment differences and Python/JSON/SVG export; ARQ/HARQ and five-profile AMC feedback experiments.
-- 🧭 **v0.4.6 layout:** compact controls, a searchable library, unified analysis and mobile parameter drawers.
+- 🧭 **v0.4.6 layout and interaction:** compact controls, searchable experiments, parameter/receiver tabs, unified analysis, enlarged charts and mobile parameter drawers; explicit task, timestamp and parameter provenance.
 - 🆕 **v0.4.5 RF and analysis:** 8PSK/64QAM/256QAM, I/Q/DC correction, Rapp/Saleh PA, ADC, OFDM clipping, tone interference/notch filtering and punctured convolutional coding; Welch/CCDF/ACLR, carrier EVM, resource grids, automatic alignment and seven guided comparisons.
 - 🧰 **Block programming experience:** search/favorites, typed connections and receiver completion, real stepping, linked scopes, named projects and snapshots, reusable composite blocks, shared-channel branches, resumable generic sweeps, stateful frames and Chinese PDF reports.
 - 🧩 **Build and edit:** an ocean-themed palette, compact connected blocks and a parameter inspector; drag/drop, reordering, undo/redo, draft recovery and project JSON import/export.
 - 📈 **Inspect and save:** processing-stage waveforms, preamble correlation, OFDM grids, eyes and recovery traces; seeded BER/SER/FER sweeps, Eb/N₀ calibration, 95% intervals, curve comparisons and full JSON/CSV export.
 
-![🐬 v0.4.7 business transmission and teaching experiments in the ocean workspace](docs/images/communications-v047-learning.png)
+![🧩 v0.4.12 Scratch-style blocks and ocean workspace](docs/images/communications-v0412.jpg)
 
 ![🧩 Communication lab: palette, pipeline, sink and parameter inspector](docs/images/communications-studio.png)
+
+![🌊 v0.4.11 visual wiring and receiver experiments](docs/images/communications-v0411.png)
+
+📘 [v0.4.11 guide](工程文件/代码/docs/communications-v0411.md)
+
+📘 [v0.4.9 advanced transceivers and debugging guide](工程文件/代码/docs/communications-v049.md)   [v0.4.8 closed-loop and spatial communication guide](工程文件/代码/docs/communications-v048.md)
 
 📘 [v0.4.7 business and teaching guide](工程文件/代码/docs/communications-v047.md)
 
@@ -91,11 +117,12 @@ Drag in blocks, edit their parameters, click **🔨 Build** to check the pipelin
 
 ![🌊 v0.4.5 RF instruments](docs/images/communications-v045-analysis.png)
 
+
 🆕 [v0.4.4 algorithms and experiments](工程文件/代码/docs/communications-v044.md)
 
 ![🌊 v0.4.4 ocean block studio](docs/images/communications-v044-studio.png)
 
-📚 [Lab guide](工程文件/代码/docs/communications-lab.md) · [Analog modulation](工程文件/代码/docs/analog-modulation.md) · [Line codes and channels](工程文件/代码/docs/baseband-coding.md) · [Timing and equalization](工程文件/代码/docs/receiver-recovery.md)
+📚 [Lab guide](工程文件/代码/docs/communications-lab.md)   [Analog modulation](工程文件/代码/docs/analog-modulation.md)   [Line codes and channels](工程文件/代码/docs/baseband-coding.md)   [Timing and equalization](工程文件/代码/docs/receiver-recovery.md)
 
 <a id="en-interface"></a>
 
@@ -141,7 +168,7 @@ Reports currently use Chinese. Standard reports include waveform metrics, FFT, W
 
 ![v0.3.1 PDF preview and download](docs/images/pdf-report-v031.png)
 
-[Example PDF](docs/report-example.pdf) · [Report guide (Chinese)](工程文件/代码/docs/pdf-report.md)
+[Example PDF](docs/report-example.pdf)   [Report guide (Chinese)](工程文件/代码/docs/pdf-report.md)
 
 **New in v0.3.2:** Select up to 50 recent processing results, optionally include saved snapshots, and arrange them chronologically. Export one PDF with a shared cover, summary, clickable contents and plots for every group. History survives server restarts; older unsaved results cannot be recovered.
 
@@ -149,11 +176,11 @@ Reports currently use Chinese. Standard reports include waveform metrics, FFT, W
 
 ## 🚀 Quick start
 
-Use **Python 3.12–3.14** or **Docker Compose v2**. v0.4.7 uses FastAPI; deployment checks cover Python 3.12–3.14 on Windows and Linux, plus Docker on Linux.
+Use **Python 3.12–3.14** or **Docker Compose v2**. v0.4.12 uses FastAPI; deployment checks cover Python 3.12–3.14 on Windows and Linux, plus Docker on Linux.
 
 ### 1. Get the project
 
-Download the v0.4.7 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.4.7/random-signal-agent-v0.4.7-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
+Download the v0.4.12 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.4.12/random-signal-agent-v0.4.12-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
 
 Or clone the repository:
 
@@ -298,7 +325,7 @@ The saved showcase uses a random process with mixed noise: **200 Hz**, **8 secon
 
 Results depend on the input signal and filter parameters.
 
-[Sample CSV](docs/data/sample.csv) · [Analysis results](docs/data/result.json) · [Experiment configuration](工程文件/代码/config/showcase.json) · [Reproduction guide](docs/README.en.md)
+[Sample CSV](docs/data/sample.csv)   [Analysis results](docs/data/result.json)   [Experiment configuration](工程文件/代码/config/showcase.json)   [Reproduction guide](docs/README.en.md)
 
 <details>
 <summary><strong>Check your deployment</strong></summary>
@@ -327,7 +354,7 @@ The check covers the application version, ocean assets, model settings API, Agen
 | --- | --- |
 | Why does the online preview not run new experiments? | GitHub Pages serves the saved showcase. Start the backend locally or deploy it with Docker for interactive use. |
 | Do I need an API key? | The local signal tools do not require one. Model-assisted dialogue is optional. |
-| Which Python versions work? | v0.4.7 supports Python 3.12, 3.13 and 3.14. |
+| Which Python versions work? | v0.4.12 supports Python 3.12, 3.13 and 3.14. |
 | Why can I not activate the virtual environment on Windows? | The quick-start commands call `.venv\Scripts\python.exe` directly and do not require activation. |
 | Why is the microphone unavailable? | Open the app on localhost or HTTPS and allow microphone access in the browser. |
 | Why does my uploaded signal have no SNR value? | Reference-based SNR requires a clean signal. Uploaded samples and microphone audio do not provide that reference. |
@@ -360,7 +387,7 @@ The code and algorithm guides are in Chinese.
 
 Issues and pull requests are welcome for bug fixes, signal-processing methods, experiment examples, and documentation. For a bug report, include your Python version, input parameters, steps to reproduce, and relevant logs. For an algorithm change, include a reproducible signal and a before/after comparison.
 
-[Open an issue](https://github.com/PatrickStar-cmd/random-signal-agent/issues) · [View pull requests](https://github.com/PatrickStar-cmd/random-signal-agent/pulls)
+[Open an issue](https://github.com/PatrickStar-cmd/random-signal-agent/issues)   [View pull requests](https://github.com/PatrickStar-cmd/random-signal-agent/pulls)
 
 ## 📄 License
 

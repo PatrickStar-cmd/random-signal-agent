@@ -24,8 +24,8 @@ def register(block, number, field, blocks):
 
 def presets(preset):
     kinds=['random_bits','turbo_encode','mod_bpsk','awgn','soft_bpsk','turbo_decode','sink']
-    return {'turbo_logmap': {'label':'迭代编码 · Turbo Log-MAP', 'program':preset(kinds,{3:{'esn0_db':0}})},
-            'turbo_maxlog': {'label':'迭代编码 · Turbo Max-log-MAP', 'program':preset(kinds,{3:{'esn0_db':0},5:{'algorithm':1}})}}
+    return {'turbo_logmap': {'label':'迭代编码   Turbo Log-MAP', 'program':preset(kinds,{3:{'esn0_db':0}})},
+            'turbo_maxlog': {'label':'迭代编码   Turbo Max-log-MAP', 'program':preset(kinds,{3:{'esn0_db':0},5:{'algorithm':1}})}}
 
 
 @lru_cache(maxsize=32)

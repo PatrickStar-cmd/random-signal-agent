@@ -120,7 +120,7 @@ class Observer:
         else: unit='s'; sample_rate=float(rate)
         shown=array[:self.points].astype(complex); count=len(array)
         power=float(np.mean(abs(array)**2)) if count else 0.
-        observation={'id':block['id'],'kind':block['kind'],'label':next((r['label'] for r in self.compiled['plan'] if r['id']==block['id']),block['kind']),
+        observation={'id':block['id'],'kind':block['kind'],'label':next((r['label'] for r in self.compiled['plan'] if r['id']==block['id']),block.get('label',block['kind'])),
             'domain':domain,'dtype':str(array.dtype),'count':count,'sample_rate':sample_rate,'symbol_rate':self.compiled['program']['symbol_rate'],
             'unit':unit,'offset':0,'i':shown.real.tolist(),'q':shown.imag.tolist(),'plot_count':len(shown),
             'filter_delay_seconds':self.rrc_delay if block['kind'] in ('tx_rrc','rx_matched') else 0.,

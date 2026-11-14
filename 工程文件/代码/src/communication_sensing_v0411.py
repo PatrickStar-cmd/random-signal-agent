@@ -77,7 +77,7 @@ def presets(preset):
                 'complex_awgn', 'rx_isac_ofdm', 'demod_qpsk', 'sink'],
                {0: {'count': 16384}, 2: {'cp': 32}, 4: {'snr_db': 30}})
     p['symbol_rate'] = 15000
-    return {'ofdm_isac_multi': {'label': '通感 · 多目标距离与速度', 'program': p}}
+    return {'ofdm_isac_multi': {'label': '通感   多目标距离与速度', 'program': p}}
 
 
 def settings(raw=None):

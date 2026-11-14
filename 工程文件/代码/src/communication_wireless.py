@@ -79,21 +79,21 @@ def presets(preset):
     def entry(label, kinds, changes=None):
         return {'label':label, 'program':preset(kinds, changes)}
     return {**{k:v for extension in EXTENSIONS for k,v in extension.presets(preset).items()},
-        'dsss_interference':entry('扩频 · 码捕获与抗窄带干扰',
+        'dsss_interference':entry('扩频   码捕获与抗窄带干扰',
             ['random_bits','mod_bpsk','tx_dsss','narrowband','ideal','rx_code_acquire','rx_despread','demod_bpsk','sink'],
             {2:{'phase':11,'training':32},3:{'amplitude':1.5,'hz':31},5:{'threshold':.05}}),
-        'dsss_rake':entry('扩频 · RAKE 多径合并',
+        'dsss_rake':entry('扩频   RAKE 多径合并',
             ['random_bits','mod_qpsk','tx_dsss','dsss_multipath','complex_awgn','rx_code_acquire','rx_rake','demod_qpsk','sink'],
             {2:{'phase':9},4:{'snr_db':16}}),
-        'diversity_selection':entry('分集 · SIMO 选择合并',
+        'diversity_selection':entry('分集   SIMO 选择合并',
             ['random_bits','mod_qpsk','tx_simo','spatial_channel','rx_selection','demod_qpsk','sink']),
-        'diversity_mrc':entry('分集 · SIMO 最大比合并',
+        'diversity_mrc':entry('分集   SIMO 最大比合并',
             ['random_bits','mod_qpsk','tx_simo','spatial_channel','rx_mrc','demod_qpsk','sink']),
-        'diversity_alamouti':entry('分集 · Alamouti 2×1',
+        'diversity_alamouti':entry('分集   Alamouti 2×1',
             ['random_bits','mod_qpsk','tx_alamouti','spatial_channel','rx_alamouti','demod_qpsk','sink']),
-        'mimo_zf':entry('多天线 · 2×2 MIMO ZF',
+        'mimo_zf':entry('多天线   2×2 MIMO ZF',
             ['random_bits','mod_qam16','tx_mimo','spatial_channel','rx_mimo_zf','demod_qam16','sink'],{3:{'snr_db':26}}),
-        'mimo_mmse':entry('多天线 · 2×2 MIMO MMSE',
+        'mimo_mmse':entry('多天线   2×2 MIMO MMSE',
             ['random_bits','mod_qam16','tx_mimo','spatial_channel','rx_mimo_mmse','demod_qam16','sink'],{3:{'snr_db':26}}),
     }
 

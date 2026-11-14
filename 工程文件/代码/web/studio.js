@@ -34,13 +34,13 @@
       const body=form();importControls(true);tell('diStatus','正在读取并校验…');
       const response=await fetch('/api/data/preview',{method:'POST',body});const data=await response.json();
       if(!response.ok)throw Error(data.error||'预览失败');preview=data;
-      const columns=data.columns.map((name,i)=>`<option value="${i}">${i+1} · ${esc(name)}</option>`).join('');
+      const columns=data.columns.map((name,i)=>`<option value="${i}">${i+1}   ${esc(name)}</option>`).join('');
       $('diTime').innerHTML='<option value="">按采样率生成时间</option>'+columns;$('diSignal').innerHTML=columns;
       $('diTime').value=data.mapping.time_column===null?'':String(data.mapping.time_column);$('diSignal').value=String(data.mapping.signal_column);haveColumns=true;
       $('diDelimiter').value=data.mapping.delimiter;$('diHeader').value=data.mapping.header;
-      $('diTable').innerHTML='<table><thead><tr><th>文件行</th>'+data.columns.map((name,i)=>`<th>${i+1} · ${esc(name)}</th>`).join('')+'</tr></thead><tbody>'+data.preview.map(row=>`<tr><td>${row.line}</td>${data.columns.map((_,i)=>`<td>${esc(row.cells[i]??'')}</td>`).join('')}</tr>`).join('')+'</tbody></table>';
+      $('diTable').innerHTML='<table><thead><tr><th>文件行</th>'+data.columns.map((name,i)=>`<th>${i+1}   ${esc(name)}</th>`).join('')+'</tr></thead><tbody>'+data.preview.map(row=>`<tr><td>${row.line}</td>${data.columns.map((_,i)=>`<td>${esc(row.cells[i]??'')}</td>`).join('')}</tr>`).join('')+'</tbody></table>';
       $('diIssues').innerHTML=data.issues.length?'<ul class="studio-error">'+data.issues.map(i=>`<li>第 ${i.line} 行，第 ${i.column} 列：${esc(i.message)}</li>`).join('')+'</ul>':'';
-      tell('diStatus',data.valid?`${data.rows} 行 · ${Number(data.sample_rate).toPrecision(6)} Hz · 校验通过，可确认导入`:`发现 ${data.issue_count} 处问题（最多显示 20 处），请调整列设置或修正文件。`,!data.valid);
+      tell('diStatus',data.valid?`${data.rows} 行   ${Number(data.sample_rate).toPrecision(6)} Hz   校验通过，可确认导入`:`发现 ${data.issue_count} 处问题（最多显示 20 处），请调整列设置或修正文件。`,!data.valid);
     }catch(error){preview=null;tell('diStatus',error.message,true)}finally{importControls(false)}
   }
   $('diPreview').onclick=previewFile;
@@ -58,9 +58,9 @@
     if(taskLoading||document.hidden)return;taskLoading=true;
     try{
       const {tasks}=await api(`/api/tasks?session_id=${encodeURIComponent(sessionId)}`);
-      const active=tasks.filter(t=>['queued','running','cancelling'].includes(t.status));$('taskCount').textContent=active.length?`· ${active.length} 项待完成`:'';
+      const active=tasks.filter(t=>['queued','running','cancelling'].includes(t.status));$('taskCount').textContent=active.length?`  ${active.length} 项待完成`:'';
       if(active.length&&!lastActive)$('taskPanel').open=true;lastActive=active.length;
-      const html=tasks.slice(0,12).map(t=>`<div class="task-row"><span>${esc(operations[t.operation]||t.operation)} · ${statuses[t.status]||esc(t.status)}${t.queue_position?` · 队列位置 ${t.queue_position}`:''}<br><small>${new Date(t.created*1000).toLocaleString()} · ${esc(t.task_id.slice(0,8))}</small></span>${t.can_cancel?`<button data-cancel="${esc(t.task_id)}">取消</button>`:''}</div>`).join('')||'<p class="studio-hint">当前会话还没有任务</p>';
+      const html=tasks.slice(0,12).map(t=>`<div class="task-row"><span>${esc(operations[t.operation]||t.operation)}   ${statuses[t.status]||esc(t.status)}${t.queue_position?`   队列位置 ${t.queue_position}`:''}<br><small>${new Date(t.created*1000).toLocaleString()}   ${esc(t.task_id.slice(0,8))}</small></span>${t.can_cancel?`<button data-cancel="${esc(t.task_id)}">取消</button>`:''}</div>`).join('')||'<p class="studio-hint">当前会话还没有任务</p>';
       if($('taskList').innerHTML!==html)$('taskList').innerHTML=html;
     }catch(error){tell('taskStatus',error.message,true)}finally{taskLoading=false}
   }
@@ -73,7 +73,7 @@
   $('storagePreview').onclick=async()=>{
     $('storageClean').disabled=true;storage=null;
     try{storage=await api('/api/storage');tell('storageInfo',`采样文件 ${bytes(storage.total_bytes)}，数据库 ${bytes(storage.database_bytes)}；可清理 ${storage.unused_files} 个文件，共 ${bytes(storage.reclaimable_bytes)}。`);
-      $('storageFiles').innerHTML=storage.files.map(f=>`<div><code>${esc(f.name.slice(0,12))}…npz</code> · ${bytes(f.bytes)}</div>`).join('');$('storageClean').disabled=!storage.unused_files;
+      $('storageFiles').innerHTML=storage.files.map(f=>`<div><code>${esc(f.name.slice(0,12))}…npz</code>   ${bytes(f.bytes)}</div>`).join('');$('storageClean').disabled=!storage.unused_files;
     }catch(error){tell('storageInfo',error.message,true)}
   };
   $('storageClean').onclick=async()=>{
@@ -98,7 +98,7 @@
       const fields=[['name','实验'],['method','方法'],['goal','目标'],['sample_count','点数'],['sample_rate','采样率 / Hz'],['rms','RMS'],['peak','峰值'],['dominant_frequency_hz','主频 / Hz'],['rmse','RMSE'],['snr_db','SNR / dB'],['duration_ms','搜索 / ms']];
       if(data.score_comparable)fields.push(['score','评分']);
       const legend=data.experiments.map((e,i)=>`<span style="color:${colors[i]}">● ${esc(e.name)}</span>`).join('');
-      $('compareResult').innerHTML='<p class="studio-hint">无干净参考时，RMSE 和真实 SNR 显示为 —。</p><div class="studio-scroll"><table><thead><tr>'+fields.map(([,label])=>`<th>${label}</th>`).join('')+'</tr></thead><tbody>'+data.experiments.map(e=>'<tr>'+fields.map(([key])=>`<td>${key==='goal'?esc(goals[e.goal]||e.goal):format(e[key])}</td>`).join('')+'</tr>').join('')+'</tbody></table></div>'+`<p class="compare-legend">${legend}</p><div class="compare-plots"><div><h3>波形</h3>${data.waveform_svg}</div><div><h3>频谱</h3>${data.spectrum_svg}</div></div><p class="studio-hint">${esc(data.plot_note)}</p>`+data.experiments.map(e=>`<details><summary>${esc(e.name)} · 参数</summary><pre>${esc(JSON.stringify({signal:e.signal_config,processing:e.parameters,input_sha256:e.input_sha256},null,2))}</pre></details>`).join('');
+      $('compareResult').innerHTML='<p class="studio-hint">无干净参考时，RMSE 和真实 SNR 显示为 —。</p><div class="studio-scroll"><table><thead><tr>'+fields.map(([,label])=>`<th>${label}</th>`).join('')+'</tr></thead><tbody>'+data.experiments.map(e=>'<tr>'+fields.map(([key])=>`<td>${key==='goal'?esc(goals[e.goal]||e.goal):format(e[key])}</td>`).join('')+'</tr>').join('')+'</tbody></table></div>'+`<p class="compare-legend">${legend}</p><div class="compare-plots"><div><h3>波形</h3>${data.waveform_svg}</div><div><h3>频谱</h3>${data.spectrum_svg}</div></div><p class="studio-hint">${esc(data.plot_note)}</p>`+data.experiments.map(e=>`<details><summary>${esc(e.name)}   参数</summary><pre>${esc(JSON.stringify({signal:e.signal_config,processing:e.parameters,input_sha256:e.input_sha256},null,2))}</pre></details>`).join('');
       $('compareExport').disabled=false;
     }catch(error){comparedIds=null;tell('compareStatus',error.message,true)}finally{$('compareRun').disabled=false}
   };
@@ -108,7 +108,7 @@
       if(!response.ok)throw Error((await response.json()).error);const url=URL.createObjectURL(await response.blob()),a=document.createElement('a');a.href=url;a.download='comparison.html';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
     }catch(error){tell('compareStatus',error.message,true)}
   };
-  window.addEventListener('experiment-state',event=>{const signal=event.detail?.signal;if(signal)tell('dataSummary',`${signal.source} · ${signal.sample_count} 点 · ${Number(signal.sample_rate).toPrecision(5)} Hz`)});
+  window.addEventListener('experiment-state',event=>{const signal=event.detail?.signal;if(signal)tell('dataSummary',`${signal.source}   ${signal.sample_count} 点   ${Number(signal.sample_rate).toPrecision(5)} Hz`)});
   document.querySelectorAll('.workflow-nav a').forEach(a=>a.addEventListener('click',()=>{const target=document.querySelector(a.getAttribute('href'));if(target?.tagName==='DETAILS')target.open=true}));
   api(`/api/experiments?session_id=${encodeURIComponent(sessionId)}`).then(data=>choices(data.experiments)).catch(error=>tell('compareStatus',error.message,true));
   refreshTasks();setInterval(refreshTasks,2000);

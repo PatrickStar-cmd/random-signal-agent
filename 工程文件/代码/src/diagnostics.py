@@ -348,6 +348,6 @@ def report_html(result,lab):
     events=''.join(f'<tr><td>{escape(e["label"])}</td><td>{e["start"]:.4g}–{e["end"]:.4g} s</td><td>{escape(json.dumps(e["evidence"],ensure_ascii=False))}</td><td>{escape(e["alternatives"])}</td></tr>' for e in result['events'])
     return ('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>谛听诊断报告</title>'
         '<style>body{max-width:1100px;margin:30px auto;padding:20px;font:15px/1.65 system-ui;color:#182238}svg{width:100%}table{border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left}.scroll{overflow:auto}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style>'
-        f'<h1>谛听 · 信号诊断报告</h1><p>{escape(result["note"])}</p><p>时间 {result["parameters"]["start"]:.4g}–{result["parameters"]["end"]:.4g} s；频率 0–{grid["frequency"][-1]:.4g} Hz。颜色为 {escape(grid["label"])}，紫色低、黄色高。</p>'
+        f'<h1>谛听   信号诊断报告</h1><p>{escape(result["note"])}</p><p>时间 {result["parameters"]["start"]:.4g}–{result["parameters"]["end"]:.4g} s；频率 0–{grid["frequency"][-1]:.4g} Hz。颜色为 {escape(grid["label"])}，紫色低、黄色高。</p>'
         f'<svg viewBox="0 0 800 300" role="img" aria-label="时频图">{"".join(rectangles)}</svg><div class="scroll"><table><tr><th>事件</th><th>相对时间</th><th>证据</th><th>其他解释</th></tr>{events}</table></div>'
         f'<h2>参数、挑战与验证</h2><pre>{escape(json.dumps({"parameters":result["parameters"],"input_sha256":result["input_sha256"],"lab":lab},ensure_ascii=False,indent=2))}</pre></html>').encode()

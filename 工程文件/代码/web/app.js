@@ -268,7 +268,7 @@ function createSessionId() {
         Omega: "Ω",
         top: "T",
         intercal: "T",
-        cdot: "·",
+        cdot: " ",
         dots: "…",
         cdots: "⋯",
         ldots: "…",
@@ -739,7 +739,7 @@ function createSessionId() {
       if (!toggle || !label) return;
       toggle.classList.toggle("active", state.agentMode);
       toggle.setAttribute("aria-pressed", state.agentMode ? "true" : "false");
-      label.textContent = state.agentMode ? "开启 · 自主处理" : "关闭 · 命令式交互";
+      label.textContent = state.agentMode ? "开启   自主处理" : "关闭   命令式交互";
     }
 
     function toggleAgentMode() {
@@ -822,7 +822,7 @@ function createSessionId() {
       const labels = {task: "任务", acquire_signal: "采集信号", compare_preprocess_methods: "比较方法",
         robust_mean: "鲁棒滑动平均", median: "中值滤波", ema: "指数平滑", fft_lowpass: "FFT 低通", hybrid: "混合增强", kalman: "卡尔曼滤波"};
       const label = labels[event.tool] || event.tool;
-      $("agentProgressSteps").textContent = `${label}：${event.status === "success" ? "已完成" : event.status === "error" ? "失败" : event.status === "queued" ? "等待执行" : "执行中"}${event.duration_ms != null ? ` · ${event.duration_ms} ms` : ""}`;
+      $("agentProgressSteps").textContent = `${label}：${event.status === "success" ? "已完成" : event.status === "error" ? "失败" : event.status === "queued" ? "等待执行" : "执行中"}${event.duration_ms != null ? `   ${event.duration_ms} ms` : ""}`;
     }
 
     function completeAgentProgress() {
@@ -1620,7 +1620,7 @@ function createSessionId() {
       state.metricsHtml = metrics.length ? metrics.join("") : metric("状态", "等待信号", "请开始对话或上传文件");
       $("metricsContent").innerHTML = state.metricsHtml;
       const hint = $("metricsModuleHint");
-      if (hint) hint.textContent = metrics.length ? `采样配置、当前曲线与核心统计量 · ${metrics.length} 项` : "采样配置、当前曲线与核心统计量";
+      if (hint) hint.textContent = metrics.length ? `采样配置、当前曲线与核心统计量   ${metrics.length} 项` : "采样配置、当前曲线与核心统计量";
     }
 
     function renderMetricsModuleState() {
@@ -1701,7 +1701,7 @@ function createSessionId() {
         : `<div class="insight"><b>课程知识点</b><span>等待分析</span><small>完成分析后展示统计量、自相关、功率谱、谱熵和质量评估。</small></div>`;
       const hint = $("insightsModuleHint");
       if (hint) hint.textContent = insights.length
-        ? `统计解释、自相关、功率谱与质量评估 · ${insights.length} 项`
+        ? `统计解释、自相关、功率谱与质量评估   ${insights.length} 项`
         : "统计解释、自相关、功率谱与质量评估";
     }
 
@@ -1748,7 +1748,7 @@ function createSessionId() {
         const snr = item.processed_snr_db == null ? "未计算" : `${Number(item.processed_snr_db).toFixed(2)} dB`;
         return `
           <div class="method-card ${recommended ? "recommended" : ""} ${selected ? "selected" : ""}">
-            <b>${escapeHtml(item.label)}${recommended ? " · 推荐" : ""}</b>
+            <b>${escapeHtml(item.label)}${recommended ? "   推荐" : ""}</b>
             <div class="score">Score ${Number(item.score || 0).toFixed(2)}</div>
             <small>SNR：${snr}</small>
             <small>谱熵：${Number(item.spectral_entropy || 0).toFixed(3)}</small>
@@ -2003,7 +2003,7 @@ function createSessionId() {
       }
       const progress = current.series.realtime_progress;
       const title = progress
-        ? `随机信号采集与预处理 · 实时采集中 · 第 ${progress.chunk_index} 片`
+        ? `随机信号采集与预处理   实时采集中   第 ${progress.chunk_index} 片`
         : "随机信号采集与预处理";
       drawChart($("signalChart"), signalSeries, title, {
         selectedKey: state.selectedSeriesKey,
@@ -2017,7 +2017,7 @@ function createSessionId() {
       if (selected?.frequency?.length) {
         drawChart($("spectrumChart"), [
           { key: `${state.selectedSeriesKey}_spectrum`, name: `${selected.label} 功率谱`, x: selected.frequency, y: selected.power, color: "#7965be" }
-        ], progress ? `频域功率谱 · 动态估计 · 第 ${progress.chunk_index} 片` : "频域功率谱", {
+        ], progress ? `频域功率谱   动态估计   第 ${progress.chunk_index} 片` : "频域功率谱", {
           zoomable: !progress,
           xUnit: "频率 / Hz",
           yUnit: "功率 / a.u."
@@ -2227,7 +2227,7 @@ function createSessionId() {
         const zoomText = `${chartZoomLevel(canvas.id).toFixed(1)}x`;
         ctx.fillStyle = "#647490";
         ctx.font = chartFont(12);
-        ctx.fillText(`滚轮缩放，拖拽平移 · ${zoomText}`, padLeft, Math.max(40, plotTop - 8));
+        ctx.fillText(`滚轮缩放，拖拽平移   ${zoomText}`, padLeft, Math.max(40, plotTop - 8));
       }
       series.forEach((item, idx) => {
         const selected = options.selectedKey && item.key === options.selectedKey;
@@ -2687,7 +2687,7 @@ function createSessionId() {
     });
     $("uploadButton").addEventListener("click", uploadFile);
     renderAgentModeToggle();
-    addMessage("assistant", "你好，我是谛听 · 随机信号智能体。你可以通过仿真实验、实时流式采集、文件上传或麦克风网关接入信号；开启 Agent 模式后，我会自动搜索预处理最优参数、比较多种处理方法，并输出对应的时域/频域分析结果。");
+    addMessage("assistant", "你好，我是谛听   随机信号智能体。你可以通过仿真实验、实时流式采集、文件上传或麦克风网关接入信号；开启 Agent 模式后，我会自动搜索预处理最优参数、比较多种处理方法，并输出对应的时域/频域分析结果。");
     initResizableLayout();
     initComparisonResizer();
     initWorkspaceSizingObserver();

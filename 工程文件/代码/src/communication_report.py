@@ -2,6 +2,8 @@
 import io
 import json
 import math
+import base64
+import hashlib
 from html import escape
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -90,11 +92,11 @@ class GraphDiagram(Flowable):
             box(x,y,step-8,self.branch_height,branch['name'],[c.BLOCKS[b['kind']]['label'][:16] for b in branch['blocks']],'#e8effb')
             cv.line(width/2,self.height-48,center,y+self.branch_height)
             if branch['id'] in g['merge']['inputs']:cv.line(center,y,width/2,89)
-        box(125,52,240,37,'双输入汇合 · '+g['merge']['domain'],[g['merge']['mode']+' / '+', '.join(g['merge']['inputs'])],'#f7edd6')
+        box(125,52,240,37,'双输入汇合   '+g['merge']['domain'],[g['merge']['mode']+' / '+', '.join(g['merge']['inputs'])],'#f7edd6')
         cv.line(width/2,52,width/2,41)
         box(0,0,width,41,'公共解调 / 译码 / 信宿',[' → '.join(c.BLOCKS[b['kind']]['label'] for b in g['tail'])[:98]],'#eee9f8')
         if g['analyses']:
-            cv.setFillColor(colors.HexColor('#75618f'));cv.drawString(5,51,'功率分析端口 → CA-CFAR · '+str(len(g['analyses']))+' 个节点')
+            cv.setFillColor(colors.HexColor('#75618f'));cv.drawString(5,51,'功率分析端口 → CA-CFAR   '+str(len(g['analyses']))+' 个节点')
 
 
 class Curve(Flowable):
@@ -133,7 +135,7 @@ def render(raw):
             styles[name]=ParagraphStyle(name,fontName=font,fontSize=size,leading=size*1.6,textColor=colors.HexColor(color),wordWrap='CJK',spaceAfter=10)
         styles['heading'].keepWithNext=True
         paragraph=lambda text,style='body':Paragraph(escape(printable(text)),styles[style])
-        doc=f['document'];story=[paragraph(doc['name'],'title'),paragraph(f"通信原理实验报告 · v{VERSION}"),paragraph('实验链路与参数','heading')]
+        doc=f['document'];story=[paragraph(doc['name'],'title'),paragraph(f"通信原理实验报告   v{VERSION}"),paragraph('实验链路与参数','heading')]
         blocks=doc['program']['blocks'];story.append(Diagram([printable(c.BLOCKS[b['kind']]['label']).strip() for b in blocks]))
         if doc.get('graph'):
             g=doc['graph'];value=doc.get('graphResult')
@@ -163,10 +165,30 @@ def render(raw):
         if doc.get('graph'):
             parameter_blocks=[(lane,b) for lane,members in lanes(doc['graph']) for b in members]
         for lane,b in parameter_blocks:
-            params='；'.join(f"{c.BLOCKS[b['kind']]['params'][k]['label']}={v}" for k,v in b['params'].items())
-            rows.append([paragraph((lane+' · ' if lane else '')+c.BLOCKS[b['kind']]['label']),paragraph(params or '默认配置')])
+            entries=[]
+            for k,v in b['params'].items():
+                if k=='data' and v and v!='builtin':
+                    raw_data=base64.b64decode(v,validate=True)
+                    v=f"{len(raw_data)} bytes SHA-256 {hashlib.sha256(raw_data).hexdigest()}"
+                entries.append(f"{c.BLOCKS[b['kind']]['params'][k]['label']}={v}")
+            params='；'.join(entries)
+            rows.append([paragraph((lane+'   ' if lane else '')+c.BLOCKS[b['kind']]['label']),paragraph(params or '默认配置')])
         table=Table(rows,colWidths=[135,355],repeatRows=1);table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#e3eafa')),('GRID',(0,0),(-1,-1),.3,colors.HexColor('#c7d4e8')),('VALIGN',(0,0),(-1,-1),'TOP')]))
         story.extend([table,Spacer(1,14),paragraph('接收结果与结论','heading')]);story.extend(paragraph(s) for s in f['summary'])
+        delivery=doc.get('delivery') or {}
+        if delivery.get('lesson'):
+            lesson=delivery['lesson'];answers=delivery.get('answers') or {}
+            story.extend([paragraph('课程实验记录','heading'),paragraph(lesson['title']),paragraph('学习目标：'+lesson['objective'])])
+            for key,label,prompt in [('prediction','运行前预测',lesson['prediction']),('observation','实测现象',' / '.join(lesson['observations'])),('conclusion','实验结论',lesson['conclusion']),('challenge','挑战记录',lesson['challenge'])]:
+                story.append(paragraph(label+'：'+prompt))
+                if answers.get(key): story.append(paragraph(answers[key]))
+            acceptance=delivery.get('courseResult')
+            if acceptance:
+                story.append(paragraph(f"课程验收：{'通过' if acceptance['passed'] else '继续调整'}；实际完成 {acceptance['completed']} / {acceptance['total']} 次运行。"))
+                for row in acceptance['rows']:
+                    for check in row['tools']:
+                        if check['kind']=='assertion':
+                            story.append(paragraph(f"种子 {row['seed']}，帧 {row['frame']}：{check['metric']}={check['value']}；阈值 {check['operator']} {check['threshold']}；{'通过' if check['passed'] else '继续调整'}。"))
         comparisons=doc.get('comparisons') or {}
         if comparisons.get('branches'):
             story.append(paragraph('共享信道接收方案对照','heading'))
@@ -180,7 +202,7 @@ def render(raw):
         curves=doc.get('sweeps',[])
         for axis in dict.fromkeys(s.get('axis','参数') for s in curves):
             group=[s for s in curves if s.get('axis','参数')==axis and s['points']]
-            if group: story.extend([paragraph('性能比较 · '+axis,'heading'),Curve(group)])
+            if group: story.extend([paragraph('性能比较   '+axis,'heading'),Curve(group)])
         for curve in curves:
             story.append(paragraph(f"{curve.get('name','扫描')}：令牌 {curve.get('token','')}；设置 {json.dumps(curve.get('settings',{}),ensure_ascii=False)}"))
         for item in f['selected_materials']:
@@ -198,7 +220,7 @@ def render(raw):
         story.extend([paragraph('复现信息','heading'),paragraph(f"随机种子 {doc['program']['seed']}；构建令牌 {f['build']['token']}。"),paragraph('误码统计保留实际试验帧数与置信区间；零错误点使用置信上界绘图。')])
         text=json.dumps({k:doc['program'][k] for k in ('sample_rate','sample_count','symbol_rate')},ensure_ascii=False);story.append(paragraph(text))
         def footer(canvas,document):
-            canvas.setFont(font,8);canvas.setFillColor(colors.HexColor('#60718a'));canvas.drawString(52,25,'谛听 · 通信实验室');canvas.drawRightString(A4[0]-52,25,str(document.page))
+            canvas.setFont(font,8);canvas.setFillColor(colors.HexColor('#60718a'));canvas.drawString(52,25,'谛听   通信实验室');canvas.drawRightString(A4[0]-52,25,str(document.page))
         SimpleDocTemplate(output,pagesize=A4,leftMargin=52,rightMargin=52,topMargin=42,bottomMargin=43,title=doc['name'],author='通信实验室').build(story,onFirstPage=footer,onLaterPages=footer)
         return output.getvalue()
     finally: pdf_report.RENDER_LIMIT.release()

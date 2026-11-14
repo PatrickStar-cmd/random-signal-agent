@@ -2,7 +2,18 @@
 
 ## Unreleased
 
-## v0.4.11 · 可视接线与分支实验 · 2026-11-06
+## v0.4.12 积木编程最终完善版 2026-11-14
+
+- 🧩 Scratch 式积木拼接与并行接收容器，提供块内参数、复制剪切粘贴、组合折叠和注释；保留海洋风格、原有算法和工程功能。
+- 🔬 新增观察探针、参考对照、指标汇总与验收条件四类工具；完整图参与扫描、多种子批量、约束选参和课程验收。
+- ▶️ 完整工程检查、定位诊断、逐块调试、执行高亮与真实分段复用；每次测量保存分支与汇合结果、实际种子和输入摘要。
+- 📒 命名基线保存完整工程，比较参数、接线和实测指标，按记录实际种子恢复复跑。
+- 📚 12 个课程覆盖模拟、数字调制、编码、同步、均衡、OFDM、射频、MIMO、协议、I/Q、分支和通感，包含完整学习流程与三种子验收。
+- 📦 成果 ZIP 集合工程 JSON、可执行 Python、实测 CSV/JSON、导入数据、SVG、PDF、依赖与 SHA-256 清单，支持校验导入和独立目录复现。
+- 📄 报告增加 CFAR 功率/门限/噪声图、检测峰和有效区域、分支对照、课程记录与素材排序；浏览器直接预览最终 PDF。
+- 🌊 统一展示间隔符为空格，保留 231 个信号积木、固定信宿与 122 个示例。
+
+## v0.4.11   可视接线与分支实验   2026-11-06
 
 - 🪸 新增统一图工程：共享前段、2–4 条接收分支、双输入复符号 / LLR 汇合、公共尾段和独立分析端口。
 - 🔌 新增端口接线、断开重连、节点删除、自动布局、位置保存与撤销重做；桌面和窄屏共用海洋风格控件。
@@ -11,7 +22,7 @@
 - 📦 完整工程 JSON、Python 复现和 PDF 同步包含拓扑、分支、汇合及分析；保留原线性工程、算法和实验功能。
 - 🧪 新增一个线性预设及两个可视实验入口；目录合计 231 个可添加积木、固定信宿和 122 个线性预设，图编辑器另含汇合及 CFAR 节点。
 
-## v0.4.10 · 自主接收与实验分析增强 · 2026-10-28
+## v0.4.10   自主接收与实验分析增强   2026-10-28
 
 - 🧵 新增公开训练驱动的 MLSE 序列均衡，展示真实状态度量、幸存路径与分支计算量。
 - 📐 新增 MUSIC 到达角估计、空间平滑与自动 MVDR；新增 3GPP TDL-A/B/C 标准功率时延谱、分数延迟与连续时变衰落。
@@ -21,7 +32,7 @@
 - 🔱 新增共享信道的两路复符号 / LLR 加权或选择汇合；新增 OFDM 单目标通感，联合观察通信 BER、距离—速度谱与目标测量。
 - 🌊 海洋工作区按主题子页聚合分析内容，保留既有功能。新增 13 个积木、12 个预设，总计 230 个可添加积木、固定信宿和 121 个预设。
 
-## v0.4.9 · 先进收发算法与实验调试增强 · 2026-10-26
+## v0.4.9   先进收发算法与实验调试增强   2026-10-26
 
 - 🔍 新增 LMMSE 信道估计、Kalman 复信道跟踪、按流有效噪声 MIMO 软检测，接入 LDPC、软 Viterbi 与实际 HARQ。
 - 🌊 新增 DFT-s-OFDM / SC-FDMA 的 DFT 扩展、连续/交织映射、FFT 均衡与 IDFT 解扩；新增记忆多项式功放、回环训练、逆模型拟合和数字预失真。
@@ -32,7 +43,7 @@
 - 🎓 新增学生模式、阶段独立提交、尝试与提示记录、作业包；空间观察联动资源/用户/队列/矩阵/星座/SIC，报告支持素材选择、图注与结论。
 - 🌊 保留海洋风格和原有功能；新增 24 个积木、19 个预设，总计 217 个可添加积木、固定信宿与 109 个预设。
 
-## v0.4.8 · 闭环链路与空间通信增强 · 2026-10-25
+## v0.4.8   闭环链路与空间通信增强   2026-10-25
 
 - 🔁 自建物理链路接入 ARQ、Chase HARQ 与 AMC，实际执行调制、信道、同步、检测及译码，展示软合并、反馈延迟、重传和空口吞吐。
 - 🧩 新增版本化子工程：类型端口、公开参数、多实例独立状态、展开编辑、更新版本和 JSON 分享。
@@ -42,7 +53,7 @@
 - 🎓 新增教学任务编辑器、开放参数与分阶段验收、实验包分享、跨工程多种子批量队列和最低信噪比目标搜索。
 - 🌊 保留海洋风格、原有功能及工程格式，新增模块沿用统一控件、分析标签和窄屏布局；共 193 个可添加积木、固定信宿与 90 个预设。
 
-## v0.4.7 · 业务传输与教学实验增强 · 2026-10-23
+## v0.4.7   业务传输与教学实验增强   2026-10-23
 
 - 🎙️ 新增音频、图像、文件和离散概率信源；信宿播放音频、重建图像、下载文件，显示 RMSE / SNR / PSNR 与 SHA256。
 - 🗜️ 新增 Huffman、IMA ADPCM、BCH (15,7)、RS (255,223) 编译码及分包 / 组包，连接真实收发链路与业务字节。
@@ -51,7 +62,7 @@
 - 📦 新增 ARQ / Chase HARQ 包级反馈和五档 AMC 实验，观察 ACK/NACK、超时、软合并、反馈延迟、切换滞回及 goodput。
 - 🌊 保留海洋风格、原有算法和工程体验；共 178 个可添加积木、固定信宿与 78 个示例。升级时保留 data/、uploads/、outputs/，更新源码并重启服务或重建 Docker，刷新浏览器。
 
-## v0.4.6 · 界面布局与交互优化更新 · 2026-10-18
+## v0.4.6   界面布局与交互优化更新   2026-10-18
 
 - 🧭 合并工程工具栏，新增可搜索与按主题筛选的实验库，集中工程、调试和实验参数入口。
 - 🎛️ 桌面优先显示选中积木参数，信宿观察可切换；窄屏提供四个工作区入口和底部参数抽屉。
@@ -60,7 +71,7 @@
 - 🧱 批量选择独立开启，次要按钮随选中、悬停和聚焦显示；保留海洋风格、全部模块和旧工程功能。
 - 升级时保留 data/、uploads/、outputs/，更新源码并重启服务或重建 Docker，再刷新浏览器；无新增生产依赖。
 
-## v0.4.5 · 真实收发链路与实验分析更新 · 2026-10-18
+## v0.4.5   真实收发链路与实验分析更新   2026-10-18
 
 - 新增 20 个积木：8PSK/64QAM/256QAM 硬软调制解调、I/Q 失真与训练校正、DC 偏置/消除、Rapp/Saleh 功放、ADC、OFDM 削峰、窄带干扰/陷波及卷积码打孔/解打孔。
 - OFDM 开放有效子载波数与导频间隔，新增资源栅格、逐子载波信道/EVM；完整帧 Welch、CCDF、PAPR、99% 占用带宽与可配置 ACLR。
@@ -68,7 +79,7 @@
 - 保留海洋视觉、现有功能与 schema 1/2 工程；150 个可添加模块、64 个示例。增加物理/数学独立检验，旧套件与 540 组算法基准继续验证。
 - 升级：保留 data/、uploads/、outputs/，替换源码并重启服务或重建 Docker，再刷新浏览器；无新增生产依赖。
 
-## v0.4.2 · 积木编程视图更新 · 2026-10-12
+## v0.4.2   积木编程视图更新   2026-10-12
 
 - 采用统一海洋配色、4 px 外框、六类表情积木工坊和 3 px 未选中积木边框；Build / Run 增加表情。
 - 编程区使用紧凑拼接积木、参数摘要和选中高亮，完整参数移到独立面板；符号同步、均衡和高级参数分组展开。
@@ -78,7 +89,7 @@
 
 Upgrade from v0.4.1 by retaining data/, replacing source and restarting the service or rebuilding Docker, then refreshing the browser. No new runtime dependencies or migration are needed.
 
-## v0.4.1 · 传输环节模块补充 · 2026-10-12
+## v0.4.1   传输环节模块补充   2026-10-12
 
 补充第三、四章传输环节：细分发/收转换器与调制/解调器，新增模拟调制、线路编译码、实基带信道、符号同步和固定/自适应均衡。提供 29 个示例、波形/频谱/眼图/时钟/收敛观测，保留旧工程与实验数据兼容性。由 v0.4.0 升级时保留 data/、替换源码并重启服务或重建 Docker，再刷新页面；无新增生产依赖。
 
@@ -87,7 +98,7 @@ Upgrade from v0.4.1 by retaining data/, replacing source and restarting the serv
 - Add the course's six analog modulation/demodulation pairs: AM, DSB-SC, SSB, VSB, FM and PM; include AM envelope/coherent detection, SSB Hilbert/filter implementations and selectable sidebands, complementary VSB filtering, full angle modulation and a narrowband FM preset. Add analog sample-SNR noise, waveform/spectrum views, recovery metrics and 10 numerical acceptance cases while preserving existing digital results.
 - Split the communication block palette into sources, transmit converters, modulators, channels, demodulators and receive converters; distinguish each category by color and show the full processing order. Existing project JSON, drafts and simulation behavior remain compatible.
 
-## v0.4.0 · 通信原理积木编程 · 2026-10-12
+## v0.4.0   通信原理积木编程   2026-10-12
 
 - Add a Scratch-inspired communication lab with an editable block pipeline and a fixed sink, separate Build/Run steps, and default TV snow until a simulation completes.
 - Combine analog/digital sources, PCM, repetition/Hamming/convolutional coding and interleaving; BPSK/QPSK/16-QAM; AWGN, attenuation, phase rotation and symbol erasures; paired hard-decision receivers.
@@ -98,7 +109,7 @@ Upgrade from v0.4.1 by retaining data/, replacing source and restarting the serv
 新增通信原理积木实验室，随 v0.4.0 部署包交付。由 v0.3.4 升级时保留 data/，替换源码并重启服务或重建 Docker，再刷新浏览器。
 
 
-## v0.3.4 · 2026-10-10
+## v0.3.4   2026-10-10
 
 - Add cyan, lavender and coral-pink gradients, local SVG waves and subtle bubbles throughout the ocean interface.
 - Use 4 px outer frames and 2 px inner cards across all six views and the static showcase.
@@ -110,7 +121,7 @@ Upgrade from v0.4.1 by retaining data/, replacing source and restarting the serv
 丰富海洋渐变、加粗分层框线、调整中英文字体与时钟，改善 Agent 回复排版。由 v0.3.3 升级时保留 data/，替换源码并重启服务，再刷新页面。
 
 
-## v0.3.3 · 2026-10-10
+## v0.3.3   2026-10-10
 
 - Use consistent 2 px blue-lilac borders across all six views, including chart frames, report selections, diagnosis cards, API settings, tasks and storage.
 - Shorten repeated and defensive UI explanations. Keep result-specific reference/score information, validation errors, deletion confirmations and API persistence/billing details at their relevant controls.
@@ -121,7 +132,7 @@ Upgrade from v0.4.1 by retaining data/, replacing source and restarting the serv
 加粗模块框线、精简界面说明，报告数据说明按需展开；同步截图与静态演示。由 v0.3.2 升级时保留 data/，替换源码并重启服务，刷新浏览器。
 
 
-## v0.3.2 · 2026-10-09
+## v0.3.2   2026-10-09
 
 - Select 1–50 recent processing results, with waveform thumbnails, chronological ordering and saved snapshot supplements, for one Chinese PDF report.
 - Retain immutable per-session processing evidence across restarts; commit autosave, history retention and task completion together. Retries, ordinary questions, failed/cancelled tasks and snapshot opening do not create duplicate processing records.
@@ -131,7 +142,7 @@ Upgrade from v0.4.1 by retaining data/, replacing source and restarting the serv
 
 新增最近 50 次处理结果选择与多组合并 PDF，已包含在 v0.3.2 部署包中。升级前停止服务并备份 data/，已有快照可继续选择，升级前未保存的处理结果无法补回。
 
-## v0.3.1 · 2026-10-08
+## v0.3.1   2026-10-08
 
 - Single-experiment Chinese PDF reports: title, author, purpose and units; preview the measured summary/sections, then download a brief or standard edition.
 - A4 ocean cover, embedded searchable Chinese font, vector waveform/FFT/Welch PSD/autocorrelation plots, available method comparisons and diagnostics, full-sample metrics and reproduction hashes/parameters.
@@ -142,7 +153,7 @@ Upgrade from v0.4.1 by retaining data/, replacing source and restarting the serv
 
 新增无需模型 Key 的中文 PDF 报告，支持简版/标准版、预览与下载。升级 v0.3.0 后重新安装固定依赖；中文字体随包交付。旧实验继续可读，升级前停止服务并备份数据。
 
-## v0.3.0 · 2026-10-06
+## v0.3.0   2026-10-06
 
 - Model API setup in the browser: OpenAI, DeepSeek and custom Chat Completions-compatible providers, dynamic model lists, text connection tests and immediate per-session application without restarting. Optional restart persistence, local-mode switching and configuration removal.
 - API keys stay out of browser storage, experiment snapshots, exports and task history. Endpoint changes never reuse a saved key automatically; compatible token parameters and redacted errors support different providers. Opt-in persistence stores keys in plaintext on the server.
@@ -153,7 +164,7 @@ Upgrade from v0.4.1 by retaining data/, replacing source and restarting the serv
 
 新增页面内模型 API 配置，统一发布海洋 UI、AI 鲸鱼插画与图表/任务提示修复。升级前停止服务并备份整个 `data/`；若启用“记住配置”，备份包含明文 Key，需妥善保护。本地工具链仍无需 Key。
 
-## v0.2.6 · 2026-10-06
+## v0.2.6   2026-10-06
 
 - Diagnostic laboratory with relative-time STFT/PSD, linked waveform and interval selection, explicit resolution, edge padding and bounded display grids.
 - Six seeded fault types, editable intervals, blind truth protection and reveal-only typed interval precision/recall/F1. Detectors use observations only.
@@ -163,7 +174,7 @@ Upgrade from v0.4.1 by retaining data/, replacing source and restarting the serv
 
 新增“信号诊断实验室”：时频定位、故障盲测和可验证处理建议。检测为启发式特征提示；频带能量降低不等于真实信号恢复。升级前备份整个 data/。
 
-## v0.2.5 · 2026-10-05
+## v0.2.5   2026-10-05
 
 - CSV/TXT import wizard with preview, selectable time/signal columns, time-unit conversion, source provenance, and row/column diagnostics. Invalid rows are never silently discarded by the wizard.
 - Read-only comparison of 2–4 saved results with shared-axis waveform/spectrum plots, full-sample metrics, parameters and portable HTML reports. Scores are only compared for matching inputs, references, goals and scoring versions.
@@ -174,10 +185,10 @@ Upgrade from v0.4.1 by retaining data/, replacing source and restarting the serv
 
 新增数据导入向导、跨实验对比、任务取消和存储管理。旧快照和 ZIP 可继续使用；升级前备份整个 data/。
 
-## v0.2.1 · 2026-10-05
+## v0.2.1   2026-10-05
 
 - Search saved experiments by name; rename or delete a selected snapshot with deletion confirmation. Current data and other snapshots remain intact.
-- Preserve complete names containing ` · `, validate duplicate/rename names consistently, and clear stale chat when restoring an empty history.
+- Preserve complete names containing `   `, validate duplicate/rename names consistently, and clear stale chat when restoring an empty history.
 - Reuse the current signal after running/restoring; generation parameters are disabled in comparison-only mode to prevent accidental regeneration.
 - Keep progress streaming after the 256-event replay buffer wraps and drain final tool events before completion.
 - Allow retries to switch synchronous/asynchronous transport without duplicate execution; preserve v0.2.0 task replay and protect the internal operation identifier.
@@ -186,7 +197,7 @@ Upgrade from v0.4.1 by retaining data/, replacing source and restarting the serv
 
 新增快照搜索、重命名和删除，修复名称截断、旧聊天残留、比较时误生成信号及长任务进度中断。应用版本更新为 0.2.1，保存格式仍为 schema 1 / algorithm 0.2.0；升级前备份整个 data/。
 
-## v0.2.0 · 2026-10-02
+## v0.2.0   2026-10-02
 
 - Persistent experiment workbench with named snapshots, duplication, automatic recovery, and portable ZIP import/export.
 - Full-resolution CSV, standalone HTML reports and versioned parameter/data manifests with SHA-256 validation.
@@ -198,7 +209,7 @@ Upgrade from v0.4.1 by retaining data/, replacing source and restarting the serv
 
 实验从一次性对话升级为可保存、可恢复、可导出的工作台。保存格式为 schema 1 / algorithm 0.2.0；旧版尚无持久化实验格式。
 
-## v0.1.0 · 2026-09-30
+## v0.1.0   2026-09-30
 
 First public release of Diting, the Random Signal Agent for the UESTC Random Signals course.
 

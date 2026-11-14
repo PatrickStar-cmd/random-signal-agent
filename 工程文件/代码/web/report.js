@@ -21,7 +21,7 @@
       const rows=entries.filter(e=>e.kind===kind);
       $(id).innerHTML=rows.length?rows.map(e=>{
         const k=escapeHtml(key(e)),date=escapeHtml(new Date(e.created*1000).toLocaleString());
-        const detail=e.locked?'盲测未揭晓时的存档':kind==='history'?`${e.sample_count.toLocaleString()} 点 · ${e.sample_rate} Hz`:'已保存实验快照';
+        const detail=e.locked?'盲测未揭晓时的存档':kind==='history'?`${e.sample_count.toLocaleString()} 点   ${e.sample_rate} Hz`:'已保存实验快照';
         const url=`/api/reports/plot/${kind}/${encodeURIComponent(e.id)}?session_id=${encodeURIComponent(sessionId)}`;
         return `<label class="report-result"><input type="checkbox" data-report-entry="${k}" ${selected.has(key(e))?'checked':''} ${e.locked||busy?'disabled':''}><span><strong>${escapeHtml(e.name)}</strong><small>${date}</small><small>${escapeHtml(detail)}</small></span>${e.locked?'':`<img loading="lazy" src="${url}" alt="原始观测与处理结果波形缩略图">`}</label>`;
       }).join(''):`<p class="wb-hint">${kind==='history'?'完成一次信号处理后，结果会自动出现在这里。':'暂无已保存实验。'}</p>`;

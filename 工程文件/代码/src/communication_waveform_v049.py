@@ -47,13 +47,13 @@ def presets(preset):
     pa=['random_bits','mod_qam16','tx_dft_spread','tx_scfdma','tx_pa_probe','tx_dpd_fit','tx_dpd','tx_memory_pa','complex_awgn','rx_scfdma','rx_dft_despread','demod_qam16','sink']
     sync=['random_bits','mod_qpsk','tx_ofdm','tx_burst_preamble','burst_clock','complex_awgn','rx_burst_sync','rx_ofdm','demod_qpsk','sink']
     return {
-        'scfdma_localized':{'label':'新波形 · DFT-s-OFDM 连续映射','program':preset(base,{4:{'snr_db':30}})},
-        'scfdma_interleaved':{'label':'新波形 · SC-FDMA 交织映射','program':preset(base,{3:{'mapping':1},4:{'snr_db':30}})},
-        'ofdm_unspread_reference':{'label':'波形对照 · 相同资源的 OFDM','program':preset(['random_bits','mod_qpsk','tx_scfdma','complex_awgn','rx_scfdma','demod_qpsk','sink'],{3:{'snr_db':30}})},
-        'memory_pa_dpd':{'label':'射频 · 回环训练与数字预失真','program':preset(pa,{8:{'snr_db':40}})},
-        'memory_pa_reference':{'label':'射频对照 · 记忆功放输出','program':preset(['random_bits','mod_qam16','tx_dft_spread','tx_scfdma','tx_memory_pa','complex_awgn','rx_scfdma','rx_dft_despread','demod_qam16','sink'],{5:{'snr_db':40}})},
-        'burst_schmidl_cox':{'label':'同步 · Schmidl–Cox 与采样时钟','program':preset(sync,{0:{'count':2048},2:{'active_count':48},5:{'snr_db':35}})},
-        'burst_zadoff_chu':{'label':'同步 · Zadoff–Chu 与采样时钟','program':preset(sync,{0:{'count':2048},2:{'active_count':48},3:{'method':1},5:{'snr_db':35},6:{'method':1}})},
+        'scfdma_localized':{'label':'新波形   DFT-s-OFDM 连续映射','program':preset(base,{4:{'snr_db':30}})},
+        'scfdma_interleaved':{'label':'新波形   SC-FDMA 交织映射','program':preset(base,{3:{'mapping':1},4:{'snr_db':30}})},
+        'ofdm_unspread_reference':{'label':'波形对照   相同资源的 OFDM','program':preset(['random_bits','mod_qpsk','tx_scfdma','complex_awgn','rx_scfdma','demod_qpsk','sink'],{3:{'snr_db':30}})},
+        'memory_pa_dpd':{'label':'射频   回环训练与数字预失真','program':preset(pa,{8:{'snr_db':40}})},
+        'memory_pa_reference':{'label':'射频对照   记忆功放输出','program':preset(['random_bits','mod_qam16','tx_dft_spread','tx_scfdma','tx_memory_pa','complex_awgn','rx_scfdma','rx_dft_despread','demod_qam16','sink'],{5:{'snr_db':40}})},
+        'burst_schmidl_cox':{'label':'同步   Schmidl–Cox 与采样时钟','program':preset(sync,{0:{'count':2048},2:{'active_count':48},5:{'snr_db':35}})},
+        'burst_zadoff_chu':{'label':'同步   Zadoff–Chu 与采样时钟','program':preset(sync,{0:{'count':2048},2:{'active_count':48},3:{'method':1},5:{'snr_db':35},6:{'method':1}})},
     }
 
 

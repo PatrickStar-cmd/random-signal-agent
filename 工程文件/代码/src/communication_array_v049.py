@@ -34,10 +34,10 @@ def register(block,number,field,blocks):
 def presets(preset):
     def entry(label,kinds,changes=None):return {'label':label,'program':preset(kinds,changes)}
     return {
-        'array_conventional':entry('阵列 · 常规波束与方向干扰',['random_bits','mod_qpsk','tx_array','array_channel','array_interference','rx_array_conventional','demod_qpsk','sink']),
-        'array_mvdr':entry('阵列 · MVDR 自适应零陷',['random_bits','mod_qpsk','tx_array','array_channel','array_interference','rx_array_mvdr','demod_qpsk','sink']),
-        'array_mrt':entry('预编码 · 公共导频 / MRT',['random_bits','mod_qpsk','tx_mrt','array_channel','rx_array_conventional','demod_qpsk','sink'],{3:{'branches':1},4:{'look_angle':10}}),
-        'array_svd':entry('预编码 · 公共导频 / SVD 双流',['random_bits','mod_qam16','tx_svd','array_channel','rx_array_svd','demod_qam16','sink'],{3:{'arrival':'10,-35','departure':'20,50','gains':'1,0.6+0.2j','snr_db':25}}),
+        'array_conventional':entry('阵列   常规波束与方向干扰',['random_bits','mod_qpsk','tx_array','array_channel','array_interference','rx_array_conventional','demod_qpsk','sink']),
+        'array_mvdr':entry('阵列   MVDR 自适应零陷',['random_bits','mod_qpsk','tx_array','array_channel','array_interference','rx_array_mvdr','demod_qpsk','sink']),
+        'array_mrt':entry('预编码   公共导频 / MRT',['random_bits','mod_qpsk','tx_mrt','array_channel','rx_array_conventional','demod_qpsk','sink'],{3:{'branches':1},4:{'look_angle':10}}),
+        'array_svd':entry('预编码   公共导频 / SVD 双流',['random_bits','mod_qam16','tx_svd','array_channel','rx_array_svd','demod_qam16','sink'],{3:{'arrival':'10,-35','departure':'20,50','gains':'1,0.6+0.2j','snr_db':25}}),
     }
 
 

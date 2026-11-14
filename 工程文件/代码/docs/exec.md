@@ -391,3 +391,18 @@ node scripts/verify_communications_ui.js
 专项检查：`.venv/Scripts/python.exe scripts/test_communications_graph_v0411.py`；前端检查：`node scripts/verify_communications_ui.js`。日志位于 `logs/communications-v0411/`；发布检查使用 `scripts/build_release.py` 和 `scripts/verify_release.py`，日志位于 `logs/release/`。
 
 同步接口 `graph-create/graph-build/graph-export` 与异步 `kind=graph` 支持完整运行和 `partial=true` 局部重跑。目标表、CFAR 窗口、Pfa、图结构及存储预算见 [v0.4.11 指南](communications-v0411.md)。
+
+## 🧩 v0.4.12 积木编程最终完善版
+
+从工坊拖入积木并拼接，使用块内参数或侧栏完成配置；Build 后运行或逐步调试。多分支工程在并行容器内编辑，在“完整工程实验”按路径选择参数和种子；“课程与实验记录”提供课程、基线、复跑与成果 ZIP。报告编排按保存的素材顺序生成同一份预览和下载 PDF。
+
+```powershell
+.venv/Scripts/python.exe -m unittest discover -s scripts -p "test_*v0412*.py"
+node scripts/verify_communications_ui.js
+.venv/Scripts/python.exe scripts/build_release.py
+.venv/Scripts/python.exe scripts/verify_release.py
+```
+
+配置仍使用 `config/communications.json`，发布版本使用 `config/release.json`。种子、工具参数、课程回答、图接线、折叠、注释和报告顺序随完整工程保存。成果包复现使用 `python reproduce.py --runtime "安装目录/工程文件/代码"`。
+
+[详细步骤、字段与接口](communications-v0412.md)。数值与 UI 日志位于 `logs/communications-v0412/`，发布日志位于 `logs/release/`；修改前文档保存在 `debug/v0412/docs-before/`，PDF 验收位于 `debug/v0412-delivery/`。

@@ -8,7 +8,7 @@ def register(block,number,field,blocks):
         block('soft_'+scheme,label+' 软解调','demodulator','Max-log LLR；正数偏向 0，供软 Viterbi / LDPC。',noise_variance=number('复噪声方差 N₀',.1,.000001,100),compensate=field('已知增益 / 相位补偿',True,'boolean'),automatic_variance=field('使用接收噪声方差估计',False,'boolean'))
     block('iq_imbalance','🪞 I/Q 幅相不平衡','channel','设置 Q 路相对 I 路的增益与正交相位误差。',gain_db=number('Q/I 增益误差 / dB',2,-12,12),phase_deg=number('正交相位误差 / °',10,-60,60))
     block('dc_offset','📍 直流偏置','channel','复基带两路叠加固定偏置。',i=number('I 路偏置',.2,-4,4),q=number('Q 路偏置',-.1,-4,4))
-    block('rx_iq','🪞 I/Q 训练校正','demodulator','由接收公共前导估计广义线性模型 a·x+b·x*，求逆消除镜像；接在帧同步后。')
+    block('rx_iq','🪞 I/Q 训练校正','demodulator','由接收公共前导估计广义线性模型 a x+b x*，求逆消除镜像；接在帧同步后。')
     block('rx_dc','📍 直流消除','demodulator','整帧均值消除或一阶 DC blocker，IIR 状态跨帧保持。',method=select('消除方式',0,{0:'帧均值',1:'IIR 高通'}),pole=number('IIR 极点半径',.995,.8,.9999))
     block('tx_pa','🔊 功放非线性','modulator','Rapp 幅度软饱和，或 Saleh 幅相模型；输入回退控制驱动功率。',model=select('功放模型',0,{0:'Rapp',1:'Saleh'}),backoff_db=number('输入回退 / dB',3,0,30),saturation=number('幅度尺度',1,.1,8),smoothness=number('Rapp 平滑因子',2,1,10),phase_deg=number('Saleh 相位渐近值 / °',30,0,90))
     block('adc','🎚️ ADC 量化与饱和','channel','I/Q 两路独立均匀量化，显示超量程样本数。',bits=number('每路量化位数',8,2,16,True),full_scale=number('每路量程 ±',2,.05,16))
@@ -25,7 +25,7 @@ def presets(preset):
     entries={}
     def add(key,label,kinds,changes=None):entries[key]={'label':label,'program':preset(kinds,changes)}
     for scheme in ('psk8','qam64','qam256'):
-        add('rf_'+scheme,'🛰️ 高阶调制 · '+scheme.upper(),['random_bits','mod_'+scheme,'awgn','demod_'+scheme,'sink'],{2:{'esn0_db':25}})
+        add('rf_'+scheme,'🛰️ 高阶调制   '+scheme.upper(),['random_bits','mod_'+scheme,'awgn','demod_'+scheme,'sink'],{2:{'esn0_db':25}})
     add('rf_iq','🪞 I/Q 不平衡与校正',['random_bits','mod_qam64','tx_frame','iq_imbalance','awgn','rx_frame','rx_iq','demod_qam64','sink'],{4:{'esn0_db':30}})
     add('rf_dc','📍 直流偏置与消除',['random_bits','mod_qpsk','dc_offset','rx_dc','demod_qpsk','sink'])
     add('rf_adc','🎚️ ADC 位数与量程',['random_bits','mod_qam64','ideal','rx_agc','adc','demod_qam64','sink'])

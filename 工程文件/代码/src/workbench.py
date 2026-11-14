@@ -23,7 +23,7 @@ from .dialogue_agent import ConversationState
 from .signal_processing import SignalBundle, SignalConfig, PreprocessResult
 from .limits import LIMITS
 
-VERSION = "0.4.11"
+VERSION = "0.4.12"
 # Application maintenance releases do not change the saved algorithm contract.
 ALGORITHM_VERSION = "0.2.0"
 SCHEMA = 1
@@ -300,7 +300,7 @@ def report_html(state, name):
                     for color, values in zip(("#8192b4", "#5b3acb"), plotted[1:]))
     return (f'<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>{escape(name)}</title>'
             '<style>body{max-width:1100px;margin:40px auto;padding:24px;font:16px/1.6 system-ui;color:#182238}table{border-collapse:collapse;width:100%}td,th{padding:10px;border-bottom:1px solid #ddd;text-align:left}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f5fa;padding:18px}svg{width:100%}</style>'
-            f'<h1>{escape(name)}</h1><p>Random Signal Agent v{VERSION} · {len(b.observed)} samples · {b.config.sample_rate:g} Hz</p>'
+            f'<h1>{escape(name)}</h1><p>Random Signal Agent v{VERSION}   {len(b.observed)} samples   {b.config.sample_rate:g} Hz</p>'
             f'<p>Scoring: {"clean reference" if b.has_clean_reference else "no-reference heuristic; SNR unavailable"}. Goal: {escape(state.comparison_goal)}. Scores are relative diagnostics, not a guarantee of denoising quality.</p>'
             f'<svg viewBox="0 0 900 240" role="img" aria-label="Observed (gray) and processed (purple) waveform">{lines}</svg><p>Observed: gray; processed: purple. Plot is downsampled; exported CSV contains every sample.</p>'
             f'<table><tr><th>Method</th><th>Score</th><th>SNR / dB</th><th>Search / ms</th><th>Parameters</th></tr>{rows}</table>'

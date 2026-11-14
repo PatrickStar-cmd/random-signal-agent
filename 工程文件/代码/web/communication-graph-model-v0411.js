@@ -59,6 +59,44 @@
     g.edges=g.edges.filter(e=>!(e.to===edge.to&&e.input===edge.input));g.edges.push(clone(edge));
     if(to.kind==='analysis_cfar2d')g.analyses.find(a=>a.id===to.key).source=from.key;
   }
-  const api={clone,lanes,projection,nodes,connections,arrange,numericKey,absorb,connect};
+  function lane(g,key){const found=lanes(g).find(([id])=>id===key);if(!found)throw Error('请选择一个积木序列。');return found[1];}
+  function reorder(g,keys,target,index,{copy=false,uid}={}){
+    const selected=new Set(keys),items=lanes(g).flatMap(([id,blocks])=>blocks.map(b=>({lane:id,block:b,key:id+'/'+b.id}))).filter(n=>selected.has(n.key));
+    if(!items.length)throw Error('先选择要移动或复制的积木。');
+    if(items.some(n=>n.block.kind==='sink'))throw Error('信宿保留在公共尾段末端。');
+    const destination=lane(g,target);index=Math.max(0,Math.min(index,destination.findIndex(b=>b.kind==='sink')<0?destination.length:destination.findIndex(b=>b.kind==='sink')));
+    if(!copy){
+      for(const [id,blocks] of lanes(g))if(blocks.every(b=>selected.has(id+'/'+b.id))&&id!==target)throw Error('每个序列保留至少一个积木。');
+      index-=destination.slice(0,index).filter(b=>selected.has(target+'/'+b.id)).length;
+      for(const [id,blocks] of lanes(g))for(let i=blocks.length-1;i>=0;i--)if(selected.has(id+'/'+blocks[i].id))blocks.splice(i,1);
+    }
+    const used=new Set(destination.map(b=>b.id));
+    const moved=items.map(n=>{const b=clone(n.block);if(copy||used.has(b.id))b.id=uid();used.add(b.id);
+      if(!copy&&n.key!==target+'/'+b.id)for(const a of g.analyses)if(a.source===n.key)a.source=target+'/'+b.id;return b;});
+    destination.splice(index,0,...moved);g.edges=connections(g);const valid=new Set(nodes(g).map(n=>n.key));for(const key of Object.keys(g.layout))if(!valid.has(key))delete g.layout[key];return moved.map(b=>target+'/'+b.id);
+  }
+  function remove(g,keys){
+    const chosen=new Set(keys),found=nodes(g).filter(n=>chosen.has(n.key));
+    if(found.some(n=>n.kind==='sink'||n.kind==='branch_merge'))throw Error('保留汇合与末端信宿。');
+    for(const [id,blocks] of lanes(g))if(blocks.every(b=>chosen.has(id+'/'+b.id)))throw Error('每个序列保留至少一个积木。');
+    for(const [id,blocks] of lanes(g))for(let i=blocks.length-1;i>=0;i--)if(chosen.has(id+'/'+blocks[i].id))blocks.splice(i,1);
+    g.analyses=g.analyses.filter(a=>!chosen.has(a.id)&&!chosen.has(a.source));g.edges=connections(g);
+    for(const key of Object.keys(g.layout))if(chosen.has(key))delete g.layout[key];
+  }
+  function editBlocks(program,ids,index,{copy=false,uid}={}){
+    const selected=new Set(ids),items=program.blocks.filter(b=>selected.has(b.id)&&b.kind!=='sink');
+    if(!items.length)return [];
+    index=Math.max(0,Math.min(index,program.blocks.length-1));
+    if(!copy){index-=program.blocks.slice(0,index).filter(b=>selected.has(b.id)&&b.kind!=='sink').length;program.blocks=program.blocks.filter(b=>!selected.has(b.id)||b.kind==='sink');}
+    const moved=items.map(b=>copy?{...clone(b),id:uid()}:b);program.blocks.splice(index,0,...moved);return moved.map(b=>b.id);
+  }
+  function remapTools(tools,g,branch,toGraph=true){
+    const mapping={};for(const [id,blocks] of lanes(g))if(['shared','tail',branch].includes(id))for(const b of blocks)mapping[toGraph?'linear/'+b.id:id+'/'+b.id]=toGraph?id+'/'+b.id:'linear/'+b.id;
+    const metric=value=>{if(!value)return value;const [scope,...name]=value.split('.');if(scope==='linear')return 'merged.'+name.join('.');if(toGraph||scope==='merged')return value;return scope===branch?'merged.'+name.join('.'):undefined;};
+    return (tools||[]).flatMap(raw=>{const t=clone(raw);for(const key of ['source','reference'])if(t[key]){t[key]=mapping[t[key]];if(!t[key])return [];}
+      if(t.kind==='metrics'){t.metrics=t.metrics.map(metric).filter(Boolean);if(!t.metrics.length)return [];}
+      if(t.kind==='assertion'){t.metric=metric(t.metric);if(!t.metric)return [];}return [t];});
+  }
+  const api={clone,lanes,lane,projection,nodes,connections,arrange,numericKey,absorb,connect,reorder,remove,editBlocks,remapTools};
   root.CommunicationGraphModel=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

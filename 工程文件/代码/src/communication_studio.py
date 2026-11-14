@@ -273,6 +273,9 @@ def validate_document(raw):
     for branch in branches:
         if not isinstance(branch,dict) or not isinstance(branch.get('name'),str) or not 1<=len(branch['name'])<=80: raise ValueError('分支名称无效。')
         branch['program']=c.normalize(branch.get('program'),draft=True)
+    if document.get('tools'):
+        from src.communication_workbench_v0412 import validate_tools
+        document['tools']=validate_tools(document)
     encoded=json.dumps(document,ensure_ascii=False,allow_nan=False).encode('utf-8')
     if len(encoded)>c.CONFIG['max_project_bytes']: raise ValueError('工程文档超过大小上限，请减少保存的结果。')
     return document

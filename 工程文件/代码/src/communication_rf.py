@@ -101,7 +101,7 @@ def measure(x, fs):
         'occupied_bandwidth_hz':float(frequency[hi]-frequency[lo]+fs/size) if mass>0 else 0.,
         'frequency_hz':frequency.tolist(),'density':density.tolist(),'density_db':(10*np.log10(np.maximum(density,1e-30))).tolist(),
         'ccdf_db':thresholds.tolist(),'ccdf':[(float(np.mean(relative>10**(v/10)))) for v in thresholds],
-        'method':'Welch · Hann · 50% overlap','segments':len(starts)}
+        'method':'Welch   Hann   50% overlap','segments':len(starts)}
 
 
 def analyze(tx, channel, reference, received, fs, bit_count, ofdm=None, stages=None):

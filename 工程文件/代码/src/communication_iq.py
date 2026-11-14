@@ -63,7 +63,7 @@ def register(block, number, field, blocks):
 def presets(preset):
     p=preset(['iq_source', 'rx_agc', 'rx_carrier', 'demod_qpsk', 'sink'])
     p.update(sample_rate=8000, symbol_rate=8000)
-    return {'iq_replay': {'label':'实测 · I/Q 录波与接收回放', 'program':p}}
+    return {'iq_replay': {'label':'实测   I/Q 录波与接收回放', 'program':p}}
 
 
 def receive_stages(q):
@@ -296,8 +296,8 @@ def build(p):
         plan.append({'id':b['id'],'kind':k,'label':c.BLOCKS[k]['label'],'input_count':before,'count':count,'output':domain})
         if dynamic_count: plan[-1]['dynamic_count']=True
     token=hashlib.sha256(json.dumps(p,sort_keys=True,ensure_ascii=False,allow_nan=False,separators=(',',':')).encode()).hexdigest()
-    return {'program':p,'token':token,'plan':plan,'source_kind':'digital','transport':'iq','model':'I/Q 录波 · 接收回放',
-            'summary':f'{len(blocks)} 个积木 · {len(samples(q))} 个录波采样 · '+('接收长度由实际帧头确定' if dynamic_count else f'{count} 个接收比特')}
+    return {'program':p,'token':token,'plan':plan,'source_kind':'digital','transport':'iq','model':'I/Q 录波   接收回放',
+            'summary':f'{len(blocks)} 个积木   {len(samples(q))} 个录波采样   '+('接收长度由实际帧头确定' if dynamic_count else f'{count} 个接收比特')}
 
 
 def run(compiled):
@@ -374,8 +374,8 @@ def run(compiled):
                        complete_payload=details['complete_payload'],accepted_packets=details['accepted_packets'],
                        frame_count=frame_count,frame_errors=details['failed_packets'],
                        fer=details['failed_packets']/frame_count if frame_count else None)
-    received_summary=f"{metrics['received_bits']} 位通过 CRC · {len(data)} 位业务重组" if 'self_frame' in recovery else f'{len(data)} 个接收比特'
-    return {'token':compiled['token'],'seed':p['seed'],'summary':f'{len(p["blocks"])} 个积木 · {len(original)} 个录波采样 · {received_summary}','model':compiled['model'],'transport':'iq','plan':plan,'metrics':metrics,
+    received_summary=f"{metrics['received_bits']} 位通过 CRC   {len(data)} 位业务重组" if 'self_frame' in recovery else f'{len(data)} 个接收比特'
+    return {'token':compiled['token'],'seed':p['seed'],'summary':f'{len(p["blocks"])} 个积木   {len(original)} 个录波采样   {received_summary}','model':compiled['model'],'transport':'iq','plan':plan,'metrics':metrics,
             'sink':{'kind':'digital','values':data[:256].tolist(),'reference':[],'count':len(data),'plot_count':min(256,len(data)),'sample_rate':None},
             'channel':view(original,c.CONFIG['plot_points'],q['rate_hz']),
             'advanced':{'scheme':scheme.upper(),'sample_rate':q['rate_hz'],'transmitter':view(original,256,q['rate_hz']),

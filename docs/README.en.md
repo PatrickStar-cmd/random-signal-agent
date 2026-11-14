@@ -2,9 +2,9 @@
 
 <div align="left">
 
-[简体中文](README.md) · **English**
+[简体中文](README.md)   **English**
 
-[Live demo](https://patrickstar-cmd.github.io/random-signal-agent/) · [Project home](../README.en.md)
+[Live demo](https://patrickstar-cmd.github.io/random-signal-agent/)   [Project home](../README.en.md)
 
 This experiment compares six preprocessing methods on a random process with mixed noise, using the same input samples and fixed parameters.
 

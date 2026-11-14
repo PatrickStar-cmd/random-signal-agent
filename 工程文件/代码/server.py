@@ -211,10 +211,25 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
             if job.ctx is None or bid not in job.ctx.values: raise ValueError('选择本次运行中已记录的复采样观察点。')
             observation=next(o for o in job.ctx.observations if o['id']==bid)
             return await run_in_threadpool(iq.export_recording,job.ctx.values[bid],observation['sample_rate'],job.ctx.compiled['program'],bid,observation['domain'])
-        studio_actions={'graph-build','graph-create','graph-export','v0410-inspect','v0410-classroom','describe','receiver','pair','document-check','project-list','project-save','project-load','job-start','job-status','job-control','window','report-preview','report-pdf'}
+        studio_actions={'workbench-build','workbench-diagnose','workbench-restore','delivery-courses','delivery-course','delivery-diff','delivery-record','delivery-restore','delivery-export','delivery-import','graph-build','graph-create','graph-export','v0410-inspect','v0410-classroom','describe','receiver','pair','document-check','project-list','project-save','project-load','job-start','job-status','job-control','window','report-preview','report-pdf'}
         if action in studio_actions:
             if request.headers.get('content-type','').split(';')[0]!='application/json': raise ValueError('通信实验请求须使用 JSON。')
             payload=await body(request);session=session_key(payload.get('session_id'))
+            if action.startswith('workbench-'):
+                from src import communication_workbench_v0412 as workbench
+                if action=='workbench-restore': return {'document':await run_in_threadpool(workbench.restore_trial,payload.get('task'),payload.get('index'))}
+                operation=workbench.build_document if action=='workbench-build' else workbench.diagnose
+                return await run_in_threadpool(operation,payload.get('document'))
+            if action.startswith('delivery-'):
+                import base64
+                from src import communication_delivery_v0412 as delivery
+                if action=='delivery-courses': return {'courses':delivery.courses()}
+                if action=='delivery-course': return await run_in_threadpool(delivery.course,payload.get('id'))
+                if action=='delivery-diff': return await run_in_threadpool(delivery.compare,payload.get('before'),payload.get('after'))
+                if action=='delivery-record': return await run_in_threadpool(delivery.record,payload.get('document'),payload.get('name'))
+                if action=='delivery-restore': return await run_in_threadpool(delivery.restore_record,payload.get('record'))
+                if action=='delivery-import': return await run_in_threadpool(delivery.import_bundle,base64.b64decode(payload.get('data',''),validate=True))
+                return await run_in_threadpool(delivery.export_bundle,payload.get('document'))
             if action.startswith('graph-'):
                 from src import communication_graph_v0411 as graph
                 if action=='graph-create':

@@ -37,11 +37,13 @@ def checkpoint(index, scope):
         raise Suspended()
 
 
-def execute(compiled, resume=None, stop_after=None, cancel=None):
+def execute(compiled, resume=None, stop_after=None, cancel=None, gate=None,
+            on_context=None, scope=None, initial=None):
     from src import communications as c
     if compiled.get('transport') != 'advanced' or compiled['source_kind'] == 'analog':
         raise ValueError('分段执行请选择数字复基带接收链路。')
-    ctx = runtime.Observer(compiled, retain=True, states={}, cancel=cancel)
+    ctx = runtime.Observer(compiled, retain=True, states={}, cancel=cancel, gate=gate)
+    ctx.scope = scope
     ctx.resume = copy.deepcopy(resume)
     ctx.stop_after = stop_after
     ctx.capture_indices = {stop_after} if stop_after is not None else set()
@@ -53,6 +55,12 @@ def execute(compiled, resume=None, stop_after=None, cancel=None):
             row['reused'] = True
             row['elapsed_ms'] = 0.
         ctx.values = copy.deepcopy(resume['values'])
+    if on_context: on_context(ctx)
+    if initial:
+        block, values, domain = initial
+        ctx.plan[block['id']] = {'output': domain}
+        ctx.record(block, values, compiled['program']['symbol_rate'])
+        ctx.observations[-1].update(label=block['label'], elapsed_ms=0.)
     start = len(ctx.observations)
     result = None
     with runtime.execution(ctx):

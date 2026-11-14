@@ -28,15 +28,15 @@ window.createCommunicationFramingV0410=function(core,ctx){
     }else if(mode==='turbo'){
       const history=value.learning?.history;if(value.learning?.kind!=='turbo'){byId('cmFramingCaption').textContent='选择 Turbo 迭代译码器。';return;}
       range.max=history.length-1;const index=Math.min(Number(range.value),history.length-1),step=history[index];range.value=index;
-      plot([{name:'第一译码器先验',values:step.prior},{name:'第一译码器外信息',values:step.extrinsic},{name:'本轮后验',values:step.posterior}],'LLR · log P(0)/P(1)');
-      byId('cmFramingCaption').textContent=`${value.algorithm} · 第 ${step.iteration} / ${value.iterations} 轮 · 首码字前 ${step.posterior.length} 位；外信息经交织后进入另一译码器。`;
+      plot([{name:'第一译码器先验',values:step.prior},{name:'第一译码器外信息',values:step.extrinsic},{name:'本轮后验',values:step.posterior}],'LLR   log P(0)/P(1)');
+      byId('cmFramingCaption').textContent=`${value.algorithm}   第 ${step.iteration} / ${value.iterations} 轮   首码字前 ${step.posterior.length} 位；外信息经交织后进入另一译码器。`;
       byId('cmFramingSummary').innerHTML=cards([['信息位 K',value.block_size],['码字数',value.codewords],['本轮硬判变化',step.changed_bits],['平均 |后验|',step.mean_abs_posterior]]);
       byId('cmFramingTable').innerHTML=table(['位序号','先验','外信息','后验'],step.posterior.map((v,i)=>[i,step.prior[i],step.extrinsic[i],v]));
     }else{
       const events=value.events;if(!events){byId('cmFramingCaption').textContent='在教学实验的协议与速率中运行 IR-HARQ，或选择同预算 Chase 对照。';return;}
       range.max=events.length-1;const index=Math.min(Number(range.value),events.length-1),event=events[index];range.value=index;
-      plot([{name:'母码 LLR 缓冲',values:(event.llr_buffer||[]).slice(0,256)}],'LLR · 首 256 个母码位置');
-      byId('cmFramingCaption').textContent=`包 ${event.packet} · 第 ${event.attempt} 次发送 · RV ${event.rv} · ${event.crc_pass?'CRC 通过':'继续积累软信息'}；按母码索引合并每次实际接收的 LLR。`;
+      plot([{name:'母码 LLR 缓冲',values:(event.llr_buffer||[]).slice(0,256)}],'LLR   首 256 个母码位置');
+      byId('cmFramingCaption').textContent=`包 ${event.packet}   第 ${event.attempt} 次发送   RV ${event.rv}   ${event.crc_pass?'CRC 通过':'继续积累软信息'}；按母码索引合并每次实际接收的 LLR。`;
       byId('cmFramingSummary').innerHTML=cards([['本轮编码位',event.coded_bits],['母码覆盖',`${fmt(100*event.mother_coverage)}%`],['发送样本',event.symbols],['累计发送能量',event.accumulated_tx_energy]]);
       byId('cmFramingTable').innerHTML=table(['包','次数','RV','编码位','母码覆盖','发送能量','CRC'],events.map(e=>[e.packet,e.attempt,e.rv,e.coded_bits,`${fmt(100*e.mother_coverage)}%`,e.tx_energy,e.crc_pass?'通过':'重传']));
     }

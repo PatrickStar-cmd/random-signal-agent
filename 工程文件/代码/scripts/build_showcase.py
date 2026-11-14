@@ -24,12 +24,12 @@ from src.workbench import VERSION
 def decorate_preview(page):
     """Keep the checked-in static preview consistent when regenerating results."""
     if 'id="layout-preview"' not in page:
-        page=page.replace('<main>','<main>'+'<section id="layout-preview"><h2>v0.4.6 · 界面布局与交互优化 🌊</h2><p>紧凑工程工具栏、统一实验库、参数与信宿切换、四类分析标签与大图模式。手机和平板通过底部参数抽屉编辑链路，保留 150 模块、64 示例和 7 项任务。</p><p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.6">下载 v0.4.6</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v046.md">界面布局指南</a></p></section>',1)
+        page=page.replace('<main>','<main>'+'<section id="layout-preview"><h2>v0.4.6   界面布局与交互优化 🌊</h2><p>紧凑工程工具栏、统一实验库、参数与信宿切换、四类分析标签与大图模式。手机和平板通过底部参数抽屉编辑链路，保留 150 模块、64 示例和 7 项任务。</p><p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.6">下载 v0.4.6</a>   <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v046.md">界面布局指南</a></p></section>',1)
     if 'href="showcase.css"' not in page:
         page = page.replace('</head>', '  <link rel="stylesheet" href="showcase.css">\n</head>', 1)
     header = '''<header><div><span class="eyebrow">YOUR LITTLE SIGNAL LAB</span>
-      <h1>谛听 · 随机信号智能体</h1><p>从一条波形开始，探索噪声、规律与细节里的异常。</p>
-      <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent#readme">开始使用</a> · 固定实验结果预览</p></div>
+      <h1>谛听   随机信号智能体</h1><p>从一条波形开始，探索噪声、规律与细节里的异常。</p>
+      <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent#readme">开始使用</a>   固定实验结果预览</p></div>
       <img src="images/ocean-whale.webp" alt="" width="1536" height="1024" decoding="async"></header>'''
     page = re.sub(r'<header>.*?</header>', lambda _: header, page, count=1, flags=re.S)
     if 'id="ocean-preview"' not in page:
@@ -38,46 +38,46 @@ def decorate_preview(page):
         <a href="images/ocean-ui-v034.png"><img class="preview-image" src="images/ocean-ui-v034.png" alt="可爱海洋工作区，包含对话、波形频谱和分析工具箱" loading="lazy"></a>
         <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.0">下载 v0.4.0</a>，启动 Python 服务即可体验新版海洋界面。</p></section>''', 1)
     if 'id="pdf-report-preview"' not in page:
-        page = page.replace('<main>', '<main>' + '<section id="pdf-report-preview"><h2>把实验整理成一份清晰的 PDF</h2><p>v0.4.0 支持当前实验或最近 50 次处理结果的中文简版/标准版报告：统一封面、汇总表、可跳转目录、逐组矢量图表、指标与复现信息。运行后端后，在“模板与实验 → PDF 分析报告”选择历史、预览并下载。</p><p><a href="report-example.pdf">查看真实实验的示例 PDF</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.0">下载 v0.4.0</a></p><a href="images/pdf-report-v031.png"><img class="preview-image" src="images/pdf-report-v031.png" alt="PDF 分析报告的摘要预览与下载" loading="lazy"></a></section>', 1)
+        page = page.replace('<main>', '<main>' + '<section id="pdf-report-preview"><h2>把实验整理成一份清晰的 PDF</h2><p>v0.4.0 支持当前实验或最近 50 次处理结果的中文简版/标准版报告：统一封面、汇总表、可跳转目录、逐组矢量图表、指标与复现信息。运行后端后，在“模板与实验 → PDF 分析报告”选择历史、预览并下载。</p><p><a href="report-example.pdf">查看真实实验的示例 PDF</a>   <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.0">下载 v0.4.0</a></p><a href="images/pdf-report-v031.png"><img class="preview-image" src="images/pdf-report-v031.png" alt="PDF 分析报告的摘要预览与下载" loading="lazy"></a></section>', 1)
     if 'id="communications-preview"' not in page:
         page = page.replace('<main>', '''<main><section id="communications-preview"><h2>📡 用积木搭建通信实验</h2>
         <p>拖动信源、编码、调制、信道与译码积木，先 Build 再 Run，在信宿查看收到的信号、误码率和星座。支持数字通信、模拟信源 + PCM、文字传输，以及工程 JSON 和完整信宿 CSV 导出。</p>
         <p>v0.4.0「通信原理积木编程」已包含通信实验室。交互实验需要启动 Python 后端；此处展示实际运行截图。</p>
         <a href="images/communications-lab.png"><img class="preview-image" src="images/communications-lab.png" alt="通信实验室的积木编程区与信宿接收可视化区" loading="lazy"></a>
-        <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-lab.md">查看操作与模型说明</a> · <a href="images/communications-empty.png">查看无信号雪花屏</a></p></section>''', 1)
+        <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-lab.md">查看操作与模型说明</a>   <a href="images/communications-empty.png">查看无信号雪花屏</a></p></section>''', 1)
     if 'id="transmission-preview"' not in page:
-        page = page.replace('<main>', '''<main><section id="transmission-preview"><h2>v0.4.1 · 传输环节模块补充</h2>
+        page = page.replace('<main>', '''<main><section id="transmission-preview"><h2>v0.4.1   传输环节模块补充</h2>
         <p>六类积木、29 个示例：AM/DSB-SC/SSB/VSB/FM/PM、十对线路编译码、2–256-PAM 与六种成形脉冲、带限/ISI/定时信道、自动符号同步及固定/自适应均衡。</p>
         <p>在 Python 后端中 Build、Run，查看波形、频谱、眼图、时钟跟踪或 LMS/NLMS/RLS 均衡收敛。自动同步假设已知帧粗起点，自适应均衡使用实际发送的公共前导。</p>
         <a href="images/communications-recovery.png"><img class="preview-image" src="images/communications-recovery.png" alt="自适应 DFE 的训练前导、均衡后误差与收敛曲线" loading="lazy"></a>
-        <p><a href="images/communications-analog.png">模拟调制截图</a> · <a href="images/communications-baseband.png">基带与眼图截图</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.1">下载 v0.4.1</a></p></section>''', 1)
+        <p><a href="images/communications-analog.png">模拟调制截图</a>   <a href="images/communications-baseband.png">基带与眼图截图</a>   <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.1">下载 v0.4.1</a></p></section>''', 1)
     if 'id="block-studio-preview"' not in page:
-        page = page.replace('<main>', '''<main><section id="block-studio-preview"><h2>v0.4.2 · 积木编程视图更新</h2>
+        page = page.replace('<main>', '''<main><section id="block-studio-preview"><h2>v0.4.2   积木编程视图更新</h2>
         <p>六类表情积木工坊、紧凑拼接链路、完整参数面板，以及独立信宿观察与结果分析。选中积木高亮，未选中积木采用 3 px 框线；同步、均衡及高级参数分组展开。</p>
         <p>全部 29 个示例、原生拖放/排序、撤销重做、Build/Run、草稿和工程/完整结果导出继续可用。下面是新版实际运行截图。</p>
         <a href="images/communications-studio.png"><img class="preview-image" src="images/communications-studio.png" alt="海洋风格积木工坊、紧凑链路、信宿观察和完整参数面板" loading="lazy"></a>
-        <p><a href="images/communications-studio-recovery.png">查看均衡参数与收敛图</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.2">下载 v0.4.2</a></p></section>''', 1)
+        <p><a href="images/communications-studio-recovery.png">查看均衡参数与收敛图</a>   <a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.2">下载 v0.4.2</a></p></section>''', 1)
     if 'id="block-features-preview"' not in page:
-        page = page.replace('<main>', '''<main><section id="block-features-preview"><h2>v0.4.3 · 积木功能更新 🧩</h2>
+        page = page.replace('<main>', '''<main><section id="block-features-preview"><h2>v0.4.3   积木功能更新 🧩</h2>
         <p>122 个可添加模块、49 个预设：CRC、PRBS、扰码、压扩与预测编码、FSK/DPSK/MSK/GMSK、软 Viterbi、LDPC、完整复基带接收机、载波与帧同步、CMA、衰落导频估计和 OFDM。</p>
         <p>观察每块接收处理的输出、相关峰和 OFDM 网格；自动扫描 BER/SER/FER，以 Eb/N₀ 对比链路，显示 95% 置信区间并导出 JSON/CSV。</p>
         <a href="images/communications-v043-sweep.jpg"><img class="preview-image" src="images/communications-v043-sweep.jpg" alt="v0.4.3 软译码性能扫描与 95% 置信区间" loading="lazy"></a>
-        <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.3">下载 v0.4.3</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v043.md">算法与实验说明</a></p></section>''', 1)
+        <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.3">下载 v0.4.3</a>   <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v043.md">算法与实验说明</a></p></section>''', 1)
     if 'id="block-experience-preview"' not in page:
-        page=page.replace('<main>','''<main><section id="block-experience-preview"><h2>v0.4.4 · 积木编程体验更新 🌊</h2>
+        page=page.replace('<main>','''<main><section id="block-experience-preview"><h2>v0.4.4   积木编程体验更新 🌊</h2>
         <p>130 个可添加模块、54 个示例。搜索收藏、自动补齐接收链路、真实单步、多图联动、命名工程与快照、框选组合积木、共享信道分支、通用扫描续跑、多帧状态和中文 PDF。</p>
         <p>新增 AGC、自动噪声估计、有理数重采样、T/2 均衡、OFDM 频偏与导频跟踪、独立时变多径和突发噪声。</p>
         <a href="images/communications-v044-studio.png"><img class="preview-image" src="images/communications-v044-studio.png" alt="v0.4.4 海洋积木工程、组合接收机与联动观察" loading="lazy"></a>
-        <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.4">下载 v0.4.4</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v044.md">体验与算法指南</a></p></section>''',1)
+        <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.4">下载 v0.4.4</a>   <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v044.md">体验与算法指南</a></p></section>''',1)
     if 'id="rf-analysis-preview"' not in page:
-        page=page.replace('<main>','<main>'+'<section id="rf-analysis-preview"><h2>v0.4.5 · 真实收发链路与实验分析更新 🌊</h2><p>150 个可添加模块、64 个示例、7 项实验任务。高阶调制、I/Q 校正、功放、ADC、OFDM 削峰、窄带干扰和打孔编码，配合 Welch、CCDF、ACLR、资源栅格、自动对齐与效率分析。</p><a href="images/communications-v045-analysis.png"><img class="preview-image" src="images/communications-v045-analysis.png" alt="v0.4.5 海洋射频测量仪表" loading="lazy"></a><p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.5">下载 v0.4.5</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v045.md">射频与测量指南</a></p></section>',1)
+        page=page.replace('<main>','<main>'+'<section id="rf-analysis-preview"><h2>v0.4.5   真实收发链路与实验分析更新 🌊</h2><p>150 个可添加模块、64 个示例、7 项实验任务。高阶调制、I/Q 校正、功放、ADC、OFDM 削峰、窄带干扰和打孔编码，配合 Welch、CCDF、ACLR、资源栅格、自动对齐与效率分析。</p><a href="images/communications-v045-analysis.png"><img class="preview-image" src="images/communications-v045-analysis.png" alt="v0.4.5 海洋射频测量仪表" loading="lazy"></a><p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.5">下载 v0.4.5</a>   <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v045.md">射频与测量指南</a></p></section>',1)
     if 'id="business-learning-preview"' not in page:
-        page=page.replace('<main>','''<main><section id="business-learning-preview"><h2>v0.4.7 · 业务传输与教学实验增强 🐬</h2>
-        <p><strong>178 个可添加积木 · 78 个实验示例 · 9 项教学挑战</strong>。海洋风格工作区将真实业务传输、扩频多天线与逐步教学连接起来。</p>
+        page=page.replace('<main>','''<main><section id="business-learning-preview"><h2>v0.4.7   业务传输与教学实验增强 🐬</h2>
+        <p><strong>178 个可添加积木   78 个实验示例   9 项教学挑战</strong>。海洋风格工作区将真实业务传输、扩频多天线与逐步教学连接起来。</p>
         <p>🎙️ 传输音频、灰度图像和文件，播放接收声音、比较 PSNR、核验文件 SHA256。🗜️ Huffman、IMA ADPCM、BCH、RS 与分包 / 组包组成压缩、纠错和重建链路。</p>
         <p>📡 DSSS、码相位捕获、解扩与 RAKE；SIMO SC/MRC、Alamouti 2×1、2×2 MIMO ZF/MMSE。观察真实相关峰、路径增益、各天线数据和公共训练估计。</p>
         <p>🎓 工程变量与公式、二维扫描热图、Huffman/Viterbi/LDPC/星座过程、挑战验收和工程差异；ARQ/HARQ 与五档 AMC 反馈实验；导出可运行 Python、结果 JSON 和海洋配色 SVG。</p>
-        <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.7">📦 下载 v0.4.7</a> · <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v047.md">📘 业务与教学指南</a></p>
+        <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.7">📦 下载 v0.4.7</a>   <a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v047.md">📘 业务与教学指南</a></p>
         <a href="images/communications-v047-learning.png"><img class="preview-image" src="images/communications-v047-learning.png" alt="v0.4.7 海洋风格教学实验、算法演示与实验分析" loading="lazy"></a>
         <a href="images/communications-v047-media.png"><img class="preview-image" src="images/communications-v047-media.png" alt="v0.4.7 业务信源、传输链路与接收内容对照" loading="lazy"></a>
         </section>''',1)
@@ -119,13 +119,13 @@ def main():
     rows = "".join(f'<tr><td>{html.escape(item["label"])}</td><td>{item["snr_db"]:.3f} dB</td>'
                    f'<td>{item["snr_db"] - raw_snr:+.3f} dB</td></tr>' for item in comparison)
     introduction = f'''<section>
-      <h2>固定种子实验 · 静态演示</h2>
+      <h2>固定种子实验   静态演示</h2>
       <p>固定种子生成的信号、处理结果与分析指标。</p>
-      <p>种子 {bundle.config.seed} · {bundle.config.sample_rate:g} Hz · {bundle.config.duration:g} 秒 · {bundle.config.sample_count} 点 · {bundle.config.base_frequency:g} Hz 主频 · {html.escape(bundle.config.waveform)} + {html.escape(bundle.config.noise_model)}。图中曲线共享纵轴；完整数据见下方下载。</p>
+      <p>种子 {bundle.config.seed}   {bundle.config.sample_rate:g} Hz   {bundle.config.duration:g} 秒   {bundle.config.sample_count} 点   {bundle.config.base_frequency:g} Hz 主频   {html.escape(bundle.config.waveform)} + {html.escape(bundle.config.noise_model)}。图中曲线共享纵轴；完整数据见下方下载。</p>
       <p>启动 Python 服务后，即可使用对话、上传分析、麦克风和自动调参。</p>
-      <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent#从零复现">查看源码与本地运行步骤</a> ·
-      <a href="data/sample.csv" download>下载可上传的两列 CSV</a> ·
-      <a href="data/reference.csv" download>下载含干净参考的完整 CSV</a> ·
+      <p><a href="https://github.com/PatrickStar-cmd/random-signal-agent#从零复现">查看源码与本地运行步骤</a>
+      <a href="data/sample.csv" download>下载可上传的两列 CSV</a>
+      <a href="data/reference.csv" download>下载含干净参考的完整 CSV</a>
       <a href="data/result.json">查看参数与完整指标 JSON</a></p>
     </section>'''
     comparison_section = f'''<section><h2>六种预处理方法对比</h2>

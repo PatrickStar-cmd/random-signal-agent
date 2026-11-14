@@ -7,7 +7,7 @@
   let catalog=null,definitions={},program=null,compiled=null,result=null,category='source',busy=false,revision=0;
   let undo=[],redo=[],drag=null,plot='constellation',snowTimer=0,selectedId=null;
   let sweeps=[];
-  let studio=null;
+  let studio=null,clipboard=[];
   const inspectorState=new Map();
   const clone=value=>JSON.parse(JSON.stringify(value));
   const empty=()=>({schema:catalog.schema,...clone(catalog.defaults),blocks:[{id:'sink',kind:'sink',params:{}}]});
@@ -34,12 +34,17 @@
     return new Promise(resolve=>{dialog.addEventListener('close',()=>resolve(dialog.returnValue==='replace'),{once:true});dialog.showModal()});
   }
   function change(fn,message){if(busy||!catalog)return;checkpoint();fn();invalidate(message);renderProgram()}
+  function changeLayout(fn,message){if(busy)return;checkpoint();fn();persist();buttons();if(message)status(message)}
+  function viewState(){const meta=studio.meta();return meta.scratch||(meta.scratch={zoom:1,notes:{},collapsed:{},groups:[]});}
+  function selectionIds(){const ids=[...byId('cmProgram').querySelectorAll('[data-cm-multi]:checked')].map(e=>e.dataset.cmMulti);return ids.length?ids:[selectedId];}
+  function editSelection(ids,index,copy=false){change(()=>{const made=window.CommunicationGraphModel.editBlocks(program,ids,index,{copy,uid});if(made.length)selectedId=made[0];},copy?'已复制独立的积木副本。':'积木已移动并拼接。');}
+
   function setProgram(next,message){change(()=>{studio?.replaceProgram();program=clone(next);selectedId=program.blocks[0]?.id},message)}
   function history(direction){
     if(busy)return;const from=direction==='undo'?undo:redo,to=direction==='undo'?redo:undo;if(!from.length)return;
     const previous={program:clone(program),experience:studio?.editSnapshot()};to.push(previous);const item=from.pop();
     const a=previous.experience?.graph,b=item.experience?.graph,key=window.CommunicationGraphModel?.numericKey;
-    const preserve=!!(a&&b&&key&&key(a)===key(b));program=item.program||item;
+    const preserve=!!(a&&b&&key&&key(a)===key(b))||(!a&&!b&&JSON.stringify(previous.program)===JSON.stringify(item.program));program=item.program||item;
     if(item.experience)studio?.restoreEdit(item.experience,preserve);
     if(preserve){persist();buttons();status('已'+(direction==='undo'?'撤销':'重做')+'视图调整。');}
     else invalidate('已'+(direction==='undo'?'撤销':'重做')+'，重新 Build 后即可运行。');renderProgram();
@@ -76,6 +81,14 @@
       return `<span class="cm-slot" title="${esc(spec.label+': '+text)}">${esc(text.length>22?text.slice(0,22)+'…':text)}</span>`;
     }).join('');
   }
+  function inlineHTML(b){
+    return Object.entries(definitions[b.kind].params).filter(([,spec])=>spec.type!=='text').slice(0,2).map(([key,spec])=>{
+      const value=b.params[key]??spec.default,data=`data-inline-block="${esc(b.id)}" data-inline-param="${esc(key)}" aria-label="${esc(definitions[b.kind].label+' '+spec.label)}"`;
+      if(spec.type==='boolean')return `<label class="cm-scratch-inline"><input type="checkbox" ${data} ${value?'checked':''}>${esc(spec.label)}</label>`;
+      if(spec.type==='select')return `<label class="cm-scratch-inline">${esc(spec.label)}<select ${data}>${spec.choices.map(v=>`<option value="${esc(String(v))}" ${v===value?'selected':''}>${esc(String(spec.choice_labels?.[v]??v))}</option>`).join('')}</select></label>`;
+      return `<label class="cm-scratch-inline">${esc(spec.label)}<input type="number" ${data} value="${value??''}" min="${spec.min??''}" max="${spec.max??''}" step="${spec.type==='integer'?1:'any'}"></label>`;
+    }).join('');
+  }
   function renderInspector(){
     const pane=byId('cmInspector');
     if(pane.dataset.blockId)inspectorState.set(pane.dataset.blockId,[...pane.querySelectorAll('details[open]')].map(d=>d.dataset.group));
@@ -107,20 +120,20 @@
   function renderProgram(){
     if(!program)return;
     const oldNoise=byId('cmSweepNoise').value;
-    byId('cmSweepNoise').innerHTML=program.blocks.filter(b=>['awgn','complex_awgn','sample_awgn','bandlimited_awgn'].includes(b.kind)).map(b=>`<option value="${esc(b.id)}">${esc(definitions[b.kind].label)} · ${program.blocks.indexOf(b)+1}</option>`).join('');
+    byId('cmSweepNoise').innerHTML=program.blocks.filter(b=>['awgn','complex_awgn','sample_awgn','bandlimited_awgn'].includes(b.kind)).map(b=>`<option value="${esc(b.id)}">${esc(definitions[b.kind].label)}   ${program.blocks.indexOf(b)+1}</option>`).join('');
     if([...byId('cmSweepNoise').options].some(o=>o.value===oldNoise))byId('cmSweepNoise').value=oldNoise;
     for(const input of root.querySelectorAll('[data-global]'))input.value=program[input.dataset.global]??'';
-    byId('cmBlockCount').textContent=`${program.blocks.length} 块积木`;
+    byId('cmBlockCount').textContent=`${program.blocks.length} 块积木`+(studio?.meta().tools?.length?'  '+studio.meta().tools.length+' 个工具':'');
     if(!program.blocks.some(b=>b.id===selectedId))selectedId=program.blocks[0].id;
     const preset=Object.values(catalog.presets).find(p=>JSON.stringify(p.program)===JSON.stringify(program));
     byId('cmProjectName').textContent=preset?.label||'我的通信工程';
-    byId('cmClockSummary').textContent=`Rs = ${program.symbol_rate} Baud · 种子 ${program.seed}`;
+    byId('cmClockSummary').textContent=`Rs = ${program.symbol_rate} Baud   种子 ${program.seed}`;
     byId('cmProgram').innerHTML=(program.blocks.length===1?'<div class="cm-empty"><span aria-hidden="true">🧩</span>从积木工坊添加信源，<br>开始搭建通信链路。</div>':'<div class="cm-start">🚩 当实验开始</div>')+program.blocks.map((b,i)=>{
       const def=definitions[b.kind];
-      const id=esc(b.id),select=`<button type="button" class="cm-block-select" data-cm-select="${id}" aria-pressed="${b.id===selectedId}" aria-label="编辑 ${esc(def.label)} 参数"><strong>${b.kind==='sink'?'📺 ':''}${esc(def.label)}</strong><span class="cm-slots">${summaryHTML(b)}</span></button>`;
+      const id=esc(b.id),select=`<button type="button" class="cm-block-select" data-cm-select="${id}" aria-pressed="${b.id===selectedId}" aria-label="编辑 ${esc(def.label)} 参数"><strong>${b.kind==='sink'?'📺 ':''}${esc(def.label)}</strong><span class="cm-slots" hidden>${summaryHTML(b)}</span></button>`;
       if(b.kind==='sink')return `<article class="cm-block cm-sink ${b.id===selectedId?'cm-selected':''}" data-cm-category="sink" data-cm-id="${id}" data-cm-index="${i}">${select}</article>`;
-      return `<article class="cm-block ${b.id===selectedId?'cm-selected':''}" data-cm-category="${def.category}" data-cm-id="${id}" data-cm-index="${i}"><div class="cm-block-head"><button type="button" class="cm-handle" draggable="true" data-cm-move="${id}" aria-label="拖动 ${esc(def.label)}" title="拖动改变链路顺序">⠿</button>${select}<span class="cm-block-controls"><button type="button" data-cm-up="${id}" aria-label="上移 ${esc(def.label)}" ${i===0?'disabled':''}>↑</button><button type="button" data-cm-down="${id}" aria-label="下移 ${esc(def.label)}" ${i===program.blocks.length-2?'disabled':''}>↓</button><button type="button" class="cm-remove" data-cm-remove="${id}" aria-label="移除 ${esc(def.label)}">×</button></span></div></article>`;
-    }).join('');renderInspector();studio?.render();buttons();
+      return `<article class="cm-block ${b.id===selectedId?'cm-selected':''}" data-cm-category="${def.category}" data-cm-id="${id}" data-cm-index="${i}"><div class="cm-block-head"><button type="button" class="cm-handle" draggable="true" data-cm-move="${id}" aria-label="拖动 ${esc(def.label)}" title="拖动改变链路顺序">⠿</button>${select}<span class="cm-block-controls"><button type="button" data-cm-up="${id}" aria-label="上移 ${esc(def.label)}" ${i===0?'disabled':''}>↑</button><button type="button" data-cm-down="${id}" aria-label="下移 ${esc(def.label)}" ${i===program.blocks.length-2?'disabled':''}>↓</button><button type="button" class="cm-remove" data-cm-remove="${id}" aria-label="移除 ${esc(def.label)}">×</button></span></div><div class="cm-inline-params">${inlineHTML(b)}</div>${viewState().notes?.[b.id]?`<p class="cm-block-note">📝 ${esc(viewState().notes[b.id])}</p>`:''}</article>`;
+    }).join('');byId('cmProgram').style.zoom=String(viewState().zoom||1);renderInspector();studio?.render();buttons();root.dispatchEvent(new Event('cm-scratch-render'));
   }
   function add(kind,index=program.blocks.length-1){
     if(arguments.length<2&&studio)index=studio.insertionIndex(index);
@@ -148,28 +161,33 @@
     if(el.dataset.global)program[el.dataset.global]=el.value===''?null:Number(el.value);
     else{
       const b=program.blocks.find(b=>b.id===el.dataset.blockId),spec=definitions[b.kind].params[el.dataset.param];
-      b.params[el.dataset.param]=spec.type==='boolean'?el.checked:spec.type==='text'?el.value:el.value===''?null:Number(el.value);
+      b.params[el.dataset.param]=spec.type==='boolean'?el.checked:spec.type==='text'?el.value:spec.type==='select'?spec.choices.find(v=>String(v)===el.value):el.value===''?null:Number(el.value);
       studio?.parameterChanged();
     }
     invalidate();
     byId('cmProjectName').textContent='我的通信工程';
-    byId('cmClockSummary').textContent=`Rs = ${program.symbol_rate} Baud · 种子 ${program.seed}`;
-    if(el.dataset.param){const b=program.blocks.find(b=>b.id===el.dataset.blockId),card=[...byId('cmProgram').querySelectorAll('[data-cm-id]')].find(card=>card.dataset.cmId===b.id);card.querySelector('.cm-slots').innerHTML=summaryHTML(b);}
+    byId('cmClockSummary').textContent=`Rs = ${program.symbol_rate} Baud   种子 ${program.seed}`;
+    if(el.dataset.param){const b=program.blocks.find(b=>b.id===el.dataset.blockId),card=[...byId('cmProgram').querySelectorAll('[data-cm-id]')].find(card=>card.dataset.cmId===b.id);card.querySelector('.cm-slots').innerHTML=summaryHTML(b);const input=card.querySelector('[data-inline-param="'+el.dataset.param+'"]');if(input&&document.activeElement!==input){if(input.type==='checkbox')input.checked=!!b.params[el.dataset.param];else input.value=b.params[el.dataset.param];}}
+  });
+  root.addEventListener('change',event=>{
+    const el=event.target;if(!el.dataset.inlineParam||busy)return;if(!el.checkValidity()){el.reportValidity();return;}
+    const b=program.blocks.find(v=>v.id===el.dataset.inlineBlock),spec=definitions[b.kind].params[el.dataset.inlineParam];
+    change(()=>{b.params[el.dataset.inlineParam]=spec.type==='boolean'?el.checked:spec.type==='select'?spec.choices.find(v=>String(v)===el.value):Number(el.value);studio?.parameterChanged();},'积木参数已更新。');
   });
   root.addEventListener('dragstart',event=>{
-    const item=event.target.closest('[data-cm-kind],[data-cm-move]');if(busy||!item){event.preventDefault();return}
-    drag=item.dataset.cmKind?{kind:item.dataset.cmKind}:{id:item.dataset.cmMove};
-    event.dataTransfer.effectAllowed=drag.id?'move':'copy';event.dataTransfer.setData('application/x-ocean-communication',JSON.stringify(drag));
+    if(busy){event.preventDefault();return}const item=event.target.closest('[data-cm-kind],[data-cm-move]');if(!item)return;
+    drag=item.dataset.cmKind?{kind:item.dataset.cmKind}:{id:item.dataset.cmMove};if(drag.id){const chosen=selectionIds();drag.ids=chosen.includes(drag.id)?chosen:[drag.id];if(event.shiftKey)drag.ids=program.blocks.slice(program.blocks.findIndex(b=>b.id===drag.id)).filter(b=>b.kind!=='sink').map(b=>b.id);}
+    event.dataTransfer.effectAllowed=drag.id?'copyMove':'copy';event.dataTransfer.setData('application/x-ocean-communication',JSON.stringify(drag));
   });
   const clearDrag=()=>{byId('cmProgram').classList.remove('cm-drag-over');byId('cmProgram').querySelectorAll('.cm-drop-before,.cm-drop-after').forEach(e=>e.classList.remove('cm-drop-before','cm-drop-after'))};
   byId('cmProgram').addEventListener('dragover',event=>{
-    if(!drag||busy)return;event.preventDefault();event.dataTransfer.dropEffect=drag.id?'move':'copy';clearDrag();byId('cmProgram').classList.add('cm-drag-over');
+    if(!drag||busy)return;event.preventDefault();event.dataTransfer.dropEffect=drag.id&&!event.ctrlKey?'move':'copy';clearDrag();byId('cmProgram').classList.add('cm-drag-over');
     const card=event.target.closest('[data-cm-index]');if(card)card.classList.add(card.classList.contains('cm-sink')||event.clientY<card.getBoundingClientRect().top+card.getBoundingClientRect().height/2?'cm-drop-before':'cm-drop-after');
   });
   byId('cmProgram').addEventListener('drop',event=>{
     if(!drag||busy)return;event.preventDefault();const card=event.target.closest('[data-cm-index]');let index=program.blocks.length-1;
     if(card){index=Number(card.dataset.cmIndex);if(!card.classList.contains('cm-sink')&&event.clientY>=card.getBoundingClientRect().top+card.getBoundingClientRect().height/2)index++}
-    const item=drag;drag=null;clearDrag();if(item.kind)add(item.kind,index);else move(item.id,index);
+    const item=drag;drag=null;clearDrag();if(item.kind)add(item.kind,index);else editSelection(item.ids||[item.id],index,event.ctrlKey);
   });
   root.addEventListener('dragend',()=>{drag=null;clearDrag()});
   byId('cmUndo').onclick=()=>history('undo');byId('cmRedo').onclick=()=>history('redo');
@@ -243,11 +261,11 @@
   };
   byId('cmOffset').oninput=drawSink;
   function showTrace(){
-    const data=result||compiled,plan=data?.plan||[];byId('cmModel').textContent=data?.model||'复基带 · 1 样本/符号 · 理想定时 · 硬判决';
+    const data=result||compiled,plan=data?.plan||[];byId('cmModel').textContent=data?.model||'复基带   1 样本/符号   理想定时   硬判决';
     byId('cmTrace').innerHTML=plan.length?`<table><thead><tr><th>积木</th><th>输出类型</th><th>数量</th></tr></thead><tbody>${plan.map(row=>`<tr><td>${esc(row.label)}</td><td>${esc(row.output)}</td><td>${row.count}</td></tr>`).join('')}</tbody></table>`:'Build 后显示逐级信号类型和数据量。';
     if(!result){byId('cmDetails').textContent='';return}
     const m=result.metrics;
-    if(result.transport==='iq'){byId('cmDetails').textContent=`I/Q 录波：${result.advanced.iq.name} · ${result.advanced.iq.samples} 点 · ${result.advanced.sample_rate} Hz · 恢复 ${result.sink.count} 个比特`;return;}
+    if(result.transport==='iq'){byId('cmDetails').textContent=`I/Q 录波：${result.advanced.iq.name}   ${result.advanced.iq.samples} 点   ${result.advanced.sample_rate} Hz   恢复 ${result.sink.count} 个比特`;return;}
     if(result.advanced){
       const a=result.advanced,r=a.recovery,f=r.frame;
       byId('cmDetails').textContent=`${a.scheme}；SER ${(100*m.ser).toFixed(3)}%；${m.crc_pass===null?'':`CRC ${m.crc_pass?'通过':'未通过'}；`}${r.frequency?`估计频偏 ${r.frequency.estimated_hz.toFixed(3)} Hz；`:''}${f?`帧同步${f.detected?'成功':'未锁定'}，相关峰 ${f.peak.toFixed(3)}，起点 ${f.start_symbol}；`:''}${a.ofdm?`OFDM ${a.ofdm.nfft} 点，CP ${a.ofdm.cp}，PAPR ${a.ofdm.papr_db.toFixed(2)} dB；`:''}${(a.codecs||[]).filter(v=>v.kind==='ldpc_decode').map(v=>`LDPC ${v.iterations} 次迭代，${v.failed_codewords} 个码字校验未通过。`).join('')}`;return;
@@ -257,7 +275,7 @@
       byId('cmDetails').textContent=`线路码/PAM：${b.scheme}；${b.symbol_rate} 码元/s × ${b.sps} 点/码元 = ${b.sample_rate} Hz。${b.pulse}；线路电平/编码位数 ${m.line_expansion.toFixed(3)}；线路违例 ${m.line_violations}。均衡前电平 RMSE ${m.before_equalizer_rmse.toPrecision(4)}，均衡后 ${m.level_rmse.toPrecision(4)}。前向抽头 [${b.equalizer_coefficients.map(v=>v.toPrecision(4)).join(', ')}]。${r?` 公共前导 ${r.training_symbols} / 完整帧 ${r.frame_symbols} 码元，数据占比 ${(100*r.payload_efficiency).toFixed(1)}%。`:''}${t?` ${t.method}：时钟分量${t.clock_informative?'已提取':'不足'}；初相 ${t.initial_phase.toFixed(4)}T，末相 ${t.final_phase.toFixed(4)}T；频率估计 ${t.frequency_ppm.toFixed(1)} ppm；末段相位抖动 ${t.phase_jitter.toPrecision(3)}T。`:''}${e?` ${e.method} / ${e.algorithm}；反馈抽头 [${e.feedback_coefficients.map(v=>v.toPrecision(4)).join(', ')}]；系数更新 ${e.updates} 次。${e.training_final_mse===null?'':` 训练 MSE ${e.training_initial_mse.toPrecision(4)} → ${e.training_final_mse.toPrecision(4)}。`}`:''}${result.sink.kind==='analog'?'信宿 RMSE 包含 PCM 量化误差。':''}`;return;
     }
     if(result.transport==='analog'){
-      byId('cmDetails').textContent=`${result.analog.family} · ${result.analog.scheme}；模拟采样率 ${result.analog.sample_rate} Hz。最大全段绝对误差 ${m.max_abs_error.toPrecision(4)}；发送复包络功率 ${m.transmit_power.toPrecision(4)}；相位参考样本 ${result.analog.pilot_samples} 个。`+(m.overmodulated_samples?` AM 过调制样本 ${m.overmodulated_samples} 个。`:'');return;
+      byId('cmDetails').textContent=`${result.analog.family}   ${result.analog.scheme}；模拟采样率 ${result.analog.sample_rate} Hz。最大全段绝对误差 ${m.max_abs_error.toPrecision(4)}；发送复包络功率 ${m.transmit_power.toPrecision(4)}；相位参考样本 ${result.analog.pilot_samples} 个。`+(m.overmodulated_samples?` AM 过调制样本 ${m.overmodulated_samples} 个。`:'');return;
     }
     byId('cmDetails').textContent=`解调后 / 译码前 BER：${m.coded_bit_errors} / ${m.coded_bit_count}；符号错误：${m.symbol_errors} / ${m.symbol_count}；判决前 EVM：${m.evm_percent.toPrecision(4)}%。有效码率含填充与终止位。`+(result.sink.kind==='analog'?` PCM 饱和样本：${m.clipped_samples}；译码后 BER 以源 PCM 比特为参考，RMSE 以原始模拟信源为参考。`:'')+(m.hamming_syndromes?` Hamming 非零综合征码字：${m.hamming_syndromes}（多位错误可能误纠正）。`:'');
   }
@@ -268,15 +286,15 @@
     const m=result?.metrics,analog=result?.sink.kind==='analog',direct=result?.transport==='analog',wave=result?.analog||result?.baseband||result?.advanced;
     const rows=result?.transport==='iq'?[['录波采样数',String(result.advanced.iq.samples),'完整复数 I/Q 采样'],['接收比特数',String(result.sink.count),result.advanced.scheme],['采样率',result.advanced.sample_rate+' Hz','录波元数据'],['接收功率',m.rx_power.toPrecision(4),'判决前平均复功率']]:direct?[
       ['信宿 RMSE',m.rmse.toPrecision(4),'相对原始模拟信源'],
-      ['恢复样本数',String(result.sink.count),`${result.analog.scheme} · ${result.analog.sample_rate} Hz`],
+      ['恢复样本数',String(result.sink.count),`${result.analog.scheme}   ${result.analog.sample_rate} Hz`],
       ['输出信误比',m.rmse<=1e-12?'无误差':m.output_snr_db===null?'—':m.output_snr_db.toFixed(2)+' dB','原始信源功率 / 全段误差功率'],
       ['复包络误差',m.channel_error_percent===null?'—':m.channel_error_percent.toPrecision(4)+'%','补偿后接收包络相对发送包络']
-    ]:[['译码后误码率',m?(100*m.ber).toFixed(3)+'%':'—',m?`${m.bit_errors} / ${m.bit_count} bit`:'等待传输'],['传输符号数',m?String(m.symbol_count):'—',m?`${result.baseband?.scheme||result.constellation.scheme.toUpperCase()} · ${program.symbol_rate} Baud`:'等待传输'],['有效码率',m?m.effective_rate.toFixed(3):'—','源比特 / 编码后比特'],[analog?'信宿 RMSE':result?.baseband?'判决前电平 RMSE':'判决前 EVM',m?(analog?m.rmse.toPrecision(4):result.baseband?m.level_rmse.toPrecision(4):m.evm_percent.toPrecision(4)+'%'):'—',analog?'相对原始模拟信源':'相对发送符号']];
+    ]:[['译码后误码率',m?(100*m.ber).toFixed(3)+'%':'—',m?`${m.bit_errors} / ${m.bit_count} bit`:'等待传输'],['传输符号数',m?String(m.symbol_count):'—',m?`${result.baseband?.scheme||result.constellation.scheme.toUpperCase()}   ${program.symbol_rate} Baud`:'等待传输'],['有效码率',m?m.effective_rate.toFixed(3):'—','源比特 / 编码后比特'],[analog?'信宿 RMSE':result?.baseband?'判决前电平 RMSE':'判决前 EVM',m?(analog?m.rmse.toPrecision(4):result.baseband?m.level_rmse.toPrecision(4):m.evm_percent.toPrecision(4)+'%'):'—',analog?'相对原始模拟信源':'相对发送符号']];
     if(m?.crc_pass!==undefined&&m.crc_pass!==null)rows.push(['CRC 校验',m.crc_pass?'通过':'未通过','整帧接收校验']);
     byId('cmMetrics').innerHTML=rows.map(([label,value,note])=>`<div class="cm-metric"><span>${label}</span><strong>${value}</strong><small>${esc(note)}</small></div>`).join('');
     byId('cmStageLabel').hidden=!result?.advanced?.stages.length;
     byId('cmStage').innerHTML='<option value="">选择处理积木…</option>'+(result?.advanced?.stages||[]).map(s=>`<option value="${esc(s.id)}">${esc(s.label)}</option>`).join('');
-    byId('cmSinkCaption').textContent=result?`${analog?'接收模拟波形':'接收比特序列'} · 显示前 ${result.sink.plot_count} / ${result.sink.count} ${analog?'点':'位'}`:'信宿等待接收';
+    byId('cmSinkCaption').textContent=result?`${analog?'接收模拟波形':'接收比特序列'}   显示前 ${result.sink.plot_count} / ${result.sink.count} ${analog?'点':'位'}`:'信宿等待接收';
     byId('cmWindow').hidden=!result||result.sink.count<=result.sink.plot_count;byId('cmOffset').max=result?Math.max(0,result.sink.count-result.sink.plot_count):0;byId('cmOffset').value=0;
     byId('cmLegend').querySelector('span:last-child').hidden=!!analog;
     byId('cmAnalogWarnings').hidden=!wave||!wave.warnings.length;
@@ -324,7 +342,7 @@
     const all=byId('cmReference').checked?[...values,...reference]:values,min=analog?Math.min(...all):-.15,max=analog?Math.max(...all):1.15;
     const margin=analog?Math.max(.08,(max-min)*.12):0,view=surface('cmSinkCanvas',true),end=analog?(n-1)/s.sample_rate:n-1;
     const axis=axes(view,min-margin,max+margin,end,analog?'时间 / s':'比特序号',true,analog?start/s.sample_rate:start);axis.xEnd=end;
-    byId('cmSinkCaption').textContent=`${analog?'接收模拟波形':'接收比特序列'} · 第 ${start+1}–${start+n} / ${s.count} ${analog?'点':'位'}`;
+    byId('cmSinkCaption').textContent=`${analog?'接收模拟波形':'接收比特序列'}   第 ${start+1}–${start+n} / ${s.count} ${analog?'点':'位'}`;
     if(byId('cmReference').checked)line(view,reference,axis,'#c8adfa',!analog,1.3);
     line(view,values,axis,'#70ead0',!analog,1.8);
     if(!analog&&reference.length){view.x.fillStyle='#ff9cae';values.forEach((v,i)=>{if(v!==reference[i]){view.x.beginPath();view.x.arc(axis.px(i),axis.py(v),3,0,2*Math.PI);view.x.fill()}})}
@@ -336,7 +354,7 @@
     if(plot==='stage'&&result.advanced){
       const s=result.advanced.stages.find(s=>s.id===byId('cmStage').value);if(!s)return;
       const values=[...s.i,...s.q],low=Math.min(...values),high=Math.max(...values),margin=Math.max(.1,(high-low)*.1),end=Math.max(1,s.plot_count-1)/s.symbol_rate;
-      const axis=axes(view,low-margin,high+margin,end,'时间 / s');axis.xEnd=end;line(view,s.i,axis,'#5264c4');line(view,s.q,axis,'#219782');byId('cmAnalysisCaption').textContent=`${s.label} 输出 · 蓝色 I / 绿色 Q · ${s.plot_count} / ${s.count} 点。`;return;
+      const axis=axes(view,low-margin,high+margin,end,'时间 / s');axis.xEnd=end;line(view,s.i,axis,'#5264c4');line(view,s.q,axis,'#219782');byId('cmAnalysisCaption').textContent=`${s.label} 输出   蓝色 I / 绿色 Q   ${s.plot_count} / ${s.count} 点。`;return;
     }
     if(plot==='correlation'&&result.advanced){
       const f=result.advanced.recovery.frame,values=f?.correlation||result.advanced.source_correlation,end=(values.length-1)*(f?.correlation_step||1),axis=axes(view,-.1,1.1,end,'延迟 / 码元');axis.xEnd=end;
@@ -345,34 +363,34 @@
     if(plot==='ofdm'&&result.advanced?.ofdm){
       const o=result.advanced.ofdm,grid=o.grid_i,dx=(width-65)/o.nfft,dy=(height-50)/grid.length;
       for(let r=0;r<grid.length;r++)for(let c=0;c<o.nfft;c++){const v=Math.min(1.5,Math.hypot(grid[r][c],o.grid_q[r][c]));x.fillStyle=`hsl(${225-v*90} 65% ${90-v*28}%)`;x.fillRect(45+c*dx,20+r*dy,dx+.5,dy+.5)}
-      x.fillStyle='#526b8e';x.fillText('OFDM 符号',3,13);x.fillText('子载波 0 → '+(o.nfft-1),45,height-12);byId('cmAnalysisCaption').textContent=`均衡后子载波幅度 · 前 ${grid.length} 个 OFDM 符号；DC 为零，${o.pilot_carriers.length} 个梳状导频。`;return;
+      x.fillStyle='#526b8e';x.fillText('OFDM 符号',3,13);x.fillText('子载波 0 → '+(o.nfft-1),45,height-12);byId('cmAnalysisCaption').textContent=`均衡后子载波幅度   前 ${grid.length} 个 OFDM 符号；DC 为零，${o.pilot_carriers.length} 个梳状导频。`;return;
     }
     if(recovery&&plot==='timing'){
       const t=recovery.timing,values=t.phases,low=Math.min(...values),high=Math.max(...values),margin=Math.max(.03,(high-low)*.08),end=Math.max(1,values.length-1)*(t.phase_step||1);
       const axis=axes(view,low-margin,high+margin,end,'帧内码元 / 相位 T');axis.xEnd=end;line(view,values,axis,'#8058b6');
-      byId('cmAnalysisCaption').textContent=`${t.method} · 接收样本估计的时钟相位 / T；末段频率 ${t.frequency_ppm.toFixed(1)} ppm。曲线包含公共前导。`;return;
+      byId('cmAnalysisCaption').textContent=`${t.method}   接收样本估计的时钟相位 / T；末段频率 ${t.frequency_ppm.toFixed(1)} ppm。曲线包含公共前导。`;return;
     }
     if(recovery&&plot==='convergence'){
       const e=recovery.equalizer,trace=e.error_trace,values=trace.map(v=>10*Math.log10(Math.max(v.mse,1e-12))),low=Math.min(-40,...values),high=Math.max(0,...values),end=Math.max(1,trace.at(-1).symbol);
       const axis=axes(view,low,high,end,'帧内码元 / MSE dB');axis.xEnd=end;line(view,values,axis,'#248c79');
-      byId('cmAnalysisCaption').textContent=e.algorithm==='CMA'?'CMA · 每 32 码元平均恒模代价 (R − |y|²)²。':`${e.method} / ${e.algorithm} · 32 码元平均误差均方（MSE）；前 ${e.training_symbols} 码元为训练误差，之后为判决误差。`;return;
+      byId('cmAnalysisCaption').textContent=e.algorithm==='CMA'?'CMA   每 32 码元平均恒模代价 (R − |y|²)²。':`${e.method} / ${e.algorithm}   32 码元平均误差均方（MSE）；前 ${e.training_symbols} 码元为训练误差，之后为判决误差。`;return;
     }
     if(wave?.eye&&plot==='eye'){
       const eye=wave.eye,all=eye.traces.flat(),low=Math.min(-.1,...all),high=Math.max(.1,...all),margin=(high-low)*.08;
       const axis=axes(view,low-margin,high+margin,2,'码元间隔 / T');axis.xEnd=2;
       eye.traces.forEach(values=>line(view,values,axis,'#5264c442',false,1));
-      byId('cmAnalysisCaption').textContent=`${wave.scheme} 眼图 · 接收滤波后、均衡前 · ${eye.traces.length} 段真实波形，每段 2 个码元${result.advanced?'，包含 I/Q 两路':''}。`;return;
+      byId('cmAnalysisCaption').textContent=`${wave.scheme} 眼图   接收滤波后、均衡前   ${eye.traces.length} 段真实波形，每段 2 个码元${result.advanced?'，包含 I/Q 两路':''}。`;return;
     }
     if(wave&&plot==='spectrum'){
       const s=wave.spectrum,low=s.frequency_hz[0],span=s.frequency_hz.at(-1)-low;
       const axis=axes(view,Math.max(-100,Math.min(...s.density_db)),Math.max(0,...s.density_db),span,result.baseband?'基带频率 / Hz':'相对载频 / Hz',false,low);axis.xEnd=span;
-      line(view,s.density_db,axis,'#8058b6');byId('cmAnalysisCaption').textContent=`${wave.scheme} 发送基带频谱 · 全帧双边周期图 / dB每Hz。`;return;
+      line(view,s.density_db,axis,'#8058b6');byId('cmAnalysisCaption').textContent=`${wave.scheme} 发送基带频谱   全帧双边周期图 / dB每Hz。`;return;
     }
     if(plot==='channel'||plot==='transmitter'){
       const c=plot==='transmitter'?wave.transmitter:result.channel,all=[...c.i,...c.q],min=Math.min(...all),max=Math.max(...all),margin=Math.max(.1,(max-min)*.1),end=(c.plot_count-1)/(wave?wave.sample_rate:c.symbol_rate);
       const axis=axes(view,min-margin,max+margin,end,'时间 / s');axis.xEnd=end;
       line(view,c.i,axis,'#5264c4');line(view,c.q,axis,'#219782');
-      byId('cmAnalysisCaption').textContent=`${plot==='transmitter'?(result.baseband?'发送端基带波形':'发送端已调复包络'):'信道输出（解调前）'} · 蓝色 I / 绿色 Q · ${c.plot_count} / ${c.count} ${wave?'个采样点':'个符号'}${result.baseband?'（显示数据起始窗口，Q 为零）':''}。`;return;
+      byId('cmAnalysisCaption').textContent=`${plot==='transmitter'?(result.baseband?'发送端基带波形':'发送端已调复包络'):'信道输出（解调前）'}   蓝色 I / 绿色 Q   ${c.plot_count} / ${c.count} ${wave?'个采样点':'个符号'}${result.baseband?'（显示数据起始窗口，Q 为零）':''}。`;return;
     }
     const c=result.constellation,bound=Math.max(1.3,...c.i.map(Math.abs),...c.q.map(Math.abs))*1.15;
     const area=Math.min(width-80,height-55),left=(width-area)/2,top=18,px=v=>left+(v/bound+1)*area/2,py=v=>top+(1-v/bound)*area/2;
@@ -381,7 +399,7 @@
     x.fillStyle='#248b8050';for(let i=0;i<c.i.length;i++){x.beginPath();x.arc(px(c.i[i]),py(c.q[i]),2,0,2*Math.PI);x.fill()}
     x.strokeStyle='#7658bd';x.lineWidth=2;c.ideal_i.forEach((v,i)=>{const a=px(v),b=py(c.ideal_q[i]);x.beginPath();x.moveTo(a-5,b);x.lineTo(a+5,b);x.moveTo(a,b-5);x.lineTo(a,b+5);x.stroke()});
     x.fillStyle='#536b8e';x.textAlign='left';x.fillText('Q',left-9,12);x.fillText('I',left+area+9,top+area/2);
-    byId('cmAnalysisCaption').textContent=`${c.scheme.toUpperCase()} 判决前星座 · 绿色接收点（前 ${c.count} 个）/ 紫色理想点；按解调器设置进行已知增益与相位补偿。`;
+    byId('cmAnalysisCaption').textContent=`${c.scheme.toUpperCase()} 判决前星座   绿色接收点（前 ${c.count} 个）/ 紫色理想点；按解调器设置进行已知增益与相位补偿。`;
   }
   function drawSweep(){
     if(root.hidden||!root.querySelector('.cm-sweep').open)return;
@@ -403,12 +421,59 @@
         x.beginPath();x.moveTo(xx,top);x.lineTo(xx,bottom);x.moveTo(xx-3,top);x.lineTo(xx+3,top);x.moveTo(xx-3,bottom);x.lineTo(xx+3,bottom);x.stroke();x.beginPath();x.arc(xx,yy,3,0,2*Math.PI);if(p[metric])x.fill();else x.stroke();
       }
       if(metric==='ber'&&s.points.every(p=>p.theory_ber!==undefined)){x.setLineDash([4,4]);x.beginPath();s.points.forEach((p,j)=>{const xx=axis.px(p.db-minX),yy=axis.py(Math.max(lower,Math.log10(Math.max(p.theory_ber,1e-12))));if(j)x.lineTo(xx,yy);else x.moveTo(xx,yy)});x.stroke();x.setLineDash([])}
-      x.textAlign='left';x.fillText((s.name+(metric==='ber'&&s.theory_label?' · 虚线：'+s.theory_label:'')).slice(0,65),axis.p.left+8,axis.p.top+15+i*15);
+      x.textAlign='left';x.fillText((s.name+(metric==='ber'&&s.theory_label?'   虚线：'+s.theory_label:'')).slice(0,65),axis.p.left+8,axis.p.top+15+i*15);
     }
-    x.fillStyle='#526b8e';x.textAlign='left';x.font=chartFont(10);x.fillText('log₁₀ '+metric.toUpperCase()+' · '+axisName,axis.p.left,13);
+    x.fillStyle='#526b8e';x.textAlign='left';x.font=chartFont(10);x.fillText('log₁₀ '+metric.toUpperCase()+'   '+axisName,axis.p.left,13);
   }
   root.querySelector('.cm-sweep').addEventListener('toggle',drawSweep);
   window.addEventListener('resize',()=>{drawSink();drawAnalysis();drawSweep()});document.addEventListener('visibilitychange',()=>{if(document.hidden)stopSnow();else drawSink()});
+  function setupScratch(){
+    const tools=document.createElement('div');tools.className='cm-scratch-controls';
+    tools.innerHTML='<button type="button" id="cmScratchZoomOut" aria-label="缩小积木">−</button><output id="cmScratchZoom">100%</output><button type="button" id="cmScratchZoomIn" aria-label="放大积木">＋</button><button type="button" id="cmScratchFit">适应画布</button><button type="button" id="cmScratchArrange">整理积木</button><details><summary>✂️ 编辑积木</summary><div class="cm-scratch-edit-actions"><button type="button" id="cmScratchCopy">复制</button><button type="button" id="cmScratchCut">剪切</button><button type="button" id="cmScratchPaste">粘贴</button><button type="button" id="cmScratchDelete">删除</button><button type="button" id="cmScratchAll">全选</button><button type="button" id="cmScratchUp">上移</button><button type="button" id="cmScratchDown">下移</button><button type="button" id="cmScratchNote">📝 注释</button><button type="button" id="cmScratchGroup">🧩 封装</button></div><label class="cm-scratch-note-editor" id="cmScratchNoteLabel" hidden>积木注释<textarea id="cmScratchNoteText" rows="3" maxlength="1000"></textarea></label><small>拖动手柄移动积木；Shift 拖动后续整段，Ctrl 拖动复制。</small></details>';
+    root.querySelector('.cm-canvas-tools').append(tools);
+    const batch=root.querySelector('.cm-batch-button');batch.textContent='☑';batch.title='批量选择';batch.setAttribute('aria-label','批量选择');
+    byId('cmLocate').textContent='⌖';byId('cmLocate').title='定位选中积木';byId('cmLocate').setAttribute('aria-label','定位选中积木');
+    root.querySelector('.cm-editor>.cm-panel-heading h3').textContent='🧱 积木编程区';
+    root.querySelector('.cm-chain-title span').textContent='拖动拼接积木  点击编辑参数';
+    const graphActive=()=>studio.graphEditor?.active();
+    const delegate=(id,fn)=>()=>{if(busy)return;if(graphActive())byId(id).click();else fn();};
+    function zoom(value){changeLayout(()=>viewState().zoom=Math.max(.5,Math.min(1.6,value)),'已调整积木缩放。');renderProgram();}
+    byId('cmScratchZoomOut').onclick=()=>zoom((viewState().zoom||1)-.1);
+    byId('cmScratchZoomIn').onclick=()=>zoom((viewState().zoom||1)+.1);
+    byId('cmScratchFit').onclick=()=>{const canvas=graphActive()?byId('cmGraphStage'):byId('cmProgram'),current=viewState().zoom||1,content=canvas.scrollWidth*current,available=canvas.parentElement.clientWidth;zoom(Math.min(1,current*available/Math.max(1,content)));};
+    byId('cmScratchArrange').onclick=()=>{if(graphActive())byId('cmGraphArrange').click();else zoom(1);};
+    const copy=()=>{clipboard=clone(program.blocks.filter(b=>selectionIds().includes(b.id)&&b.kind!=='sink'));status(`已复制 ${clipboard.length} 块积木。`);};
+    const remove=()=>change(()=>{const ids=selectionIds();program.blocks=program.blocks.filter(b=>!ids.includes(b.id)||b.kind==='sink');},'选中积木已移除，可撤销恢复。');
+    byId('cmScratchCopy').onclick=delegate('cmGraphCopy',copy);
+    byId('cmScratchCut').onclick=delegate('cmGraphCut',()=>{copy();remove();});
+    byId('cmScratchDelete').onclick=delegate('cmGraphDelete',remove);
+    byId('cmScratchPaste').onclick=delegate('cmGraphPaste',()=>{if(!clipboard.length)return;change(()=>{const index=Math.min(program.blocks.findIndex(b=>b.id===selectedId)+1,program.blocks.length-1),blocks=clipboard.map(b=>({...clone(b),id:uid()}));program.blocks.splice(index,0,...blocks);selectedId=blocks[0].id;},'已粘贴独立的积木副本。');});
+    byId('cmScratchAll').onclick=delegate('cmGraphSelectAll',()=>{const ids=program.blocks.filter(b=>b.kind!=='sink').map(b=>b.id);for(const id of ids){const e=byId('cmProgram').querySelector(`[data-cm-multi="${CSS.escape(id)}"]`);e.checked=true;e.dispatchEvent(new Event('change',{bubbles:true}));}root.classList.add('cm-batch-mode');});
+    function moveSelected(direction){
+      if(graphActive()){studio.graphEditor.moveSelection(direction);return;}
+      const ids=selectionIds(),indices=program.blocks.map((b,i)=>ids.includes(b.id)?i:-1).filter(i=>i>=0),index=direction<0?Math.min(...indices)-1:Math.max(...indices)+2;editSelection(ids,index);
+    }
+    byId('cmScratchUp').onclick=()=>moveSelected(-1);byId('cmScratchDown').onclick=()=>moveSelected(1);
+    byId('cmScratchGroup').onclick=delegate('cmGraphGroup',()=>{root.querySelector('.cm-organize').open=true;byId('cmGroupName').focus();});
+    byId('cmScratchNote').onclick=delegate('cmGraphNote',()=>{byId('cmScratchNoteLabel').hidden=false;byId('cmScratchNoteText').value=viewState().notes?.[selectedId]||'';byId('cmScratchNoteText').focus();});
+    byId('cmScratchNoteText').onchange=e=>{const id=selectedId,value=e.target.value;changeLayout(()=>{const u=viewState();(u.notes||(u.notes={}))[id]=value;},'积木注释已保存。');renderProgram();};
+    root.addEventListener('cm-scratch-render',()=>{byId('cmScratchZoom').textContent=Math.round((viewState().zoom||1)*100)+'%';if(document.activeElement!==byId('cmScratchNoteText'))byId('cmScratchNoteText').value=viewState().notes?.[selectedId]||'';});
+    root.addEventListener('keydown',e=>{
+      if(busy||e.target.matches('input,select,textarea')||e.target.isContentEditable)return;
+      const command=e.ctrlKey||e.metaKey,key=e.key.toLowerCase();
+      if(command&&key==='z'){e.preventDefault();history(e.shiftKey?'redo':'undo');return;}
+      if(command&&key==='y'){e.preventDefault();history('redo');return;}
+      if(graphActive())return;
+      if(command&&['c','x','v','a'].includes(key)){e.preventDefault();byId({c:'cmScratchCopy',x:'cmScratchCut',v:'cmScratchPaste',a:'cmScratchAll'}[key]).click();}
+      else if(e.key==='Delete'){e.preventDefault();remove();}
+    });
+    root.addEventListener('cm-state',()=>tools.querySelectorAll('button,input,textarea').forEach(e=>e.disabled=busy));
+    const canvas=byId('cmScratchViewport');let pan=null;
+    canvas.addEventListener('pointerdown',e=>{if(graphActive()||e.button!==1)return;pan={x:e.clientX,y:e.clientY,left:canvas.scrollLeft,top:canvas.scrollTop};canvas.setPointerCapture(e.pointerId);e.preventDefault();});
+    canvas.addEventListener('pointermove',e=>{if(pan){canvas.scrollLeft=pan.left-e.clientX+pan.x;canvas.scrollTop=pan.top-e.clientY+pan.y;}});
+    canvas.addEventListener('pointerup',()=>pan=null);canvas.addEventListener('pointercancel',()=>pan=null);
+  }
+
   async function init(){
     buttons();
     try{
@@ -416,8 +481,8 @@
       studio=window.createCommunicationExperience?.({root,byId,esc,api,clone,uid,
         get:()=>({program,compiled,result,catalog,definitions,selectedId,busy,sweeps}),
         mutate:(fn,message)=>change(fn,message),
-        mutateLayout:(fn,message)=>{if(busy)return;checkpoint();fn();persist();buttons();if(message)status(message)},
-        setProgram,selectBlock,palette,renderProgram,status,
+        mutateLayout:changeLayout,
+        setProgram,selectBlock,palette,renderProgram,status,viewState,
         setBusy:value=>{busy=value;buttons()},setResult:value=>{result=value;showResult()},
         applyDocument:doc=>change(()=>{program=clone(doc.program);selectedId=program.blocks[0].id;studio.loadState(doc);sweeps=clone(doc.sweeps||[])},'工程已载入。'),
         restoreResult:(built,value)=>{compiled=built;result=value;showResult();buttons()},
@@ -432,7 +497,7 @@
           program=data.program;status('已恢复浏览器草稿。点击 Build，再 Run。');
         }catch{status('原草稿无法读取，已打开空白链路。可导入工程 JSON 继续。',true)}
       }
-      studio?.restoreDraft();
+      studio?.restoreDraft();setupScratch();
       byId('cmPreset').innerHTML='<option value="">选择一个实验示例…</option>'+Object.entries(catalog.presets).map(([key,v])=>`<option value="${key}">${esc(v.label)}</option>`).join('');palette();renderProgram();showResult();studio?.ready();
     }catch(error){status(error.message,true);buttons()}
   }

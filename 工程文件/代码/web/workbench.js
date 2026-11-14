@@ -18,7 +18,7 @@
     const selected = $("wbExperiments").value;
     const query = $("wbSearch").value.trim().toLocaleLowerCase();
     const visible = experiments.filter(e => e.name.toLocaleLowerCase().includes(query));
-    $("wbExperiments").innerHTML = `<option value="">${visible.length ? '选择已保存的实验' : '没有匹配的实验'}</option>` + visible.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.name)} · ${new Date(e.updated * 1000).toLocaleString()}</option>`).join("");
+    $("wbExperiments").innerHTML = `<option value="">${visible.length ? '选择已保存的实验' : '没有匹配的实验'}</option>` + visible.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.name)}   ${new Date(e.updated * 1000).toLocaleString()}</option>`).join("");
     $("wbExperiments").value = selected;
   }
   async function refreshList(preferred) {
@@ -78,7 +78,7 @@
         const line = block.split("\n").find(l => l.startsWith("data: "));
         if (!line || line === "data: [DONE]") continue;
         const event = JSON.parse(line.slice(6));
-        if (event.event === "progress") { receiveTaskProgress(event); status(`${event.tool} · ${event.status}`); }
+        if (event.event === "progress") { receiveTaskProgress(event); status(`${event.tool}   ${event.status}`); }
         if (event.event === "error") { sessionStorage.removeItem("rs_pending_workbench"); throw new Error(event.error); }
         if (event.event === "done") final = event;
       }

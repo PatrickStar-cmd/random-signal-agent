@@ -6,7 +6,7 @@ window.createCommunicationFlowV0410=function(core,ctx){
   host.innerHTML=`<header><div><h3>🪸 接收汇合与 OFDM 通感</h3><span class="cm-learn-hint">共享同一段信道采样，在两路接收输出处汇合；用同一帧完成通信与目标探测</span></div></header>
     <details class="cm-experiment-details" open><summary>🔱 两路接收汇合</summary>
       <div id="cmMerge410Diagram" class="cm-flow"></div><div class="cm-learning-grid">
-      <label>第二条接收分支<select id="cmMerge410Branch"></select></label><label>汇合数据<select id="cmMerge410Domain"><option value="symbols">复符号 · 解调之前</option><option value="llr">LLR · 软译码之前</option></select></label>
+      <label>第二条接收分支<select id="cmMerge410Branch"></select></label><label>汇合数据<select id="cmMerge410Domain"><option value="symbols">复符号   解调之前</option><option value="llr">LLR   软译码之前</option></select></label>
       <label>汇合方式<select id="cmMerge410Mode"><option value="weighted">加权相加</option><option value="select">选择一路</option></select></label><label>选择分支<select id="cmMerge410Select"><option value="0">当前接收链路</option><option value="1">第二条接收分支</option></select></label>
       <label>当前分支权重<input id="cmMerge410A" type="number" value="0.5" min="-10" max="10" step="0.1"></label><label>第二分支权重<input id="cmMerge410B" type="number" value="0.5" min="-10" max="10" step="0.1"></label></div>
       <div class="cm-learn-actions"><button type="button" id="cmMerge410Run">▶ 运行两路并汇合</button><button type="button" id="cmMerge410Export">📥 导出汇合实验</button></div><div id="cmMerge410Results" class="cm-learn-scroll"></div></details>
@@ -25,7 +25,7 @@ window.createCommunicationFlowV0410=function(core,ctx){
     rows.forEach((row,i)=>row.forEach((value,j)=>{const a=Math.max(0,Math.min(1,(value-low)/60));x.fillStyle=`hsl(${220-a*70} ${45+a*30}% ${96-a*66}%)`;x.fillRect(left+j*pw/cols.length,top+(rows.length-i-1)*ph/rows.length,pw/cols.length+1,ph/rows.length+1);}));
     x.fillStyle='#395675';x.fillText('速度 m/s',4,12);x.fillText('距离 m',w-65,h-5);
     for(let i=0;i<5;i++){const j=Math.round(i*(cols.length-1)/4);x.fillText(String(Math.round(cols[j])),left+j*pw/cols.length,h-20);const r=Math.round(i*(rows.length-1)/4);x.fillText(String(Math.round(data.velocity_axis_mps[r])),3,top+(rows.length-r-.5)*ph/rows.length);}
-    byId('cmIsac410Summary').textContent=data.detected?`🎯 测得 ${fmt(data.range_m)} m · ${fmt(data.velocity_mps)} m/s · 峰值 / 背景 ${fmt(data.peak_background_db)} dB`:'当前观测低于目标检测阈值。';
+    byId('cmIsac410Summary').textContent=data.detected?`🎯 测得 ${fmt(data.range_m)} m   ${fmt(data.velocity_mps)} m/s   峰值 / 背景 ${fmt(data.peak_background_db)} dB`:'当前观测低于目标检测阈值。';
     byId('cmIsac410Metrics').innerHTML=table(['通信 BER','距离分辨率 / m','速度分辨率 / m/s','数据 OFDM 符号'],[[current.metrics.ber,data.range_resolution_m,data.velocity_resolution_mps,data.data_ofdm_symbols]]);
   }
   function render(){

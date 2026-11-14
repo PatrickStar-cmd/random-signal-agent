@@ -14,7 +14,7 @@ TX={'tx_self_frame'}; CHANNEL={'frame_stream_channel'}; RX={'rx_self_frame'}; KI
 PREAMBLE=(1-2*np.random.default_rng(410).integers(0,2,127)).astype(complex)
 HEADER_SYMBOLS=292
 MCS={0:('bpsk',False),1:('qpsk',False),2:('bpsk',True),3:('qpsk',True)}
-MCS_NAMES={0:'BPSK',1:'QPSK',2:'BPSK · 卷积 1/2',3:'QPSK · 卷积 1/2'}
+MCS_NAMES={0:'BPSK',1:'QPSK',2:'BPSK   卷积 1/2',3:'QPSK   卷积 1/2'}
 
 
 def register(block,number,field,blocks):
@@ -37,8 +37,8 @@ def register(block,number,field,blocks):
 
 def presets(preset):
     kinds=['random_bits','mod_bpsk','tx_self_frame','frame_stream_channel','rx_self_frame','demod_bpsk','sink']
-    return {'self_describing_frames':{'label':'物理分包 · 自描述连续收发','program':preset(kinds,{0:{'count':2048},2:{'mcs':4}})},
-            'frame_reacquisition':{'label':'连续录波 · 截断后重捕获','program':preset(kinds,{0:{'count':2048},2:{'mcs':4},3:{'cut_start':520,'cut_samples':83}})}}
+    return {'self_describing_frames':{'label':'物理分包   自描述连续收发','program':preset(kinds,{0:{'count':2048},2:{'mcs':4}})},
+            'frame_reacquisition':{'label':'连续录波   截断后重捕获','program':preset(kinds,{0:{'count':2048},2:{'mcs':4},3:{'cut_start':520,'cut_samples':83}})}}
 
 
 def payload_symbols(bit_count,mcs):

@@ -29,7 +29,7 @@ def presets(preset):
     p=preset(['random_bits','mod_qpsk','tx_isac_ofdm','isac_echo','complex_awgn','rx_isac_ofdm','demod_qpsk','sink'],
              {0:{'count':4096},4:{'snr_db':30}})
     p['symbol_rate']=15000
-    return {'ofdm_isac':{'label':'通感 · OFDM 单目标测距测速','program':p}}
+    return {'ofdm_isac':{'label':'通感   OFDM 单目标测距测速','program':p}}
 
 
 def build_stage(kind,q,domain,count,features):

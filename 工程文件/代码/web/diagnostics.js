@@ -41,7 +41,7 @@
   function render(){
     if(!report)return;
     const p=report.parameters;selected=null;$('dgSource').value=p.source;$('dgWindow').value=p.window;$('dgOverlap').value=p.overlap;$('dgStart').value=p.start;$('dgEnd').value=p.end;
-    $('dgResolution').textContent=`${report.sample_count} 点 · 有效窗长 ${p.effective_window} 点 / ${report.window_seconds.toFixed(4)} s · 频率间隔 ${report.frequency_resolution_hz.toFixed(3)} Hz · 帧步长 ${report.hop_seconds.toFixed(4)} s。两端浅色区域受零填充影响；长信号图像做最大值聚合。`;
+    $('dgResolution').textContent=`${report.sample_count} 点   有效窗长 ${p.effective_window} 点 / ${report.window_seconds.toFixed(4)} s   频率间隔 ${report.frequency_resolution_hz.toFixed(3)} Hz   帧步长 ${report.hop_seconds.toFixed(4)} s。两端浅色区域受零填充影响；长信号图像做最大值聚合。`;
     heat();wave('dgWave',report.waveform.time,[{values:report.waveform.observed,color:'#168494'}]);
     $('dgEvents').innerHTML=report.events.length?report.events.map(e=>`<article class="dg-card"><h3>${esc(e.label)}</h3><p>${e.start.toFixed(3)}–${e.end.toFixed(3)} s</p><p>证据：${esc(JSON.stringify(e.evidence))}</p><p>${esc(e.alternatives)}</p><button data-select="${e.id}">定位波形</button>${e.kind!=='frequency_shift'?`<button data-verify="${e.id}">运行验证实验</button>`:''}</article>`).join(''):'<p>本次区间未检测到显著特征。</p>';
     if(report.truncated_events)$('dgEvents').insertAdjacentHTML('beforeend','<p>事件已达 64 条上限，请缩小区间进一步检查。</p>');
@@ -56,7 +56,7 @@
     if(v.plot)trialDisplay=v;
     else if(trialDisplay&&trialDisplay.token===v.token&&trialDisplay.event_id===v.event_id&&trialDisplay.method===v.method&&trialDisplay.start===v.start&&trialDisplay.end===v.end&&JSON.stringify(trialDisplay.metrics)===JSON.stringify(v.metrics))v=trialDisplay;
     else trialDisplay=null;
-    $('dgVerification').hidden=false;$('dgVerdict').textContent=v.method+' · '+v.verdict;$('dgMetrics').textContent=JSON.stringify(v.metrics,null,2);
+    $('dgVerification').hidden=false;$('dgVerdict').textContent=v.method+'   '+v.verdict;$('dgMetrics').textContent=JSON.stringify(v.metrics,null,2);
     if(v.plot)wave('dgTrial',v.plot.time,[{values:v.plot.before,color:'#168494'},{values:v.plot.after,color:'#237c60'}],v);
     else{canvas('dgTrial');$('dgVerdict').textContent+='（恢复的快照保留指标；重新验证可显示曲线）'}
   }

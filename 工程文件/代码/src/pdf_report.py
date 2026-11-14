@@ -316,7 +316,7 @@ def _render(f, story_only=False, group_heading=None):
         if key not in f['plots']:return
         labels=['原始观测','当前处理'] if len(f['plots'][key]['ys'])>1 else ['当前处理' if f['after'] else '原始观测']
         story.append(KeepTogether([para(title,'h2'),Chart(f['plots'][key],labels,height)]));story.append(Spacer(1,8))
-    def page(title):story.extend([PageBreak(),para((group_heading.split(' · ')[0]+' · ' if group_heading else '')+title,'h1')])
+    def page(title):story.extend([PageBreak(),para((group_heading.split('   ')[0]+'   ' if group_heading else '')+title,'h1')])
     stamp=datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
     def decoration(c,doc):
         if doc.page>CONFIG['max_pages']:raise ValueError('报告超过页数上限，请缩短说明或参数。')
@@ -390,7 +390,7 @@ def _render(f, story_only=False, group_heading=None):
 def group_title(index, group):
     metadata = group['metadata']
     date = datetime.fromtimestamp(metadata['created'], timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
-    return f"第 {index} 组 · {metadata['name']} · {date}"
+    return f"第 {index} 组   {metadata['name']}   {date}"
 
 
 def build_collection(groups, preferences):
@@ -458,7 +458,7 @@ def _render_collection(facts):
         canvas.line(52,H-38,W-52,H-38);canvas.line(52,39,W-52,39)
         canvas.setFont(FONT,8);canvas.setFillColor(colors.HexColor(MUTED))
         canvas.drawString(52,H-29,'谛听 / MULTI-RESULT ANALYSIS');canvas.drawRightString(W-52,H-29,'v'+VERSION)
-        canvas.drawString(52,26,f"{len(groups)} 组结果 · "+facts['token'][:12]);canvas.drawRightString(W-52,26,f'第 {doc.page} 页')
+        canvas.drawString(52,26,f"{len(groups)} 组结果   "+facts['token'][:12]);canvas.drawRightString(W-52,26,f'第 {doc.page} 页')
         canvas.restoreState()
     doc=CollectionDocument(output,pagesize=A4,leftMargin=52,rightMargin=52,topMargin=58,bottomMargin=52,
                            title=_text(opts['title']),author=_text(opts['author']),pageCompression=1)

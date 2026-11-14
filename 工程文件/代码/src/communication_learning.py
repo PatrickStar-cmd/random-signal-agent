@@ -290,7 +290,7 @@ def write_plot(result, output):
     svg = ['<svg xmlns="http://www.w3.org/2000/svg" width="960" height="600" viewBox="0 0 960 600">',
            '<rect width="960" height="600" rx="20" fill="#edf9fc"/>',
            '<style>text{font-family:Arial,sans-serif;fill:#153b52}.label{font-size:17px}.note{font-size:13px}</style>',
-           '<text x="40" y="32" class="label">Communication experiment · seed ' + str(PROGRAM['seed']) + '</text>']
+           '<text x="40" y="32" class="label">Communication experiment   seed ' + str(PROGRAM['seed']) + '</text>']
     sink = result.get('sink', {})
     values = sink.get('values', [])[:256]; reference = sink.get('reference', [])[:256]
     if values:
@@ -307,7 +307,7 @@ def write_plot(result, output):
     if ix and qx:
         extent = max(1., max(abs(v) for v in ix+qx)) * 1.1
         svg.extend(['<rect x="40" y="325" width="880" height="230" fill="white" stroke="#377b94" stroke-width="2"/>',
-                    '<text x="40" y="317" class="label">' + ('Received constellation' if constellation else 'Channel samples') + ' · I / Q</text>',
+                    '<text x="40" y="317" class="label">' + ('Received constellation' if constellation else 'Channel samples') + '   I / Q</text>',
                     '<path d="M40 440H920 M480 325V555" stroke="#c8dce3"/>'])
         for i, q in zip(ix, qx):
             svg.append(f'<circle cx="{480+425*i/extent:.2f}" cy="{440-105*q/extent:.2f}" r="2.2" fill="#087b9a" opacity="0.65"/>')
