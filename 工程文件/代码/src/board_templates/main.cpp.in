@@ -1,0 +1,76 @@
+// RandomSign Pico experiment. The USB console carries commands and measurements.
+#include <cctype>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+#include <string>
+#include <vector>
+#include "pico/stdlib.h"
+#include "hardware/uart.h"
+
+using Samples = std::vector<int8_t>;
+constexpr char artifact_id[] = "@ARTIFACT@";
+
+static void trace(const char *nonce, const char *id, const Samples &values) {
+    std::string numbers;
+    numbers.reserve(3 * values.size());
+    for (int value : values) {
+        if (!numbers.empty()) numbers += ',';
+        if (value < 0) numbers += '-';
+        numbers += value == 0 ? '0' : '1';
+    }
+    std::printf("RS050 {\"type\":\"node\",\"nonce\":\"%s\",\"id\":\"%s\",\"values\":[%s]}\n",
+                nonce, id, numbers.c_str());
+}
+
+static void finish(const char *nonce, bool received, const Samples &reference, const Samples &data) {
+    unsigned count = received ? unsigned(data.size()) : 0;
+    unsigned errors = 0;
+    for (unsigned i = 0; i < count; ++i) {
+        errors += data[i] != reference[i];
+    }
+    std::printf("RS050 {\"type\":\"done\",\"nonce\":\"%s\",\"artifact_id\":\"%s\","
+                "\"board\":\"@BOARD@\",\"language\":\"cpp\",\"experiment\":\"@EXPERIMENT@\","
+                "\"status\":\"%s\",\"metrics\":{\"compared_bits\":%u,\"bit_errors\":%u,\"ber\":",
+                nonce, artifact_id, received ? "ok" : "timeout", count, errors);
+    if (!count) {
+        std::printf("null");
+    } else {
+        // Integer long division also works with Pico SDK's compact integer-only printf.
+        std::printf("%u.", errors / count);
+        unsigned remainder = errors % count;
+        for (unsigned place = 0; place < 12; ++place) {
+            remainder *= 10;
+            std::printf("%u", remainder / count);
+            remainder %= count;
+        }
+    }
+    std::printf(",\"expected_frames\":1,\"received_frames\":%d,\"lost_frames\":%d}}\n",
+                received ? 1 : 0, received ? 0 : 1);
+    std::fflush(stdout);
+}
+
+@UART_HELPER@
+static void run_experiment(const char *nonce) {
+    Samples data;
+    Samples reference;
+@PROGRAM@
+}
+
+int main() {
+    stdio_init_all();
+    char line[160];
+    while (std::fgets(line, sizeof(line), stdin)) {
+        char target[65], nonce[33], extra;
+        if (std::sscanf(line, "RUN %64s %32s %c", target, nonce, &extra) != 2 ||
+            std::strcmp(artifact_id, target) != 0) {
+            continue;
+        }
+        bool valid = true;
+        for (const char *p = nonce; *p; ++p) {
+            if (!std::isalnum(static_cast<unsigned char>(*p))) valid = false;
+        }
+        if (valid) run_experiment(nonce);
+    }
+    return 0;
+}

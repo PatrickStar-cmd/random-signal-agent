@@ -1,0 +1,47 @@
+# RandomSign Pico experiment. Start a measurement over the USB serial console.
+import json
+import sys
+
+ARTIFACT_ID = "@ARTIFACT@"
+NONCE_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+
+def send(record):
+    print("RS050 " + json.dumps(record))
+
+
+def trace(nonce, block_id, values):
+    send({"type": "node", "nonce": nonce, "id": block_id, "values": values})
+
+
+def finish(nonce, received, reference, data):
+    count = len(data) if received else 0
+    errors = sum(reference[i] != data[i] for i in range(count))
+    send({"type": "done", "nonce": nonce, "artifact_id": ARTIFACT_ID,
+          "board": "@BOARD@", "language": "micropython", "experiment": "@EXPERIMENT@",
+          "status": "ok" if received else "timeout",
+          "metrics": {"compared_bits": count, "bit_errors": errors,
+                      "ber": errors / count if count else None, "expected_frames": 1,
+                      "received_frames": int(received), "lost_frames": int(not received)}})
+
+
+@UART_HELPER@
+def run_experiment(nonce):
+    reference = []
+@PROGRAM@
+
+
+def serve():
+    while True:
+        line = sys.stdin.readline()
+        if not line:
+            return
+        fields = line.split()
+        if len(fields) == 3 and fields[0] == "RUN" and fields[1] == ARTIFACT_ID:
+            nonce = fields[2]
+            if 1 <= len(nonce) <= 32 and all(c in NONCE_CHARS for c in nonce):
+                run_experiment(nonce)
+
+
+if __name__ == "__main__":
+    serve()

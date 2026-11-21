@@ -16,6 +16,7 @@ def contract(kind):
     if kind in ('sine','square','gaussian','audio_source'): return ['起点'],'模拟样本'
     if kind in c.SOURCES: return ['起点'],'比特'
     if kind=='sink': return ['比特','模拟样本'],'信宿'
+    if kind=='uart_loopback': return ['比特'],'比特'
     if kind in ('pcm_encode','compand_encode','dpcm_encode','delta_encode','adpcm_encode'): return ['模拟样本'],'比特'
     if kind in ('pcm_decode','compand_decode','dpcm_decode','delta_decode','adpcm_decode'): return ['比特'],'模拟样本'
     if kind.startswith('line_'): return (['比特'],'线路电平') if kind.endswith('encode') else (['线路电平'],'比特')
@@ -108,9 +109,12 @@ def complete_receiver(raw):
     from src import communications as c
     p=c.normalize(raw,draft=True); blocks=p['blocks']; tx=next((b for b in blocks if b['kind'].startswith('mod_')),None)
     if blocks[0]['kind']=='iq_source': return complete_iq_receiver(p)
-    if tx is None: raise ValueError('请先添加调制器，再补齐接收链路。')
     def make(k,q=None):
         return {'id':'auto-'+uuid.uuid4().hex[:12],'kind':k,'params':{name:(q or {}).get(name,s['default']) for name,s in c.BLOCKS[k]['params'].items()}}
+    uart = next((b for b in blocks if b['kind'] == 'uart_loopback'), None)
+    if uart is not None:
+        return _complete_decoders(p, uart, make)
+    if tx is None: raise ValueError('请先添加调制器，再补齐接收链路。')
     channel_end=max((i for i,b in enumerate(blocks) if b['kind'] in c.CHANNELS),default=-1)
     if channel_end<0:
         channel_end=max(i for i,b in enumerate(blocks) if c.BLOCKS[b['kind']]['category'] in ('modulator','tx_converter','source'))+1
@@ -163,10 +167,16 @@ def complete_receiver(raw):
         blocks.insert(index,make(kind)); demod=blocks[index]
     elif soft and demod['kind'].startswith('demod_') and kind in c.BLOCKS:
         demod.update(kind=kind,params=make(kind)['params'])
+    return _complete_decoders(p, tx, make, demod['kind'].startswith('soft_'))
+
+
+def _complete_decoders(p, tx, make, soft=False):
+    from src import communications as c
+    blocks = p['blocks']
     encoders=[b for b in blocks[:blocks.index(tx)] if b['kind'] in c.ENCODERS]
     old_rx=[b for b in blocks if b['kind'] in c.PAIRS]; rebuilt=[]
     for encoder in reversed(encoders):
-        inverse='conv_soft_decode' if encoder['kind']=='conv_encode' and demod['kind'].startswith('soft_') else next(k for k,v in c.PAIRS.items() if v==encoder['kind'])
+        inverse='conv_soft_decode' if encoder['kind']=='conv_encode' and soft else next(k for k,v in c.PAIRS.items() if v==encoder['kind'])
         rx=next((b for b in old_rx if c.PAIRS[b['kind']]==encoder['kind'] and b not in rebuilt),None)
         if rx is None: rx=make(inverse,encoder['params'])
         elif rx['kind']=='conv_decode' and inverse=='conv_soft_decode': rx.update(kind=inverse,params=make(inverse,encoder['params'])['params'])
@@ -174,7 +184,7 @@ def complete_receiver(raw):
         elif rx['kind']=='polar_decode': rx['params'].update(encoder['params'])
         elif rx['kind'] not in ('ldpc_decode','conv_soft_decode'): rx['params']=make(rx['kind'],encoder['params'])['params']
         rebuilt.append(rx)
-    blocks[:]=[b for b in blocks if b['kind'] not in c.PAIRS and b['kind']!='sink']+rebuilt+[next((b for b in raw['blocks'] if b['kind']=='sink'),make('sink'))]
+    blocks[:]=[b for b in blocks if b['kind'] not in c.PAIRS and b['kind']!='sink']+rebuilt+[next((b for b in blocks if b['kind']=='sink'),make('sink'))]
     return c.normalize(p,draft=True)
 
 

@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="communication-layout.css">
   <link rel="stylesheet" href="communication-scratch-v0412.css">
   <link rel="stylesheet" href="communication-workbench-v0412.css">
+  <link rel="stylesheet" href="communication-board.css">
   <link rel="stylesheet" href="communication-delivery-v0412.css">
   <link rel="stylesheet" href="communication-learning.css">
   <link rel="stylesheet" href="communication-experiments.css">
@@ -263,6 +264,29 @@
     </section>
     <section class="cm-panel cm-inspector" aria-label="选中积木参数"><header class="cm-panel-heading"><div class="cm-project-title"><span class="cm-heading-icon" aria-hidden="true">🎛️</span><div><h3>积木参数</h3><span class="cm-kicker">随选中模块切换</span></div></div></header><div id="cmInspector" aria-live="polite"></div></section>
       </div>
+    <aside id="cmBoardPanel" class="cm-panel cm-board-panel" aria-labelledby="cmBoardHeading" hidden>
+      <header class="cm-panel-heading"><h3 id="cmBoardHeading">🔌 开发板</h3><button type="button" id="cmBoardClose" aria-label="关闭开发板面板">收起</button></header>
+      <div class="cm-board-body">
+        <div class="cm-board-fields"><label>编程语言<select id="cmBoardLanguage"><option value="cpp">C++</option><option value="micropython">MicroPython</option></select></label><label>目标板卡<select id="cmBoardTarget"><option value="pico">Pico</option><option value="pico_w">Pico W</option></select></label></div>
+        <div class="cm-board-preset"><label>开发板示例<select id="cmBoardPreset"><option value="board_bpsk">板端 BPSK 收发</option><option value="board_uart">UART 实物回环</option></select></label><button type="button" id="cmBoardLoad">载入示例</button></div>
+        <div class="cm-board-switch" role="group" aria-label="开发板工作区"><button type="button" id="cmBoardCodeTab" aria-controls="cmBoardCodePane" aria-pressed="true">积木与源码</button><button type="button" id="cmBoardDeviceTab" aria-controls="cmBoardDevicePane" aria-pressed="false">部署与实测</button></div>
+        <p id="cmBoardStatus" class="cm-board-status" role="status"></p><div id="cmBoardIssues" class="cm-board-issues"></div>
+        <section id="cmBoardCodePane" aria-label="积木与源码">
+          <div class="cm-board-actions"><button type="button" id="cmBoardGenerate">生成源码</button><button type="button" id="cmBoardExport" disabled>下载工程 ZIP</button></div>
+          <div id="cmBoardSource" hidden><label>工程文件<select id="cmBoardFile"></select></label><div id="cmBoardCode" class="cm-board-code" tabindex="0" aria-label="生成的源码，选择对应行可定位积木"></div></div>
+        </section>
+        <section id="cmBoardDevicePane" aria-label="部署与实测" hidden>
+          <p id="cmBoardWiring" class="cm-board-wiring"></p>
+          <div class="cm-board-preset"><label>本机 USB 设备<select id="cmBoardDevice"><option value="">请选择设备</option></select></label><button type="button" id="cmBoardRefresh">刷新</button></div>
+          <div id="cmBoardMicroSetup" hidden><a id="cmBoardFirmwareHelp" target="_blank" rel="noopener">下载本板 MicroPython 固件 ↗</a><p>首次安装时按住 BOOTSEL 接入 USB，将对应 UF2 复制到 RPI-RP2 盘。重启后刷新并选择串口。</p></div>
+          <div id="cmBoardCppSetup"><p>按住 BOOTSEL 接入 USB，刷新并选择启动盘。烧录完成后刷新并选择串口测量。</p></div>
+          <p id="cmBoardTools"></p>
+          <div class="cm-board-actions"><button type="button" id="cmBoardBuild">编译固件</button><a id="cmBoardFirmware" hidden download>下载 UF2</a><button type="button" id="cmBoardDeploy">烧录固件</button><button type="button" id="cmBoardMeasure">运行并回读</button></div>
+          <div id="cmBoardResult" hidden><h4>板端实测</h4><dl id="cmBoardMetrics" class="cm-board-metrics"></dl><button type="button" id="cmBoardResultSave">导出测量 JSON</button></div>
+        </section>
+        <section id="cmBoardProbe" class="cm-board-probe" aria-label="选中积木输出" hidden><h4 id="cmBoardNodeTitle"></h4><dl><dt>电脑参考</dt><dd id="cmBoardExpected"></dd><dt>板端回读</dt><dd id="cmBoardActual"></dd></dl></section>
+      </div>
+    </aside>
     <section class="cm-panel cm-results" aria-label="通信实验结果分析"><header class="cm-panel-heading"><h3>📈 实验结果分析</h3></header><div id="cmMetrics" class="cm-metrics" aria-live="polite"></div><p id="cmAnalogWarnings" class="cm-analysis-caption" role="status" hidden></p>
       <div class="cm-analysis-tabs" role="group" aria-label="接收信号的其他视图"><button type="button" data-cm-plot="constellation" aria-pressed="true">接收星座图</button><button type="button" data-cm-plot="transmitter" aria-pressed="false" hidden>已调 I / Q</button><button type="button" data-cm-plot="spectrum" aria-pressed="false" hidden>已调频谱</button><button type="button" data-cm-plot="channel" aria-pressed="false">信道 I / Q</button><button type="button" data-cm-plot="eye" aria-pressed="false" hidden>接收眼图</button><button type="button" data-cm-plot="timing" aria-pressed="false" hidden>时钟跟踪</button><button type="button" data-cm-plot="convergence" aria-pressed="false" hidden>均衡收敛</button></div>
       <div class="cm-analysis-tabs"><button type="button" data-cm-plot="correlation" hidden>前导 / PN 相关</button><button type="button" data-cm-plot="ofdm" hidden>OFDM 资源网格</button><label id="cmStageLabel" hidden>🔎 处理中间结果 <select id="cmStage"><option value="">选择处理积木…</option></select></label></div>
@@ -335,6 +359,7 @@
   <script src="communication-graph-v0411.js"></script>
   <script src="communication-workbench-plots-v0412.js"></script>
   <script src="communication-workbench-v0412.js"></script>
+  <script src="communication-board.js"></script>
   <script src="communication-delivery-v0412.js"></script>
   <script src="communication-experience.js"></script>
   <script src="communications.js"></script>

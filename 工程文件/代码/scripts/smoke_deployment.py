@@ -72,6 +72,14 @@ def check(base_url):
         received = json.loads(request('/api/communications/run', {'program':compiled['program'],'token':compiled['token']}))
         assert received['transport']=='advanced' and received['metrics']['ber']<.02
         assert received['sink']['count']>0
+    for preset in ('board_bpsk', 'board_uart'):
+        document = {'document_schema': 2, 'program': communication_catalog['presets'][preset]['program']}
+        for language, board in [('cpp', 'pico'), ('micropython', 'pico_w')]:
+            payload = {'document': document, 'language': language, 'board': board}
+            output = json.loads(request('/api/communications/board-generate', payload))
+            assert len(output['source_map']) == len(document['program']['blocks'])
+            assert output['expected']['metrics']['bit_errors'] == 0
+            assert request('/api/communications/board-export', payload).startswith(b'PK')
     program=communication_catalog['presets']['soft_viterbi']['program']
     compiled=json.loads(request('/api/communications/build',{'program':program}))
     scanned=json.loads(request('/api/communications/sweep',{'program':compiled['program'],'token':compiled['token'],'settings':{'block_id':'block-3','start':0,'stop':2,'step':2,'frames':2,'target_errors':100}}))

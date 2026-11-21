@@ -1,0 +1,50 @@
+.cm-board-panel[hidden],.cm-board-panel [hidden]{display:none!important}
+.cm-board-open .cm-right{display:none}
+.cm-board-panel{display:flex;flex-direction:column;min-width:0;height:clamp(530px,calc(100dvh - 310px),730px);overflow:hidden;background:#f4f9ff}
+.cm-board-panel>.cm-panel-heading{flex:none;border-bottom:2px solid #c6d9ec;background:linear-gradient(115deg,#dceff6,#eee9fa)}
+.cm-board-panel .cm-board-body{overflow:auto;min-width:0;padding:12px;scrollbar-gutter:stable}
+.cm-board-panel h4{font-size:14px;color:#314e70;margin:10px 0 6px}
+.cm-board-panel label{min-width:0;display:grid;gap:4px;font-size:12px;font-weight:650;color:#466282}
+.cm-board-panel select,.cm-board-panel button,.cm-board-actions a{font:inherit;min-width:0;border:2px solid #a5bddb;border-radius:9px;background:#f8fbff;color:#294b73;padding:6px 9px}
+.cm-board-panel select{width:100%;height:36px;font-size:13px;background:#fff}
+.cm-board-panel button,.cm-board-actions a{min-height:34px;font-size:12px;cursor:pointer}
+.cm-board-panel button:disabled{opacity:.5;cursor:default}
+.cm-board-panel p{font-size:12px;line-height:1.55;margin:7px 0;color:#4a6583}
+.cm-board-fields,.cm-board-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cm-board-preset{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:8px;margin:9px 0}
+.cm-board-switch{margin:14px 0 8px;border-bottom:2px solid #c5d7e7;padding-bottom:8px}
+.cm-board-switch button[aria-pressed=true],#cmBoardOpen[aria-expanded=true]{background:#e2dff6;border-color:#8b7fbc;color:#433978;font-weight:700}
+.cm-board-panel .cm-board-status{min-height:1.5em;color:#365878}
+.cm-board-actions,.cm-board-issues{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 8px}
+.cm-board-actions a{text-decoration:none;display:inline-flex;align-items:center;box-sizing:border-box}
+.cm-board-issues:empty{display:none}
+.cm-board-issue{outline:3px dashed #a65f31;outline-offset:3px}
+.cm-board-code{position:relative;overflow:auto;max-height:290px;min-height:100px;margin:6px 0 10px;background:#162e46;color:#e8f5fe;border:2px solid #496b8e;border-radius:10px;tab-size:4;overscroll-behavior:contain}
+.cm-board-line{display:flex;align-items:baseline;min-width:max-content;padding:0 8px 0 0;min-height:1.6em;font:12px/1.65 "Cascadia Mono",Consolas,monospace}
+.cm-board-line>span{position:sticky;left:0;background:#203d55;color:#a7bed0;display:inline-block;text-align:right;min-width:3em;padding:0 .6em;box-sizing:border-box;user-select:none;margin-right:.75em}
+.cm-board-line code{font:inherit;white-space:pre;background:none;padding:0;color:inherit}
+.cm-board-line[role=button]{cursor:pointer}.cm-board-line[role=button]:hover{background:#244963}
+.cm-board-line.selected,.cm-board-line.selected>span{background:#365779;color:#fff}
+.cm-board-line:focus-visible{outline:2px solid #9ee1e4;outline-offset:-2px}
+.cm-board-probe{border-top:2px solid #c5d7e7;padding-top:3px}
+.cm-board-probe dl,.cm-board-metrics{margin:0}.cm-board-probe dt,.cm-board-metrics dt{font-size:12px;color:#516c87}
+.cm-board-probe dd{margin:2px 0 6px;padding:5px 8px;background:#e6f3f7;border-radius:7px;font:12px/1.6 Consolas,monospace;color:#244d63;overflow-wrap:anywhere}
+.cm-board-metrics{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.cm-board-metrics div{padding:7px 9px;background:#e3f2f4;border-radius:8px}
+.cm-board-metrics dd{margin:3px 0 0;font-size:14px;font-weight:700;color:#24556b}
+#cmBoardMicroSetup a{font-size:13px;color:#375b98;text-decoration:underline}
+@media(min-width:1001px){
+  .cm-layout.cm-board-open .cm-lab{grid-template-columns:minmax(170px,.6fr) minmax(300px,1.3fr) minmax(330px,1fr)}
+  .cm-layout.cm-board-open .cm-right{display:none}
+  .cm-board-panel{height:clamp(680px,calc(100dvh - 220px),900px)}
+}
+@media(max-width:1000px){
+  .cm-board-panel{height:auto;margin-top:10px;scroll-margin-top:80px}
+  .cm-board-panel .cm-board-body{overflow:visible;scrollbar-gutter:auto}
+  .cm-layout.cm-board-open:not([data-mobile-pane=chain]) .cm-board-panel{display:none}
+  .cm-board-code{max-height:250px}
+}
+@media(max-width:520px){
+  .cm-command-main>.cm-primary-actions{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .cm-command-main>.cm-primary-actions:not(:has(#cmGraphPartial:not([hidden]))){grid-template-columns:repeat(3,minmax(0,1fr))}
+}

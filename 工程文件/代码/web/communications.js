@@ -265,6 +265,9 @@
     byId('cmTrace').innerHTML=plan.length?`<table><thead><tr><th>积木</th><th>输出类型</th><th>数量</th></tr></thead><tbody>${plan.map(row=>`<tr><td>${esc(row.label)}</td><td>${esc(row.output)}</td><td>${row.count}</td></tr>`).join('')}</tbody></table>`:'Build 后显示逐级信号类型和数据量。';
     if(!result){byId('cmDetails').textContent='';return}
     const m=result.metrics;
+    if(result.transport==='uart'){
+      byId('cmDetails').textContent='电脑 UART 字节回环  '+result.uart.baudrate+' Baud  '+result.uart.valid_bits+' 个有效编码比特打包为 '+result.uart.packed_bytes.length+' 字节。开发板面板可运行引脚实测。';return;
+    }
     if(result.transport==='iq'){byId('cmDetails').textContent=`I/Q 录波：${result.advanced.iq.name}   ${result.advanced.iq.samples} 点   ${result.advanced.sample_rate} Hz   恢复 ${result.sink.count} 个比特`;return;}
     if(result.advanced){
       const a=result.advanced,r=a.recovery,f=r.frame;
@@ -284,7 +287,13 @@
     byId('cmNoSignal').hidden=!!result;byId('cmSignalLed').classList.toggle('on',!!result);byId('cmSignalStatus').textContent=result?'信号已抵达':'无信号';byId('cmLegend').hidden=!result;
     byId('cmTextResult').hidden=!result?.text;byId('cmReceivedText').textContent=result?.text?.received||'';
     const m=result?.metrics,analog=result?.sink.kind==='analog',direct=result?.transport==='analog',wave=result?.analog||result?.baseband||result?.advanced;
-    const rows=result?.transport==='iq'?[['录波采样数',String(result.advanced.iq.samples),'完整复数 I/Q 采样'],['接收比特数',String(result.sink.count),result.advanced.scheme],['采样率',result.advanced.sample_rate+' Hz','录波元数据'],['接收功率',m.rx_power.toPrecision(4),'判决前平均复功率']]:direct?[
+    const uart=result?.transport==='uart';
+    const rows=uart?[
+      ['译码后误码率',(100*m.ber).toFixed(3)+'%',m.bit_errors+' / '+m.bit_count+' bit'],
+      ['有效编码比特',String(m.coded_bit_count),'按有效长度拆包'],
+      ['串口速率',result.uart.baudrate+' Baud','电脑参考回环'],
+      ['收到帧数',m.received_frames+' / '+m.expected_frames,'丢帧 '+m.lost_frames]
+    ]:result?.transport==='iq'?[['录波采样数',String(result.advanced.iq.samples),'完整复数 I/Q 采样'],['接收比特数',String(result.sink.count),result.advanced.scheme],['采样率',result.advanced.sample_rate+' Hz','录波元数据'],['接收功率',m.rx_power.toPrecision(4),'判决前平均复功率']]:direct?[
       ['信宿 RMSE',m.rmse.toPrecision(4),'相对原始模拟信源'],
       ['恢复样本数',String(result.sink.count),`${result.analog.scheme}   ${result.analog.sample_rate} Hz`],
       ['输出信误比',m.rmse<=1e-12?'无误差':m.output_snr_db===null?'—':m.output_snr_db.toFixed(2)+' dB','原始信源功率 / 全段误差功率'],
@@ -303,10 +312,11 @@
     for(const tab of root.querySelectorAll('[data-cm-plot]'))tab.hidden=tab.dataset.cmPlot==='timing'?!recovery?.timing:tab.dataset.cmPlot==='convergence'?!recovery?.equalizer?.updates:tab.dataset.cmPlot==='eye'?!wave?.eye:tab.dataset.cmPlot==='constellation'?!result?.constellation:tab.dataset.cmPlot==='correlation'?!(result?.advanced?.recovery.frame||result?.advanced?.source_correlation):tab.dataset.cmPlot==='ofdm'?!result?.advanced?.ofdm:['transmitter','spectrum'].includes(tab.dataset.cmPlot)?!wave:false;
     root.querySelector('[data-cm-plot="transmitter"]').textContent=result?.baseband?'发送波形':'已调 I / Q';
     root.querySelector('[data-cm-plot="spectrum"]').textContent=result?.baseband?'发送频谱':'已调频谱';
-    root.querySelector('[data-cm-plot="channel"]').textContent=result?.baseband?'信道波形':'信道 I / Q';
+    root.querySelector('[data-cm-plot="channel"]').textContent=uart?'UART 拆包比特':result?.baseband?'信道波形':'信道 I / Q';
     if(wave&&((plot==='constellation'&&!result.constellation)||(plot==='eye'&&!wave.eye)))plot='transmitter';
     if(plot==='stage'||(!wave&&['transmitter','spectrum','eye'].includes(plot)))plot='constellation';
     if(root.querySelector(`[data-cm-plot="${plot}"]`)?.hidden)plot=wave?'transmitter':'constellation';
+    if(uart)plot='channel';
     root.querySelectorAll('[data-cm-plot]').forEach(tab=>tab.setAttribute('aria-pressed',tab.dataset.cmPlot===plot?'true':'false'));
     showTrace();drawSink();drawAnalysis();buttons();
   }
@@ -351,6 +361,10 @@
     if(root.hidden)return;const view=surface('cmAnalysisCanvas'),{x,width,height}=view;
     if(!result){byId('cmAnalysisCaption').textContent='Run 后显示接收星座与信道 I / Q。';x.fillStyle='#6b80a0';x.textAlign='center';x.fillText('Run 后，观察信号在信道中的变化。',width/2,height/2);return}
     const wave=result.analog||result.baseband||result.advanced,recovery=wave?.recovery;
+    if(result.transport==='uart'){
+      const samples=result.channel.i,end=Math.max(1,samples.length-1),axis=axes(view,-.15,1.15,end,'编码比特序号');axis.xEnd=end;
+      line(view,samples,axis,'#248b80',true);byId('cmAnalysisCaption').textContent='电脑 UART 回环拆包结果  '+samples.length+' / '+result.uart.valid_bits+' 位';return;
+    }
     if(plot==='stage'&&result.advanced){
       const s=result.advanced.stages.find(s=>s.id===byId('cmStage').value);if(!s)return;
       const values=[...s.i,...s.q],low=Math.min(...values),high=Math.max(...values),margin=Math.max(.1,(high-low)*.1),end=Math.max(1,s.plot_count-1)/s.symbol_rate;

@@ -1,10 +1,10 @@
-# v0.4.12   Installation and deployment
+# v0.5.0   Installation and deployment
 
-**v0.4.12 积木编程最终完善版 / Complete block-programming update** brings Scratch-style block assembly, parallel receiver containers, four measured experiment tools, complete-graph tasks, named baselines and 12 executable courses. Verified experiment ZIPs include project data, executable Python, measured results, inputs, SVG charts, final PDF and a SHA-256 manifest. Report previews display the final PDF with saved material order and CFAR overlays. The existing **231 signal blocks, fixed sink and 122 presets** remain available. See the [v0.4.12 guide](工程文件/代码/docs/communications-v0412.md).
+**v0.5.0 积木代码生成与开发板实测** adds standalone C++ and MicroPython code generation, bidirectional block/source navigation, Pico SDK builds, local-device deployment, and measured USB telemetry. The experiments cover ideal BPSK on the microcontroller and physical UART loopback on GP0 and GP1. See the [board guide](工程文件/代码/docs/communications-v050.md).
 
-Download `random-signal-agent-v0.4.12-deploy.zip` from the [v0.4.12 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.12) and extract it. The archive contains source, Web assets, configuration, documentation and example data. Use **Python 3.12–3.14** or **Docker**. The [previous v0.4.11 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.11) remains available.
+Download `random-signal-agent-v0.5.0-deploy.zip` from the [v0.5.0 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.5.0) and extract it. Use **Python 3.12–3.14** for the local USB workbench. Docker also supports simulation and source export. The [v0.4.12 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.12) remains available.
 
-Open a terminal in `random-signal-agent/工程文件/代码` (or `random-signal-agent-v0.4.12/工程文件/代码` in a deployment archive).
+Open a terminal in `random-signal-agent/工程文件/代码` (or `random-signal-agent-v0.5.0/工程文件/代码` in a deployment archive).
 
 ## Windows
 
@@ -47,7 +47,7 @@ The check covers health, Web assets, Agent mode, streaming responses, CSV upload
 
 ## 中文说明
 
-下载 v0.4.12 部署包并解压，进入 `工程文件/代码` 后按上方命令启动。支持 Python 3.12–3.14，依赖版本在 `requirements-repro.txt` 固定。也可使用 Docker Compose；默认地址为 <http://127.0.0.1:8000>。实验可导出 ZIP，升级前停止服务并备份整个 `data/` 目录。
+下载 v0.5.0 部署包并解压，进入 `工程文件/代码` 后按上方命令启动。支持 Python 3.12–3.14，依赖版本在 `requirements-repro.txt` 固定。也可使用 Docker Compose；默认地址为 <http://127.0.0.1:8000>。实验可导出 ZIP，升级前停止服务并备份整个 `data/` 目录。
 
 完整应用包含对话、分析、上传及音频处理，不需要外部模型密钥即可使用本地工具链。服务器部署、模型配置与日志查看见[部署说明](工程文件/代码/DEPLOY.md)。
 

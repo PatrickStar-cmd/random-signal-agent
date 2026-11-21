@@ -22,6 +22,7 @@ run('experiment UI lifecycle regression', ['scripts/test_communications_experime
 run('spatial UI lifecycle regression', ['scripts/test_communications_spatial_ui.js']);
 run('waveform UI lifecycle regression', ['scripts/test_communications_waveform_ui.js']);
 run('v0.4.9 experiment UI regression', ['scripts/test_communications_v049_ui.js']);
+run('v0.5.0 board code and device interaction', ['scripts/test_communications_board_v050_ui.js']);
 for (const file of fs.readdirSync(path.join(root, 'scripts')).filter(name => /v041[012].*(?:ui)?\.js$/.test(name)).sort()) run(file, ['scripts/'+file]);
 const report = {
   status: entries.every(entry => entry.status === 'passed') ? 'passed' : 'failed',

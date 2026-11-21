@@ -81,6 +81,8 @@ def decorate_preview(page):
         <a href="images/communications-v047-learning.png"><img class="preview-image" src="images/communications-v047-learning.png" alt="v0.4.7 海洋风格教学实验、算法演示与实验分析" loading="lazy"></a>
         <a href="images/communications-v047-media.png"><img class="preview-image" src="images/communications-v047-media.png" alt="v0.4.7 业务信源、传输链路与接收内容对照" loading="lazy"></a>
         </section>''',1)
+    if 'id="board-preview"' not in page:
+        page = page.replace('<main>', '<main>' + '<section id="board-preview"><h2>🔌 v0.5.0 积木代码生成与开发板实测</h2><p>用同一份 Scratch 工程生成 C++ 或 MicroPython，在 Pico 或 Pico W 上运行 BPSK 和 UART 回环。点击积木可定位源码，USB 回传的逐块数据可与电脑参考对照。</p><p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v050.md">开发板接线与部署指南</a></p></section>', 1)
     return page
 
 

@@ -1,0 +1,19 @@
+def uart_loopback(bits, baudrate, timeout_ms):
+    from machine import Pin, UART
+    # Wire GP0 to GP1. The pull-up holds the disconnected RX line idle.
+    rx = Pin(1, Pin.IN, Pin.PULL_UP)
+    port = UART(0, baudrate=baudrate, bits=8, parity=None, stop=1,
+                tx=Pin(0), rx=rx, timeout=timeout_ms)
+    if port.any():
+        port.read(port.any())
+    received = []
+    for start in range(0, len(bits), 8):
+        group = bits[start:start + 8]
+        byte = sum(bit << (7 - i) for i, bit in enumerate(group))
+        port.write(bytes([byte]))
+        echo = port.read(1)
+        if not echo:
+            return None
+        for i in range(len(group)):
+            received.append((echo[0] >> (7 - i)) & 1)
+    return received

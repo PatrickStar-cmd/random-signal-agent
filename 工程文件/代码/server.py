@@ -175,6 +175,11 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
 
     @app.post('/api/communications/{action}')
     async def communication_action(action: str, request: Request):
+        if action.startswith('board-'):
+            from src.communication_board_api import dispatch
+            if request.headers.get('content-type', '').split(';')[0] != 'application/json':
+                raise ValueError('开发板操作使用 JSON 请求。')
+            return await dispatch(action[6:], request, await body(request))
         learning_actions = {'learning-resolve', 'learning-diff', 'learning-check', 'learning-export', 'learning-explain'}
         if action in learning_actions:
             if request.headers.get('content-type', '').split(';')[0] != 'application/json':
@@ -283,6 +288,14 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
             finally:
                 communication_slots.release()
         return await run_in_threadpool(simulate)
+
+    @app.get('/api/board/firmware/{build_id}')
+    def board_firmware(build_id: str, request: Request):
+        from src.communication_board_api import local_device_request
+        from src.communication_board_device import firmware_path
+        if not local_device_request(request):
+            return JSONResponse({'error': '请在本机工作台下载已构建固件。'}, 403)
+        return FileResponse(firmware_path(build_id), media_type='application/octet-stream', filename='randomsign.uf2')
 
     @app.get('/api/model/settings')
     def model_status(session_id: str):

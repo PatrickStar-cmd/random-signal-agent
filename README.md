@@ -20,7 +20,7 @@
 
 🎓 面向 **UESTC 随机信号与通信原理课程**，支持本地计算、固定种子复现，以及可选的模型辅助对话。
 
-[🌐 实验预览](https://patrickstar-cmd.github.io/random-signal-agent/)   [📦 下载 v0.4.12](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.12)   [📘 安装指南](RELEASE.md)
+[🌐 实验预览](https://patrickstar-cmd.github.io/random-signal-agent/)   [📦 下载 v0.5.0](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.5.0)   [📘 安装指南](RELEASE.md)
 
 ## 🧭 快速导航
 
@@ -40,7 +40,7 @@
 | 功能 | 可以完成的实验 |
 | --- | --- |
 | 🐳 可爱海洋界面 | 海蓝/薰衣草紫渐变、AI 立体鲸鱼插画，桌面/平板/手机自适应。 |
-| 📡 通信实验室（v0.4.12） | 231 个信号积木、122 个示例、4 类实验工具和 12 个课程；Scratch 拼接、完整图实验、基线复跑与成果交付。 |
+| 📡 通信实验室（v0.5.0） | 232 个信号积木、124 个示例、4 类实验工具和 12 个课程；Scratch 拼接、完整图实验、基线复跑与成果交付。 |
 | 🔑 模型 API 配置 | 在页面选择服务与模型、填写 Key、测试并应用；可按会话记住配置。已包含在 v0.4.12 部署包中。 |
 | 📄 PDF 分析报告（v0.4.12） | 填写标题、作者与目的，预览后导出中文简版或标准版，包含矢量图表、真实指标和复现信息。 |
 | 🩺 信号诊断实验室 | STFT 时频图联动异常区间，六类可复现故障注入、盲测揭晓评分，以及保留原始观测的验证实验。 |
@@ -61,7 +61,7 @@
 
 ## 📡 通信原理实验室   用积木搭建收发链路
 
-拖入积木、编辑参数，点击 **🔨 Build** 检查链路，再用 **▶️ Run** 观察传输结果。六类积木覆盖发送、信道与接收环节，提供 **231 个可添加积木 + 固定信宿、122 个实验示例**。
+拖入积木、编辑参数，点击 **🔨 Build** 检查链路，再用 **▶️ Run** 观察传输结果。六类积木覆盖发送、信道与接收环节，提供 **232 个可添加积木 + 固定信宿、124 个实验示例**。
 
 **🎲 信源 → 🔀 发转换器 → 📡 调制器 → 🌊 信道 → 🎛️ 解调器 → 🔄 收转换器 → 📺 信宿**
 
@@ -74,6 +74,8 @@
 | 🎛️ 解调器 | 各制式配对解调与 PSK/QAM 软解调；匹配滤波、符号/载波/帧同步，ZF/MMSE/DFE、MLSE 序列均衡、实/复 LMS/NLMS/RLS、CMA、导频 LS、OFDM/FFT/频域均衡；新增 AGC、自动 N0、重采样、T/2 均衡、OFDM 频偏与导频跟踪。 |
 | 🔄 收转换器 | 线路译码、解交织、解扰、CRC 校验、重复码/Hamming 纠错、硬/软 Viterbi、Turbo BCJR、LDPC 迭代，以及 PCM/压扩/DPCM/增量重构。Huffman/ADPCM/BCH/RS 译码、组包；码捕获、解扩、RAKE、SC/MRC、Alamouti、MIMO ZF/MMSE、ZF-SIC/MMSE-SIC、周期导频跟踪、MIMO-OFDM、OFDMA 分用户恢复与 FHSS 解跳；MUSIC 测角、自动 MVDR、连续帧重组和 OFDM 测距测速。 |
 | 📺 信宿 | 显示接收比特、文本与模拟波形，支持叠加原始信源、标记错误位和浏览完整接收序列。音频播放、图像重建与 PSNR、文件下载和 SHA256 核验。 |
+
+- 🔌 **v0.5.0 开发板** 从 Scratch 工程生成 C++ 或 MicroPython，选择 Pico 或 Pico W，对照 BPSK 收发和 UART 跳线回环的逐块输出。 [开发板指南](工程文件/代码/docs/communications-v050.md)
 
 - 🧩 **v0.4.12 Scratch 式拼接**：吸附式积木、块内常用参数、并行接收容器、复制剪切粘贴、组合折叠与注释，沿用海洋配色和全部既有算法。
 - 🔬 **v0.4.12 完整工程实验**：观察探针、参考对照、指标汇总、验收条件；整张图参与多种子批量、扫描、约束选参和课程验收，保存分支、汇合、输入摘要与运行记录。
@@ -185,7 +187,7 @@ Agent 采集与分析 → 保存实验快照 → 查看故障诊断 → 打开�
 
 ### 1. 获取项目
 
-下载并解压 v0.4.12 的[部署 ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.4.12/random-signal-agent-v0.4.12-deploy.zip)，在解压目录中的 `工程文件/代码` 打开终端。
+下载并解压 v0.5.0 的[部署 ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.5.0/random-signal-agent-v0.5.0-deploy.zip)，在解压目录中的 `工程文件/代码` 打开终端。
 
 也可以克隆仓库：
 
@@ -407,7 +409,7 @@ Diting brings Random Signals and Communication Principles experiments into one o
 
 🎓 Built for **UESTC Random Signals and Communication Principles coursework**, with local computation, seeded reproduction and optional model-assisted dialogue.
 
-[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/)   [📦 Download v0.4.12](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.4.12)   [📘 Installation guide](RELEASE.md)
+[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/)   [📦 Download v0.5.0](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.5.0)   [📘 Installation guide](RELEASE.md)
 
 ## 🧭 Explore
 
@@ -427,7 +429,7 @@ Diting brings Random Signals and Communication Principles experiments into one o
 | Capability | What you can do |
 | --- | --- |
 | 🐳 Ocean UI | Layered ocean/lilac gradients and AI-generated 3D whale art for desktop, tablet and mobile. |
-| 📡 Communication lab (v0.4.12) | 231 signal blocks, 122 presets, 4 experiment tools and 12 courses: Scratch-style assembly, whole-graph experiments, baseline replay and verified bundles. |
+| 📡 Communication lab (v0.5.0) | 232 signal blocks, 124 presets, 4 experiment tools and 12 courses: Scratch-style assembly, whole-graph experiments, baseline replay and verified bundles. |
 | 🔑 Model API setup | Choose a provider/model, enter a key and test/apply in the UI; optional per-session persistence. |
 | 📄 PDF analysis reports (v0.4.12) | Preview and export Chinese brief/standard reports with vector plots, measured metrics, optional diagnosis and reproduction details. |
 | 🩺 Diagnostic laboratory | Linked STFT and event timeline, six seeded fault types, blind challenge evaluation, and reversible evidence-based processing trials. |
@@ -448,7 +450,7 @@ Diting brings Random Signals and Communication Principles experiments into one o
 
 ## 📡 Communication-principles lab   Build a transmitter and receiver with blocks
 
-Drag in blocks, edit their parameters, click **🔨 Build** to check the pipeline, then **▶️ Run** to inspect the transmission. Six block categories provide **231 addable blocks + a fixed sink and 122 presets**.
+Drag in blocks, edit their parameters, click **🔨 Build** to check the pipeline, then **▶️ Run** to inspect the transmission. Six block categories provide **232 addable blocks + a fixed sink and 124 presets**.
 
 **🎲 Sources → 🔀 Transmit converters → 📡 Modulators → 🌊 Channels → 🎛️ Demodulators → 🔄 Receive converters → 📺 Sink**
 
@@ -461,6 +463,8 @@ Drag in blocks, edit their parameters, click **🔨 Build** to check the pipelin
 | 🎛️ Demodulators | Paired demodulation and PSK/QAM LLRs; matched filtering, symbol/carrier/frame recovery, ZF/MMSE/DFE, real/complex LMS/NLMS/RLS, CMA, pilot LS and OFDM/FFT/frequency-domain equalization; AGC, estimated N0, rational resampling, T/2 FSE and OFDM CFO/pilot tracking. |
 | 🔄 Receive converters | Line decoding, deinterleaving, descrambling, CRC checks, repetition/Hamming correction, hard/soft Viterbi, iterative LDPC and PCM/companding/DPCM/delta reconstruction. Huffman/ADPCM/BCH/RS decoding, reassembly, code acquisition, despreading, RAKE, SC/MRC, Alamouti and MIMO ZF/MMSE. |
 | 📺 Sink | Received bits, text and analog waveforms, with source overlays, bit-error markers and full-sequence browsing. Audio playback, image reconstruction/PSNR and downloadable files with SHA256 comparison. |
+
+- 🔌 **v0.5.0 development boards** Generate standalone C++ or MicroPython for Pico and Pico W, navigate between blocks and source lines, and compare BPSK and wired UART runs against desktop results. [Pico guide](工程文件/代码/docs/communications-v050.md).
 
 - 🧩 **v0.4.12 Scratch-style assembly:** snapping blocks, inline parameters, parallel receiver containers, copy/cut/paste, folded groups and notes preserve the ocean theme and existing algorithms.
 - 🔬 **v0.4.12 whole-project experiments:** probes, reference comparisons, metric summaries and acceptance conditions run with the complete graph across seeded batches, scans, constrained searches and classroom checks.
@@ -566,7 +570,7 @@ Use **Python 3.12–3.14** or **Docker Compose v2**. v0.4.12 uses FastAPI; deplo
 
 ### 1. Get the project
 
-Download the v0.4.12 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.4.12/random-signal-agent-v0.4.12-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
+Download the v0.5.0 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.5.0/random-signal-agent-v0.5.0-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
 
 Or clone the repository:
 

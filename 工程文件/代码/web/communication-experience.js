@@ -48,7 +48,8 @@ window.createCommunicationExperience = function (core) {
   const workbench=window.createCommunicationWorkbenchV0412?.(core,nextContext);
   nextContext.runDocument=doc=>workbench.runDocument(doc);
   const delivery=window.createCommunicationDeliveryV0412?.(core,nextContext);
-  const enhancements=[window.createCommunicationReceiverV0410(core,nextContext),window.createCommunicationFramingV0410(core,nextContext),window.createCommunicationExperimentV0410(core,nextContext),window.createCommunicationFlowV0410(core,nextContext),window.createCommunicationViewsV0410(core,nextContext),graphEditor,workbench,delivery].filter(Boolean);
+  const board=window.createCommunicationBoard?.(core,nextContext);
+  const enhancements=[window.createCommunicationReceiverV0410(core,nextContext),window.createCommunicationFramingV0410(core,nextContext),window.createCommunicationExperimentV0410(core,nextContext),window.createCommunicationFlowV0410(core,nextContext),window.createCommunicationViewsV0410(core,nextContext),graphEditor,workbench,delivery,board].filter(Boolean);
   const report=window.createCommunicationReport(core,{meta:()=>meta,persist,documentValue,request,session});
   const savedFormIds=/^cm(?:Scan|Protocol|Packet|Retries|Feedback|HARQBudget|AMC|Breakpoint(?:Metric|Operator|Value)|ContinuousFrames|Sweep(?:Start|Stop|Step|Frames|Errors|Values|Name))/;
   function rememberForm(event){const e=event.target;if(e.id&&savedFormIds.test(e.id)&&['INPUT','SELECT','TEXTAREA'].includes(e.tagName)&&e.type!=='file'){(meta.formValues||(meta.formValues={}))[e.id]=e.value;persist();}}

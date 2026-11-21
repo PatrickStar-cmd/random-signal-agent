@@ -71,6 +71,9 @@ for scheme, label in analog_modulation.LABELS.items():
     detector = '包络或相干检波' if scheme == 'am' else '相位差鉴频' if scheme == 'fm' else '参考相位解缠' if scheme == 'pm' else '相干解调'
     block('demod_' + scheme, label + ' 模拟解调', 'demodulator', detector + '，恢复模拟样本；增益标定使用配对调制器的配置。', **receive)
 block('ideal', '理想信道', 'channel', '原样传输，适合先验证编译和收发配对。')
+block('uart_loopback', 'UART 实物回环', 'channel', '电脑按字节模拟回环。板端从 GP0 发出，经跳线从 GP1 回读，8N1，高位先装包。',
+      baudrate=field('串口波特率', 9600, 'select', choices=[9600, 19200, 38400, 57600, 115200]),
+      timeout_ms=number('单字节接收超时 / ms', 250, 10, 2000, True))
 block('awgn', '高斯白噪声', 'channel', 'Es/N0 参考发送端单位符号能量；衰减会降低实际接收信噪比。', esn0_db=number('发送端 Es/N0 / dB', 12, -10, 60))
 block('analog_awgn', '模拟白噪声', 'channel', '模拟链路专用；按发送复包络整帧实测功率设置每采样点 SNR，前置衰减会降低接收 SNR。', snr_db=number('发送端采样 SNR / dB', 20, -10, 60))
 block('attenuation', '信道衰减', 'channel', '正 dB 表示衰减；作用于经过该积木的整个信号。', db=number('衰减 / dB', 3, 0, 60))
@@ -147,6 +150,8 @@ def preset(kinds, changes=None):
 
 
 PRESETS = {
+    'board_bpsk': {'label': '开发板 BPSK 收发', 'program': preset(['bit_pattern', 'repeat_encode', 'mod_bpsk', 'ideal', 'demod_bpsk', 'repeat_decode', 'sink'], {0: {'pattern': '1011'}})},
+    'board_uart': {'label': '开发板 UART 实物回环', 'program': preset(['bit_pattern', 'repeat_encode', 'uart_loopback', 'repeat_decode', 'sink'], {0: {'pattern': '1011'}})},
     'digital': {'label': '数字通信', 'program': preset(['random_bits', 'hamming_encode', 'mod_qpsk', 'attenuation', 'awgn', 'demod_qpsk', 'hamming_decode', 'sink'])},
     'analog': {'label': '模拟信源 + PCM', 'program': preset(['sine', 'sine', 'pcm_encode', 'conv_encode', 'mod_qpsk', 'awgn', 'demod_qpsk', 'conv_decode', 'pcm_decode', 'sink'], {1: {'frequency': 24, 'amplitude': .25}, 5: {'esn0_db': 16}})},
     'text': {'label': '文字传输', 'program': preset(['text', 'repeat_encode', 'mod_bpsk', 'awgn', 'demod_bpsk', 'repeat_decode', 'sink'])}
@@ -238,6 +243,11 @@ def normalize(raw, draft=False):
 
 def build(raw):
     p = normalize(raw); items = p['blocks']; sources = []
+    uart = any(b['kind'] == 'uart_loopback' for b in items)
+    if uart:
+        for b in items:
+            if b['kind'] not in ('bit_pattern', 'repeat_encode', 'uart_loopback', 'repeat_decode', 'sink'):
+                raise ValueError(f'UART 回环接收固定比特及重复码，请调整「{BLOCKS[b["kind"]]["label"]}」。')
     if any(b['kind'] == 'iq_source' for b in items): return iq.build(p)
     extended=communication_catalog.KINDS | business.KINDS | wireless.KINDS | set(communication_codecs.polar.PAIRS) | set(communication_codecs.polar.PAIRS.values()) | set(communication_codecs.turbo.PAIRS) | set(communication_codecs.turbo.PAIRS.values())
     analog_audio=any(b['kind'] in {'mod_'+scheme for scheme in analog_modulation.LABELS} for b in items) and not any(b['kind'] in extended-{'audio_source'} for b in items)
@@ -284,6 +294,9 @@ def build(raw):
                 if domain != '比特': fail('数字调制器需要比特输入；模拟信源请先经 PCM 编码，或选择模拟调制器。')
                 count = math.ceil(count / {'bpsk': 1, 'qpsk': 2, 'qam16': 4}[scheme]); domain = '复基带符号'
             direction = 'channel'
+        elif k == 'uart_loopback':
+            if direction != 'tx' or domain != '比特': fail('每条回环链路在发送端与接收端之间放置一个 UART。')
+            direction = 'rx'
         elif k in CHANNELS:
             if direction != 'channel': fail('信道须放在调制器与解调器之间。')
             if k == 'awgn' and analog_transmit is not None: fail('模拟链路请选择「模拟白噪声」，其参数为采样 SNR。')
@@ -313,6 +326,8 @@ def build(raw):
     result = {'program': p, 'token': token, 'plan': plan, 'summary': f'{len(sources)} 个信源   {len(items)} 个积木   {count} ' + ('个接收样本' if analog else '个接收比特'), 'source_kind': 'analog' if analog else 'digital', 'model': '复基带   1 样本/符号   理想定时   硬判决'}
     if analog_transmit is not None:
         result.update(transport='analog', model='模拟复包络   采样时钟   理想帧滤波   ' + analog_modulation.LABELS[scheme])
+    if uart:
+        result.update(transport='uart', model='电脑参考 UART 字节回环 8N1')
     return result
 
 
@@ -434,6 +449,9 @@ def run(raw, token):
             if ctx: ctx.source_active=False
     if compiled.get('transport') == 'advanced':
         return advanced_communications.run(compiled, source, texts, source_count, noise_rng)
+    if compiled.get('transport') == 'uart':
+        from src.communication_uart import reference_run
+        return reference_run(compiled, source, source_count)
     if compiled.get('transport') == 'baseband':
         result = baseband.run(compiled, source, texts, source_count, noise_rng)
         json.dumps(result, allow_nan=False)

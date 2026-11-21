@@ -4,6 +4,8 @@
 
 ## 安装与验证
 
+开发板实验在本地工作台的「开发板」面板运行。选择实验、板型和语言后，可下载源码、构建、部署并读取结果。工具链安装、接线与回读方法见[开发板指南](communications-v050.md)。
+
 ```bash
 python -m pip install -r requirements-repro.txt
 python -m pip check

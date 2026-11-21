@@ -1,0 +1,25 @@
+// Wire GP0 (UART0 TX) to GP1 (UART0 RX). The USB console is independent.
+static bool uart_loopback(Samples &bits, unsigned baudrate, unsigned timeout_ms) {
+    uart_init(uart0, baudrate);
+    gpio_set_function(0, GPIO_FUNC_UART);
+    gpio_set_function(1, GPIO_FUNC_UART);
+    gpio_pull_up(1);
+    uart_set_format(uart0, 8, 1, UART_PARITY_NONE);
+    for (unsigned stale = 0; stale < 32 && uart_is_readable(uart0); ++stale) {
+        uart_getc(uart0);
+    }
+    // The first bit occupies the MSB. Unused low bits of the final byte stay zero.
+    for (size_t start = 0; start < bits.size(); start += 8) {
+        uint8_t byte = 0;
+        for (unsigned i = 0; i < 8 && start + i < bits.size(); ++i) {
+            byte |= uint8_t(bits[start + i]) << (7 - i);
+        }
+        uart_write_blocking(uart0, &byte, 1);
+        if (!uart_is_readable_within_us(uart0, timeout_ms * 1000u)) return false;
+        uint8_t received = uint8_t(uart_getc(uart0));
+        for (unsigned i = 0; i < 8 && start + i < bits.size(); ++i) {
+            bits[start + i] = (received >> (7 - i)) & 1;
+        }
+    }
+    return true;
+}
