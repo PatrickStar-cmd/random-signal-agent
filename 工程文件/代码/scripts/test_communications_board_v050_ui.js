@@ -53,7 +53,7 @@ function fixture(hostname = 'localhost') {
     if(name==='run')return {device_id:body.device_id,status:'timeout',nodes:{s:[1,0]},metrics:{compared_bits:0,ber:null,bit_errors:0,received_frames:0,expected_frames:1,lost_frames:1}};
   };
   let confirmation=true, ui;
-  const runtime={window:{confirm:()=>confirmation},location:{hostname},document:{createElement:()=>new Element()},
+  const runtime={window:{confirm:()=>confirmation},location:{hostname},TextDecoder,document:{createElement:()=>new Element()},
     matchMedia:()=>({matches:false}),setTimeout:()=>1,clearTimeout(){},
     fetch:async(url,options)=>{
       const name=url.split('/board-')[1],body=JSON.parse(options.body);calls.push({name,body});
@@ -126,4 +126,44 @@ test('an unsuccessful regeneration discards the previous source and firmware',as
   f.setResponse(async()=>({error:'无法生成当前工程'}));await f.generate();
   assert.equal(f.field('Source').hidden,true);assert.equal(f.field('Export').disabled,true);
   assert.equal(f.field('Firmware').hidden,true);assert.equal(f.field('Build').disabled,true);
+});
+
+test('QPSK keeps both axes and shows the chosen symbol before and after a measurement',async()=>{
+  const f=fixture();
+  const s=Math.SQRT1_2;
+  const base=f.sample('pico','cpp');
+  const iq=[[s,s],[s,-s],[-s,-s],[-s,s]];
+  base.steps[0]={id:'s',kind:'mod_qpsk',label:'QPSK 调制',format:'iq'};
+  base.experiment='qpsk';base.expected.nodes.s=iq;
+  f.setResponse(async name=>name==='generate'?base:
+    name==='devices'?{devices:[{id:'serial:A',kind:'serial',label:'COM8'}],tools:{}}:
+    {device_id:'serial:A',nodes:{s:iq,z:[1,0]},status:'ok',matches_reference:true,
+      metrics:{compared_bits:2,bit_errors:0,ber:0,received_frames:1,lost_frames:0,expected_frames:1}});
+  await f.generate();
+  f.field('Index').value=4;f.field('Index').onchange();
+  assert.equal(f.field('Symbols').hidden,false);
+  assert.match(f.field('ReferenceDetail').textContent,/I = -0.707107  Q = 0.707107  判决比特 10/);
+  assert.equal(f.field('MeasuredDetail').textContent,'待板端实测');
+  await f.field('Refresh').onclick();f.field('Device').value='serial:A';f.field('Device').onchange();
+  await f.field('Measure').onclick();
+  assert.match(f.field('MeasuredDetail').textContent,/判决比特 10/);
+  assert.match(f.field('Scatter').innerHTML,/绿点 板端/);
+});
+
+test('Hamming displays the received codeword, syndrome and recovered data',async()=>{
+  const f=fixture(),base=f.sample('pico','cpp');
+  base.steps[1]={id:'z',kind:'hamming_decode',label:'Hamming 译码',format:'bits'};
+  base.expected={nodes:{s:[0,1,1,0,1,1,1],z:[1,0,1,1]},syndromes:{z:[5]}};
+  f.setResponse(async()=>base);await f.generate();f.core.selectBlock('z');
+  assert.match(f.field('ReferenceDetail').textContent,/收到 0110111  综合征 5  纠正第 5 位  数据 1011/);
+});
+
+test('UTF-8 text is decoded from the selected node bits including the sink',async()=>{
+  const f=fixture(),base=f.sample('pico','cpp');
+  const bits=Array.from(Buffer.from('你好，Pico'),byte=>byte.toString(2).padStart(8,'0')).join('').split('').map(Number);
+  f.state.program.blocks[0].kind='text';f.state.definitions.text={category:'source',label:'文本信源'};
+  base.steps[0].kind='text';base.steps[1].kind='sink';base.expected.nodes={s:bits,z:bits};
+  f.setResponse(async()=>base);await f.generate();f.core.selectBlock('z');
+  assert.equal(f.field('ReferenceDetail').textContent,'你好，Pico');
+  assert.equal(f.field('MeasuredDetail').textContent,'待板端实测');
 });

@@ -1,0 +1,9 @@
+def trace_iq(nonce, block_id, iq):
+    sys.stdout.write('RS050 {"type":"node","nonce":"%s","id":"%s","values":[' % (nonce, block_id))
+    # Each pair is an I/Q symbol. Keep only a small USB output chunk in memory.
+    for start in range(0, len(iq), 32):
+        pairs = [[iq[i], iq[i+1]] for i in range(start, min(start + 32, len(iq)), 2)]
+        if start:
+            sys.stdout.write(",")
+        sys.stdout.write(json.dumps(pairs)[1:-1])
+    sys.stdout.write("]}\n")

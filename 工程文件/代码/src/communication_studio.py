@@ -16,7 +16,7 @@ def contract(kind):
     if kind in ('sine','square','gaussian','audio_source'): return ['起点'],'模拟样本'
     if kind in c.SOURCES: return ['起点'],'比特'
     if kind=='sink': return ['比特','模拟样本'],'信宿'
-    if kind=='uart_loopback': return ['比特'],'比特'
+    if kind in ('uart_loopback', 'bit_flip'): return ['比特'],'比特'
     if kind in ('pcm_encode','compand_encode','dpcm_encode','delta_encode','adpcm_encode'): return ['模拟样本'],'比特'
     if kind in ('pcm_decode','compand_decode','dpcm_decode','delta_decode','adpcm_decode'): return ['比特'],'模拟样本'
     if kind.startswith('line_'): return (['比特'],'线路电平') if kind.endswith('encode') else (['线路电平'],'比特')
@@ -184,7 +184,17 @@ def _complete_decoders(p, tx, make, soft=False):
         elif rx['kind']=='polar_decode': rx['params'].update(encoder['params'])
         elif rx['kind'] not in ('ldpc_decode','conv_soft_decode'): rx['params']=make(rx['kind'],encoder['params'])['params']
         rebuilt.append(rx)
-    blocks[:]=[b for b in blocks if b['kind'] not in c.PAIRS and b['kind']!='sink']+rebuilt+[next((b for b in blocks if b['kind']=='sink'),make('sink'))]
+    # Keep injections attached to their Hamming layer when rebuilding nested decoders.
+    flip_groups = [[]]
+    for b in blocks:
+        if b['kind'] == 'bit_flip': flip_groups[-1].append(b)
+        elif b['kind'] == 'hamming_decode': flip_groups.append([])
+    receiver = []
+    for rx in rebuilt:
+        if rx['kind'] == 'hamming_decode' and flip_groups: receiver.extend(flip_groups.pop(0))
+        receiver.append(rx)
+    receiver.extend(b for group in flip_groups for b in group)
+    blocks[:] = [b for b in blocks if b['kind'] not in c.PAIRS and b['kind'] not in ('bit_flip', 'sink')] + receiver + [next((b for b in blocks if b['kind']=='sink'),make('sink'))]
     return c.normalize(p,draft=True)
 
 

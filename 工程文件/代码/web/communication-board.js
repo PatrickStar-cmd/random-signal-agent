@@ -15,7 +15,7 @@ window.createCommunicationBoard = function (core, ctx) {
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
   let generated = null, build = null, measured = null, inventory = null;
   let generation = 0, refreshId = 0, timer = 0, signature = '', working = false, pending = false;
-  let issueIds = [], currentFile = '';
+  let issueIds = [], currentFile = '', probeId = '';
   const target = () => ({language: field('Language').value, board: field('Target').value});
   const isCpp = () => target().language === 'cpp';
   const cardFor = id => id === 'graph' ? root.querySelector('.cm-scratch-parallel') :
@@ -70,19 +70,85 @@ window.createCommunicationBoard = function (core, ctx) {
     field('FirmwareHelp').href = target().board === 'pico' ?
       'https://micropython.org/download/RPI_PICO/' : 'https://micropython.org/download/RPI_PICO_W/';
   }
-  function sampleText(samples) {
-    const text = samples.slice(0, 64).join(' ');
-    return samples.length > 64 ? text + ' …（共 ' + samples.length + ' 个）' : text;
+  function sampleText(samples, iq) {
+    const limit = iq ? 8 : 64;
+    const shown = samples.slice(0, limit);
+    const text = iq ? shown.map(([i,q]) => '(' + i.toFixed(4) + ', ' + q.toFixed(4) + ')').join(' ') : shown.join(' ');
+    return samples.length > limit ? text + ' …（共 ' + samples.length + ' 个）' : text;
+  }
+  function drawSymbols(reference, actual, index) {
+    const x = i => 100 + i * 73, y = q => 87 - q * 73;
+    const dots = (samples, color, radius, fill) => {
+      const seen = new Set();
+      return samples.map(([i,q]) => {
+        const key = x(i).toFixed(1) + ',' + y(q).toFixed(1);
+        if (seen.has(key)) return '';
+        seen.add(key);
+        return '<circle cx="' + x(i) + '" cy="' + y(q) + '" r="' + radius + '" stroke="' + color + '" stroke-width="2" fill="' + fill + '"/>';
+      }).join('');
+    };
+    field('Scatter').innerHTML = '<path d="M12 87H188 M100 9V165" fill="none" stroke="#a0b9cc"/><text x="184" y="82">I</text><text x="106" y="15">Q</text>' +
+      dots(reference, '#7455ad', 4, 'none') + dots(actual || [], '#19796f', 2, '#19796f') +
+      dots([reference[index]], '#c57429', 7, 'none') +
+      '<text x="12" y="180" xml:space="preserve">紫圈 电脑参考' + (actual ? '  绿点 板端' : '') + '  橙圈 当前符号</text>';
+  }
+  function decodedText(bits) {
+    const bytes = new Uint8Array(bits.length / 8);
+    bits.forEach((bit, index) => {bytes[index >> 3] |= bit << (7 - index % 8);});
+    return new TextDecoder('utf-8', {ignoreBOM:true}).decode(bytes);
+  }
+  function inspectNode(step, index, result, previous) {
+    const values = result?.nodes[step.id];
+    if (!values) return measured ? '本次未收到样本' : '待板端实测';
+    if (step.format === 'iq') {
+      const [i,q] = values[index];
+      return 'I = ' + i.toFixed(6) + '  Q = ' + q.toFixed(6) + '  判决比特 ' + Number(i < 0) + Number(q < 0);
+    }
+    if (step.kind === 'hamming_decode') {
+      const word = previous && result.nodes[previous.id]?.slice(7 * index, 7 * index + 7);
+      const syndrome = result.syndromes?.[step.id]?.[index];
+      if (!word || syndrome === undefined) return '等待码字回读';
+      const data = values.slice(4 * index, 4 * index + 4);
+      return '收到 ' + word.join('') + '  综合征 ' + syndrome + (syndrome ? '  纠正第 ' + syndrome + ' 位' : '  原样通过') + '  数据 ' + data.join('');
+    }
+    if (step.kind === 'bit_flip') {
+      const start = (step.codeword - 1) * 7;
+      return '码字 ' + step.codeword + '  第 ' + step.position + ' 位  ' +
+        result.nodes[previous.id].slice(start, start + 7).join('') + ' → ' + values.slice(start, start + 7).join('');
+    }
+    return decodedText(values);
   }
   function probe() {
     const id = get().selectedId, step = generated?.steps.find(s => s.id === id);
     field('Probe').hidden = !step;
     if (!step) return;
     field('NodeTitle').textContent = step.label + ' 输出';
-    field('Expected').textContent = sampleText(generated.expected.nodes[id]);
+    const reference = generated.expected.nodes[id], iq = step.format === 'iq';
+    field('Expected').textContent = sampleText(reference, iq);
     const actual = measured?.nodes[id];
-    field('Actual').textContent = actual?.length ? sampleText(actual) : measured ? '本次未收到样本' : '待板端实测';
+    field('Actual').textContent = actual?.length ? sampleText(actual, iq) : measured ? '本次未收到样本' : '待板端实测';
+    const sources = get().program.blocks.filter(b => get().definitions[b.kind]?.category === 'source');
+    const text = step.kind === 'text' || (step.kind === 'sink' && sources.length > 0 && sources.every(b => b.kind === 'text'));
+    const hamming = step.kind === 'hamming_decode';
+    const count = hamming ? generated.expected.syndromes[id].length : iq ? reference.length : 1;
+    if (probeId !== id) field('Index').value = 1;
+    probeId = id;
+    const index = Math.max(1, Math.min(count, Math.trunc(Number(field('Index').value)) || 1)) - 1;
+    field('Index').max = count;
+    field('Index').value = index + 1;
+    field('Symbols').hidden = !iq;
+    if (iq) drawSymbols(reference, actual, index);
+    field('IndexLabel').hidden = !(iq || hamming);
+    field('IndexName').textContent = (hamming ? '码字序号' : '符号序号') + '（共 ' + count + '）';
+    field('Observation').hidden = !(iq || hamming || text || step.kind === 'bit_flip');
+    if (!field('Observation').hidden) {
+      const previous = generated.steps[generated.steps.indexOf(step) - 1];
+      field('ObservationTitle').textContent = '电脑参考  ' + (iq ? '星座坐标' : hamming ? '译码过程' : text ? 'UTF-8 文字' : '软件注错');
+      field('ReferenceDetail').textContent = inspectNode(step, index, generated.expected, previous);
+      field('MeasuredDetail').textContent = inspectNode(step, index, measured, previous);
+    }
   }
+  field('Index').onchange = probe;
   function showMeasurement() {
     field('Result').hidden = !measured;
     if (measured) {
@@ -159,7 +225,7 @@ window.createCommunicationBoard = function (core, ctx) {
       selectSource(true);
       field('Wiring').textContent = generated.experiment === 'uart' ?
         '用跳线连接 GP0（TX）与 GP1（RX）。USB 用于部署和回读结果。' :
-        '用数据线连接 USB。BPSK 符号在板内计算，各积木输出经 USB 回传。';
+        '用数据线连接 USB。' + (generated.experiment === 'qpsk' ? 'QPSK 的 I/Q 分量' : 'BPSK 符号') + '在板内计算，各积木输出经 USB 回传。';
       const hostTools = generated.host_tools?.length;
       status('已生成 ' + generated.steps.length + ' 块积木的源码' +
         (hostTools ? '  ' + hostTools + ' 个分析工具在电脑端运行' : ''));
@@ -174,6 +240,7 @@ window.createCommunicationBoard = function (core, ctx) {
     generation++;
     pending = false;
     generated = build = measured = null;
+    probeId = '';
     field('Source').hidden = true;
     field('Firmware').removeAttribute('href');
     field('Wiring').textContent = '';
@@ -273,7 +340,7 @@ window.createCommunicationBoard = function (core, ctx) {
   }
   field('Export').onclick = () => operation('正在打包源码…', async () => {
     const blob = await request('export', payload(), true);
-    core.download(generated.experiment + '-' + generated.board + '-' + generated.language + '.zip', blob, 'application/zip');
+    core.download([generated.experiment, generated.board, generated.language, generated.artifact_id.slice(0,8)].join('-') + '.zip', blob, 'application/zip');
     status('源码工程已导出');
   });
   field('Build').onclick = () => operation('正在编译 Pico 固件…', async () => {

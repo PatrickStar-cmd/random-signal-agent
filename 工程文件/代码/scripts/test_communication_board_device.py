@@ -27,10 +27,14 @@ class BoardDeviceTests(unittest.TestCase):
         self.counts = {'expected_frames': 1, 'received_frames': 1, 'lost_frames': 0,
                        'compared_bits': 3, 'bit_errors': 0, 'ber': 0}
 
-    def capture(self, pairs, status='ok', metrics=None):
+    def capture(self, pairs, status='ok', metrics=None, syndromes=None):
         done = {k: self.program[k] for k in ('board', 'artifact_id', 'language', 'experiment')}
         frames = [{'type': 'node', 'id': 'stale', 'nonce': 'earlier'}]
-        frames += [{'type': 'node', 'id': k, 'values': v, 'nonce': 'now'} for k, v in pairs]
+        for key, values in pairs:
+            node = {'type': 'node', 'id': key, 'values': values, 'nonce': 'now'}
+            if syndromes and key in syndromes:
+                node['syndromes'] = syndromes[key]
+            frames.append(node)
         frames.append({**done, 'nonce': 'now', 'type': 'done', 'status': status,
                        'metrics': metrics or self.counts})
         return BufferedPort(b'Pico ready\r\n' + b''.join(
@@ -53,6 +57,49 @@ class BoardDeviceTests(unittest.TestCase):
         self.assertIsNone(result['metrics']['ber'])
         with self.assertRaisesRegex(ValueError, '不完整'):
             device._receive(self.capture([], 'timeout', metrics), self.program, 'now')
+
+    def test_iq_fractional_telemetry_tolerance_and_shape(self):
+        self.program['experiment'] = 'qpsk'
+        self.program['steps'] = [{'kind': 'pn_bits', 'format': 'bits'}, {'kind': 'mod_qpsk', 'format': 'iq'},
+                                 {'kind': 'sink', 'format': 'bits'}]
+        nodes = self.program['expected']['nodes']
+        nodes['b'] = [[-.707106781, .707106781], [-.707106781, .707106781]]
+        def read(symbols):
+            return device._receive(self.capture({**nodes, 'b': symbols}.items()), self.program, 'now')
+        symbols = [[-.707107, .707107], [-.707107, .707107]]
+        self.assertTrue(read(symbols)['matches_reference'])
+        self.assertEqual(read(symbols)['nodes']['b'], symbols)
+        self.assertFalse(read([[.707107, -.707107], symbols[1]])['matches_reference'])
+        for invalid in ([1, 0], [[0, 0, 0], [0, 0]], [[True, 0], [0, 0]], [[float('nan'), 0], [0, 0]]):
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(ValueError, '格式'):
+                read(invalid)
+        nodes['b'] = [[-.707106781, .707106781]] * 1024
+        self.assertTrue(read(nodes['b'])['matches_reference'])
+
+    def test_hamming_syndrome_compared_against_received_uart_bits(self):
+        self.program['steps'] = [{'kind': k, 'format': 'bits'} for k in (
+            'text', 'hamming_encode', 'uart_loopback', 'bit_flip', 'hamming_decode', 'sink')]
+        nodes = {'source': [1, 0, 1, 1], 'encoded': [0, 1, 1, 0, 0, 1, 1],
+                 'rx': [0, 1, 1, 0, 0, 1, 1], 'flip': [0, 1, 1, 0, 1, 1, 1],
+                 'decoded': [1, 0, 1, 1], 'sink': [1, 0, 1, 1]}
+        self.program['expected']['nodes'] = nodes
+        def read(changed, syndrome, errors):
+            metrics = {**self.counts, 'compared_bits': 4, 'bit_errors': errors, 'ber': errors / 4}
+            port = self.capture(changed.items(), metrics=metrics, syndromes={'decoded': syndrome})
+            return device._receive(port, self.program, 'now')
+        self.assertEqual(read(nodes, [5], 0)['syndromes'], {'decoded': [5]})
+        # A second flip at physical UART bit 2 gives syndrome 2 xor 5 = 7.
+        changed = {**nodes, 'rx': [0, 0, 1, 0, 0, 1, 1], 'flip': [0, 0, 1, 0, 1, 1, 1],
+                   'decoded': [1, 1, 1, 0], 'sink': [1, 1, 1, 0]}
+        self.assertFalse(read(changed, [7], 2)['matches_reference'])
+        with self.assertRaisesRegex(ValueError, '综合征'):
+            read(changed, [5], 2)
+
+    def test_ber_uses_transmitted_source_even_if_expected_sink_contains_errors(self):
+        nodes = {'a': [1, 0, 1], 'b': [0, 0, 1], 'z': [0, 0, 1]}
+        self.program['expected']['nodes'] = nodes
+        metrics = {**self.counts, 'bit_errors': 1, 'ber': 1 / 3}
+        self.assertTrue(device._receive(self.capture(nodes.items(), metrics=metrics), self.program, 'now')['matches_reference'])
 
     def test_reject_unknown_device_and_cross_project_firmware(self):
         with TemporaryDirectory() as temp, patch.object(device, 'CACHE', Path(temp)), \

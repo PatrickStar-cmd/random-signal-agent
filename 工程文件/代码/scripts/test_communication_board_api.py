@@ -40,7 +40,7 @@ class BoardApiTests(unittest.TestCase):
         self.assertEqual(comm.run(restored, comm.build(restored)['token'])['sink']['values'], [1, 0, 1, 1])
 
     def test_export_all_targets(self):
-        for preset in ('board_bpsk', 'board_uart'):
+        for preset in ('board_bpsk', 'board_uart', 'board_text_uart', 'board_pn', 'board_hamming_fault', 'board_qpsk'):
             for language in ('cpp', 'micropython'):
                 for board in ('pico', 'pico_w'):
                     with self.subTest(preset=preset, language=language, board=board):

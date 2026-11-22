@@ -92,7 +92,18 @@ inline char uart_getc(int) {
 class BoardCodegenTests(unittest.TestCase):
     def consistent(self, artifact, records):
         self.assertEqual([r['id'] for r in records[:-1]], [s['id'] for s in artifact['steps']])
-        self.assertEqual({r['id']: r['values'] for r in records[:-1]}, artifact['expected']['nodes'])
+        for step, record in zip(artifact['steps'], records):
+            expected = artifact['expected']['nodes'][step['id']]
+            if step['format'] == 'iq':
+                self.assertEqual(len(record['values']), len(expected))
+                for pair, reference in zip(record['values'], expected):
+                    self.assertEqual(len(pair), 2)
+                    for axis, value in zip(pair, reference):
+                        self.assertAlmostEqual(axis, value, delta=1e-5)
+            else:
+                self.assertEqual(record['values'], expected)
+        self.assertEqual({r['id']: r['syndromes'] for r in records if 'syndromes' in r},
+                         artifact['expected']['syndromes'])
         self.assertTrue(all(r['nonce'] == 'TestNonce7' for r in records))
         self.assertEqual(records[-1], {'type': 'done', 'nonce': 'TestNonce7',
                          'artifact_id': artifact['artifact_id'], 'board': artifact['board'],
@@ -170,6 +181,39 @@ class BoardCodegenTests(unittest.TestCase):
         artifact = generate(multisegment, 'micropython', 'pico')
         self.consistent(artifact, python_records(artifact, UartPeer('echo')))
 
+    def test_text_prbs_hamming_qpsk_programs(self):
+        for name in ('board_text_uart', 'board_pn', 'board_hamming_fault', 'board_qpsk'):
+            for board in ('pico', 'pico_w'):
+                artifact = generate(c.PRESETS[name]['program'], 'micropython', board)
+                peer = UartPeer('echo')
+                self.consistent(artifact, python_records(artifact, peer))
+                if name == 'board_text_uart':
+                    self.assertEqual(bytes(peer.wire), '你好，Pico'.encode())
+                elif name == 'board_hamming_fault':
+                    self.assertEqual(artifact['expected']['syndromes'], {'block-4': [5]})
+                elif name == 'board_qpsk':
+                    self.assertEqual(artifact['steps'][2]['format'], 'iq')
+
+    def test_pn_states_padding_and_every_hamming_bit(self):
+        for degree in (7, 9, 15):
+            p = c.preset(['pn_bits', 'uart_loopback', 'sink'],
+                         {0: {'count': 33, 'degree': degree, 'initial': (1 << degree) - 1}})
+            a = generate(p, 'micropython', 'pico')
+            self.consistent(a, python_records(a, UartPeer('echo')))
+        for pos in range(1, 8):
+            p = c.preset(['bit_pattern', 'hamming_encode', 'mod_qpsk', 'ideal', 'demod_qpsk',
+                          'bit_flip', 'hamming_decode', 'sink'],
+                         {0: {'pattern': '101100101'}, 5: {'codeword': 3, 'position': pos}})
+            a = generate(p, 'micropython', 'pico')
+            records = python_records(a, UartPeer('echo'))
+            self.consistent(a, records)
+            self.assertEqual(records[6]['syndromes'], [0, 0, pos])
+            self.assertEqual(len(records[4]['values']), 21)
+            self.assertEqual(records[7]['values'], [1, 0, 1, 1, 0, 0, 1, 0, 1])
+        p = c.preset(['bit_pattern', 'mod_qpsk', 'ideal', 'demod_qpsk', 'sink'], {0: {'pattern': '01' * 1024}})
+        a = generate(p, 'micropython', 'pico')
+        self.consistent(a, python_records(a, UartPeer('echo')))
+
     @unittest.skipUnless(shutil.which('g++'), 'Host C++ compiler unavailable')
     def test_generated_cpp_matches_reference_and_handles_unplugged_uart(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -178,13 +222,17 @@ class BoardCodegenTests(unittest.TestCase):
             (folder / 'pico/stdlib.h').write_text('inline void stdio_init_all() {}\n')
             (folder / 'hardware').mkdir()
             (folder / 'hardware/uart.h').write_text(CPP_UART)
-            for name in ('board_bpsk', 'board_uart'):
-                artifact = generate(c.PRESETS[name]['program'], 'cpp', 'pico_w')
+            programs = [entry['program'] for name, entry in c.PRESETS.items() if name.startswith('board_')]
+            programs.append(c.preset(['bit_pattern', 'hamming_encode', 'mod_qpsk', 'ideal', 'demod_qpsk',
+                                      'bit_flip', 'hamming_decode', 'sink'],
+                                     {0: {'pattern': '101100101'}, 5: {'codeword': 3, 'position': 7}}))
+            for program in programs:
+                artifact = generate(program, 'cpp', 'pico_w')
                 (folder / 'main.cpp').write_text(artifact['files']['main.cpp'], encoding='utf-8')
                 target = folder / ('test.exe' if os.name == 'nt' else 'test')
                 subprocess.run(['g++', '-std=c++17', '-I.', 'main.cpp', '-o', target.name],
                                cwd=folder, check=True, timeout=45)
-                modes = ['echo'] if name == 'board_bpsk' else ['echo', 'inverted', 'unplugged']
+                modes = ['echo', 'inverted', 'unplugged'] if artifact['experiment'] == 'uart' else ['echo']
                 for mode in modes:
                     completed = subprocess.run([str(target)], input=command(artifact), capture_output=True,
                                                text=True, check=True, timeout=5, env={**os.environ, 'UART_MODE': mode})

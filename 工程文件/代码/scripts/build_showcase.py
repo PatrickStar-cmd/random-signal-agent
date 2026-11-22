@@ -83,6 +83,8 @@ def decorate_preview(page):
         </section>''',1)
     if 'id="board-preview"' not in page:
         page = page.replace('<main>', '<main>' + '<section id="board-preview"><h2>🔌 v0.5.0 积木代码生成与开发板实测</h2><p>用同一份 Scratch 工程生成 C++ 或 MicroPython，在 Pico 或 Pico W 上运行 BPSK 和 UART 回环。点击积木可定位源码，USB 回传的逐块数据可与电脑参考对照。</p><p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v050.md">开发板接线与部署指南</a></p></section>', 1)
+    if 'id="board-experiments-preview"' not in page:
+        page = page.replace('<main>', '<main><section id="board-experiments-preview"><h2>🧪 v0.5.1 板端信源、纠错编码与 QPSK 实验</h2><p>在 Pico 和 Pico W 上传输 UTF-8 文字与 PN 序列，翻转指定码位并观察纠正结果，或逐符号对照 QPSK 星座和 I/Q。</p><p><a href="https://github.com/PatrickStar-cmd/random-signal-agent/blob/main/工程文件/代码/docs/communications-v051.md">板端实验指南</a></p></section>', 1)
     return page
 
 

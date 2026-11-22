@@ -268,7 +268,7 @@
       <header class="cm-panel-heading"><h3 id="cmBoardHeading">🔌 开发板</h3><button type="button" id="cmBoardClose" aria-label="关闭开发板面板">收起</button></header>
       <div class="cm-board-body">
         <div class="cm-board-fields"><label>编程语言<select id="cmBoardLanguage"><option value="cpp">C++</option><option value="micropython">MicroPython</option></select></label><label>目标板卡<select id="cmBoardTarget"><option value="pico">Pico</option><option value="pico_w">Pico W</option></select></label></div>
-        <div class="cm-board-preset"><label>开发板示例<select id="cmBoardPreset"><option value="board_bpsk">板端 BPSK 收发</option><option value="board_uart">UART 实物回环</option></select></label><button type="button" id="cmBoardLoad">载入示例</button></div>
+        <div class="cm-board-preset"><label>开发板示例<select id="cmBoardPreset"><option value="board_bpsk">板端 BPSK 收发</option><option value="board_uart">UART 实物回环</option><option value="board_text_uart">UTF-8 文字回环</option><option value="board_pn">PN 序列回环</option><option value="board_hamming_fault">Hamming 单错纠正</option><option value="board_qpsk">QPSK 四象限收发</option></select></label><button type="button" id="cmBoardLoad">载入示例</button></div>
         <div class="cm-board-switch" role="group" aria-label="开发板工作区"><button type="button" id="cmBoardCodeTab" aria-controls="cmBoardCodePane" aria-pressed="true">积木与源码</button><button type="button" id="cmBoardDeviceTab" aria-controls="cmBoardDevicePane" aria-pressed="false">部署与实测</button></div>
         <p id="cmBoardStatus" class="cm-board-status" role="status"></p><div id="cmBoardIssues" class="cm-board-issues"></div>
         <section id="cmBoardCodePane" aria-label="积木与源码">
@@ -284,7 +284,12 @@
           <div class="cm-board-actions"><button type="button" id="cmBoardBuild">编译固件</button><a id="cmBoardFirmware" hidden download>下载 UF2</a><button type="button" id="cmBoardDeploy">烧录固件</button><button type="button" id="cmBoardMeasure">运行并回读</button></div>
           <div id="cmBoardResult" hidden><h4>板端实测</h4><dl id="cmBoardMetrics" class="cm-board-metrics"></dl><button type="button" id="cmBoardResultSave">导出测量 JSON</button></div>
         </section>
-        <section id="cmBoardProbe" class="cm-board-probe" aria-label="选中积木输出" hidden><h4 id="cmBoardNodeTitle"></h4><dl><dt>电脑参考</dt><dd id="cmBoardExpected"></dd><dt>板端回读</dt><dd id="cmBoardActual"></dd></dl></section>
+        <section id="cmBoardProbe" class="cm-board-probe" aria-label="选中积木输出" hidden>
+          <h4 id="cmBoardNodeTitle"></h4><dl><dt>电脑参考</dt><dd id="cmBoardExpected"></dd><dt>板端回读</dt><dd id="cmBoardActual"></dd></dl>
+          <div id="cmBoardSymbols" hidden><svg id="cmBoardScatter" viewBox="0 0 200 188" role="img" aria-label="QPSK 符号星座图，横轴 I，纵轴 Q"></svg></div>
+          <label id="cmBoardIndexLabel" class="cm-board-index" hidden><span id="cmBoardIndexName"></span><input id="cmBoardIndex" type="number" min="1" step="1" value="1"></label>
+          <dl id="cmBoardObservation" hidden><dt id="cmBoardObservationTitle"></dt><dd id="cmBoardReferenceDetail"></dd><dt>板端回读</dt><dd id="cmBoardMeasuredDetail"></dd></dl>
+        </section>
       </div>
     </aside>
     <section class="cm-panel cm-results" aria-label="通信实验结果分析"><header class="cm-panel-heading"><h3>📈 实验结果分析</h3></header><div id="cmMetrics" class="cm-metrics" aria-live="polite"></div><p id="cmAnalogWarnings" class="cm-analysis-caption" role="status" hidden></p>

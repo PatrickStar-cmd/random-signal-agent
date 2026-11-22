@@ -1,0 +1,22 @@
+struct IQ { float i, q; };
+
+static void trace(const char *nonce, const char *id, const std::vector<IQ> &symbols) {
+    std::printf("RS050 {\"type\":\"node\",\"nonce\":\"%s\",\"id\":\"%s\",\"values\":[", nonce, id);
+    std::string chunk;
+    for (size_t n = 0; n < symbols.size(); ++n) {
+        if (n) chunk += ',';
+        chunk += '[';
+        for (float axis : {symbols[n].i, symbols[n].q}) {
+            // Decimal fixed-point output also works with integer-only SDK printf.
+            if (axis < 0) { chunk += '-'; axis = -axis; }
+            unsigned scaled = unsigned(axis * 1000000.0f + 0.5f);
+            char decimal[24];
+            std::snprintf(decimal, sizeof(decimal), "%u.%06u", scaled / 1000000u, scaled % 1000000u);
+            chunk += decimal;
+            chunk += ',';
+        }
+        chunk.back() = ']';
+        if (chunk.size() >= 512) { std::fputs(chunk.c_str(), stdout); chunk.clear(); }
+    }
+    std::printf("%s]}\n", chunk.c_str());
+}

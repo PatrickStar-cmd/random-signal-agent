@@ -1,0 +1,14 @@
+static void trace(const char *nonce, const char *id, const Samples &bits, const Samples &syndromes) {
+    std::string line;
+    for (int bit : bits) {
+        if (!line.empty()) line += ',';
+        line += char('0' + bit);
+    }
+    line += "],\"syndromes\":[";
+    for (size_t index = 0; index < syndromes.size(); ++index) {
+        if (index) line += ',';
+        line += char('0' + syndromes[index]);
+    }
+    std::printf("RS050 {\"type\":\"node\",\"nonce\":\"%s\",\"id\":\"%s\",\"values\":[%s]}\n",
+                nonce, id, line.c_str());
+}

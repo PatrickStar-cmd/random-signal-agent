@@ -81,6 +81,9 @@ block('phase_shift', '相位偏移', 'channel', '旋转复基带信号的相位�
 block('dropout', '符号丢失', 'channel', '随机将部分符号归零。', probability=number('丢失概率', .03, 0, 1))
 block('repeat_decode', '重复码译码', 'rx_converter', '按奇数次重复分组，多数判决还原。', factor=field('重复次数', 3, 'select', choices=[3, 5, 7]))
 block('hamming_decode', 'Hamming (7,4) 译码', 'rx_converter', '综合征定位并翻转一位；多位错误可能误纠正。')
+block('bit_flip', '指定位置翻转比特', 'rx_converter', '在 UART 回读或硬判决后，翻转一个 Hamming 码字的指定位置，观察译码器纠错。',
+      codeword=number('第几个码字（从 1 起）', 1, 1, CONFIG['max_bits'] // 7, True),
+      position=number('码字内第几位（从 1 起）', 5, 1, 7, True))
 block('conv_decode', 'Viterbi 译码', 'rx_converter', '对 (7,5)₈ 卷积码进行完整帧硬判决 Viterbi 译码。')
 block('deinterleave', '解交织', 'rx_converter', '按配对交织器的形状还原比特顺序并去除填充。', columns=number('交织列数', 8, 2, 64, True))
 block('pcm_decode', 'PCM 译码', 'rx_converter', '还原量化样本；位数和量程须与发送端一致。', bits=number('量化位数', 8, 2, 12, True), full_scale=number('量程 ±', 2, .1, 32))
@@ -152,6 +155,10 @@ def preset(kinds, changes=None):
 PRESETS = {
     'board_bpsk': {'label': '开发板 BPSK 收发', 'program': preset(['bit_pattern', 'repeat_encode', 'mod_bpsk', 'ideal', 'demod_bpsk', 'repeat_decode', 'sink'], {0: {'pattern': '1011'}})},
     'board_uart': {'label': '开发板 UART 实物回环', 'program': preset(['bit_pattern', 'repeat_encode', 'uart_loopback', 'repeat_decode', 'sink'], {0: {'pattern': '1011'}})},
+    'board_text_uart': {'label': '开发板 UTF-8 文本回环', 'program': preset(['text', 'uart_loopback', 'sink'], {0: {'text': '你好，Pico'}})},
+    'board_pn': {'label': '开发板 PN 序列回环', 'program': preset(['pn_bits', 'uart_loopback', 'sink'], {0: {'count': 127}})},
+    'board_hamming_fault': {'label': '开发板 Hamming 单错纠正', 'program': preset(['bit_pattern', 'hamming_encode', 'uart_loopback', 'bit_flip', 'hamming_decode', 'sink'], {0: {'pattern': '1011'}})},
+    'board_qpsk': {'label': '开发板 QPSK 四象限', 'program': preset(['bit_pattern', 'mod_qpsk', 'ideal', 'demod_qpsk', 'sink'], {0: {'pattern': '00011110'}})},
     'digital': {'label': '数字通信', 'program': preset(['random_bits', 'hamming_encode', 'mod_qpsk', 'attenuation', 'awgn', 'demod_qpsk', 'hamming_decode', 'sink'])},
     'analog': {'label': '模拟信源 + PCM', 'program': preset(['sine', 'sine', 'pcm_encode', 'conv_encode', 'mod_qpsk', 'awgn', 'demod_qpsk', 'conv_decode', 'pcm_decode', 'sink'], {1: {'frequency': 24, 'amplitude': .25}, 5: {'esn0_db': 16}})},
     'text': {'label': '文字传输', 'program': preset(['text', 'repeat_encode', 'mod_bpsk', 'awgn', 'demod_bpsk', 'repeat_decode', 'sink'])}
@@ -246,12 +253,15 @@ def build(raw):
     uart = any(b['kind'] == 'uart_loopback' for b in items)
     if uart:
         for b in items:
-            if b['kind'] not in ('bit_pattern', 'repeat_encode', 'uart_loopback', 'repeat_decode', 'sink'):
-                raise ValueError(f'UART 回环接收固定比特及重复码，请调整「{BLOCKS[b["kind"]]["label"]}」。')
+            if b['kind'] not in ('bit_pattern', 'text', 'pn_bits', 'repeat_encode', 'hamming_encode',
+                                 'uart_loopback', 'bit_flip', 'hamming_decode', 'repeat_decode', 'sink'):
+                raise ValueError(f'UART 回环支持比特、文本、PN、重复码和 Hamming 码，请调整「{BLOCKS[b["kind"]]["label"]}」。')
+            if b['kind'] == 'pn_bits':
+                communication_codecs.pn(1, b['params']['degree'], b['params']['initial'])
     if any(b['kind'] == 'iq_source' for b in items): return iq.build(p)
     extended=communication_catalog.KINDS | business.KINDS | wireless.KINDS | set(communication_codecs.polar.PAIRS) | set(communication_codecs.polar.PAIRS.values()) | set(communication_codecs.turbo.PAIRS) | set(communication_codecs.turbo.PAIRS.values())
     analog_audio=any(b['kind'] in {'mod_'+scheme for scheme in analog_modulation.LABELS} for b in items) and not any(b['kind'] in extended-{'audio_source'} for b in items)
-    if any(b['kind'] in extended for b in items) and not analog_audio and not any(b['kind'].startswith('line_') or b['kind'] in ('mod_baseband','mod_pam') for b in items):
+    if not uart and any(b['kind'] in extended for b in items) and not analog_audio and not any(b['kind'].startswith('line_') or b['kind'] in ('mod_baseband','mod_pam') for b in items):
         return advanced_communications.build(p)
     if any(b['kind'].startswith('line_') or b['kind'] in ('mod_baseband','demod_baseband','mod_pam','demod_pam') or b['kind'] in baseband.WAVE_CHANNELS for b in items):
         return baseband.build(p)
@@ -310,6 +320,8 @@ def build(raw):
             mod_plan = next(v for v in plan if v.get('kind', '').startswith('mod_'))
             count = mod_plan['input_count']; domain = '模拟样本' if analog_transmit is not None else '比特'; direction = 'rx'
             if analog_transmit is not None: analog_modulation.validate(scheme, analog_transmit, params, p['sample_rate'])
+        elif k == 'bit_flip':
+            validate_bit_flip(params, direction, domain, stack, count, fail)
         elif k in PAIRS:
             if direction != 'rx' or domain != '比特' or not stack: fail('没有可以配对的发送端编码器。')
             encoder, expected, original = stack.pop()
@@ -341,11 +353,36 @@ def hamming_encode(bits):
     return out.ravel()
 
 
-def hamming_decode(bits):
+def validate_bit_flip(params, direction, domain, stack, count, fail):
+    if direction != 'rx' or domain != '比特' or not stack or stack[-1][0] != 'hamming_encode':
+        fail('在 UART 回读或硬判决之后，将翻转积木接在对应的 Hamming 译码器前。')
+    if params['codeword'] > count // 7:
+        fail(f'当前只有 {count // 7} 个 Hamming 码字，请调整码字号。')
+
+
+def flip_hamming_bit(bits, params):
+    index = (params['codeword'] - 1) * 7 + params['position'] - 1
+    changed = bits.copy()
+    changed[index] ^= 1
+    return changed, {**params, 'before': int(bits[index]), 'after': int(changed[index])}
+
+
+def hamming_decisions(bits):
     d = bits.reshape(-1, 7).copy()
     s = (d[:, 0] ^ d[:, 2] ^ d[:, 4] ^ d[:, 6]) + 2 * (d[:, 1] ^ d[:, 2] ^ d[:, 5] ^ d[:, 6]) + 4 * (d[:, 3] ^ d[:, 4] ^ d[:, 5] ^ d[:, 6])
     rows = np.flatnonzero(s); d[rows, s[rows] - 1] ^= 1
-    return d[:, [2, 4, 5, 6]].ravel(), len(rows)
+    return d[:, [2, 4, 5, 6]].ravel(), s
+
+
+def hamming_decode(bits):
+    decoded, syndromes = hamming_decisions(bits)
+    return decoded, int(np.count_nonzero(syndromes))
+
+
+def decode_hamming_frame(bits, valid_bits):
+    decoded, syndromes = hamming_decisions(bits)
+    return (decoded[:valid_bits], int(np.count_nonzero(syndromes)),
+            {'syndromes': syndromes.tolist(), 'valid_bits': valid_bits})
 
 
 def transition(state, bit):
@@ -451,7 +488,7 @@ def run(raw, token):
         return advanced_communications.run(compiled, source, texts, source_count, noise_rng)
     if compiled.get('transport') == 'uart':
         from src.communication_uart import reference_run
-        return reference_run(compiled, source, source_count)
+        return reference_run(compiled, source, texts, source_count)
     if compiled.get('transport') == 'baseband':
         result = baseband.run(compiled, source, texts, source_count, noise_rng)
         json.dumps(result, allow_nan=False)
@@ -464,6 +501,7 @@ def run(raw, token):
         return result
     data = source.copy(); reference_bits = None if analog else source.copy(); encoded_bits = None; stack = []; gain = 1 + 0j
     channel_symbols = None; decision_symbols = None; tx_symbols = None; demapped = None; decided_indices = None; clipped = 0; corrections = 0;learning=[];algorithm_traces=[]
+    node_details = {}
     for b in p['blocks'][source_count:]:
         runtime.enter(b)
         k, q = b['kind'], b['params']; before = len(data)
@@ -491,10 +529,14 @@ def run(raw, token):
             data, decided_indices = demodulate(decision_symbols, scheme); data = data[:len(encoded_bits)]
             data = runtime.decision(b, decision_symbols, scheme, data)
             demapped = data.copy()
+        elif k == 'bit_flip':
+            data, node_details[b['id']] = flip_hamming_bit(data, q)
         elif k in PAIRS:
             encoder, params, size = stack.pop()
             if k == 'repeat_decode': data = (data.reshape(-1, q['factor']).sum(axis=1) > q['factor'] // 2).astype(np.uint8)
-            elif k == 'hamming_decode': data, n = hamming_decode(data); corrections += n
+            elif k == 'hamming_decode':
+                data, n, node_details[b['id']] = decode_hamming_frame(data, size)
+                corrections += n
             elif k == 'conv_decode': data,lesson = viterbi_decode(data,True);learning.append(lesson)
             elif k == 'deinterleave': data = data.reshape(q['columns'], -1).T.ravel()
             else:
@@ -512,6 +554,7 @@ def run(raw, token):
     if not analog and len(texts) == source_count: result['text'] = {'sent': b''.join(texts).decode('utf-8'), 'received': np.packbits(decoded_bits).tobytes().decode('utf-8', errors='replace')}
     if learning: result['learning']=learning
     if algorithm_traces: result['algorithm_traces']=algorithm_traces
+    if node_details: result['node_details'] = node_details
     # This is also the JSON-export contract: never return NaN/Infinity.
     json.dumps(result, allow_nan=False)
     result['analysis']=communication_rf.analyze(tx_symbols,channel_symbols,tx_symbols,decision_symbols,p['symbol_rate'],len(reference_bits))

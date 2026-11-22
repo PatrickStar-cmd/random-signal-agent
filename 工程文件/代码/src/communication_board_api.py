@@ -19,7 +19,7 @@ def local_device_request(request):
 
 def source_zip(generated):
     files = dict(generated['files'])
-    metadata = {name: generated[name] for name in ('artifact_id', 'board', 'language', 'experiment', 'source_map', 'expected')}
+    metadata = {name: generated[name] for name in ('artifact_id', 'board', 'language', 'experiment', 'source_map', 'steps', 'expected')}
     files['experiment.json'] = json.dumps(metadata, ensure_ascii=False, indent=2) + '\n'
     steps = (['配置好 Pico SDK 后，进入此目录执行：', 'cmake -S . -B build -G Ninja',
               'cmake --build build', '将 build/randomsign_board.uf2 写入所选开发板的 BOOTSEL 盘。']
@@ -28,7 +28,7 @@ def source_zip(generated):
     files['README.txt'] = '\n'.join([
         f'RandomSign  {generated["board"]}  {generated["language"]}  {generated["experiment"]}',
         *steps,
-        'BPSK 在板内计算。UART 实验需要用跳线连接 GP0 与 GP1。',
+        'BPSK 和 QPSK 在板内计算。UART 实验需要用跳线连接 GP0 与 GP1。',
         '打开工作台的开发板面板，选择此工程对应的板型、语言与 USB 串口，点击运行并回读。',
         '手动运行可用 USB 串口终端发送以下命令并以换行结尾。RS050 行包含逐块输出及最终指标。',
         f'RUN {generated["artifact_id"]} demo', ''
@@ -38,7 +38,7 @@ def source_zip(generated):
         for name, contents in sorted(files.items()):
             archive.writestr(ZipInfo(name), contents.encode('utf-8'), compress_type=ZIP_DEFLATED)
     return Response(output.getvalue(), media_type='application/zip', headers={
-        'Content-Disposition': f'attachment; filename="randomsign-{generated["board"]}-{generated["experiment"]}-{generated["language"]}.zip"'
+        'Content-Disposition': f'attachment; filename="randomsign-{generated["board"]}-{generated["experiment"]}-{generated["language"]}-{generated["artifact_id"][:8]}.zip"'
     })
 
 

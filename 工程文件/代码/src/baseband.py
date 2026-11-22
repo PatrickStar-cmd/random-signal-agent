@@ -258,6 +258,8 @@ def build(program):
                 dimensions = 2*params['half_taps']+1+(params.get('feedback_taps',4) if params['equalizer']==5 else 0)
                 if modulator['params'].get('training_symbols',0)<max(32,4*dimensions): fail('自适应均衡需要发送公共训练前导，长度至少为 max(32, 4×均衡总抽头数)。')
             domain = '线路电平' if line else '比特'; count = next(v['input_count'] for v in plan if v.get('kind') == modulator['kind']); direction = 'rx'
+        elif kind == 'bit_flip':
+            c.validate_bit_flip(params, direction, domain, stack, count, fail)
         elif kind in c.PAIRS:
             if direction != 'rx' or not stack: fail('没有可以配对的发送转换器。')
             expected, expected_params, original = stack.pop()
@@ -284,6 +286,7 @@ def run(compiled, source, texts, source_count, rng):
     from src import communications as c
     p = compiled['program']; data = source.copy(); reference = source.copy() if compiled['source_kind'] == 'digital' else None
     stack = []; clipped = corrections = violations = 0; gain = 1.; warnings = []; line_params = None; recovery_info = {}; codec_info=[];learning=[]
+    node_details = {}
     for block in p['blocks'][source_count:]:
         runtime.enter(block)
         kind, params = block['kind'], block['params']
@@ -373,6 +376,8 @@ def run(compiled, source, texts, source_count, rng):
                                      public_preamble=training.tolist(),before_sync_rmse=float(np.sqrt(np.mean((manual-symbols)**2))))
             if pam: data = pam_decode(decided, tx['order'], tx['gray'])[:len(coded)]; demapped = data.copy()
             else: data = decided.copy()
+        elif kind == 'bit_flip':
+            data, node_details[block['id']] = c.flip_hamming_bit(data, params)
         elif kind in c.PAIRS:
             _, expected, size = stack.pop()
             if c.PAIRS[kind] in codec.SOURCE_CODECS: decoded_bits=data.copy()
@@ -382,7 +387,9 @@ def run(compiled, source, texts, source_count, rng):
                 if kind=='adpcm_decode': learning.append(details)
                 if 'learning' in details: learning.append(details['learning'])
             elif kind == 'repeat_decode': data = (data.reshape(-1, params['factor']).sum(axis=1) > params['factor']//2).astype(np.uint8)
-            elif kind == 'hamming_decode': data, n = c.hamming_decode(data); corrections += n
+            elif kind == 'hamming_decode':
+                data, n, node_details[block['id']] = c.decode_hamming_frame(data, size)
+                corrections += n
             elif kind == 'conv_decode': data,lesson = c.viterbi_decode(data,True);learning.append(lesson)
             elif kind == 'deinterleave': data = data.reshape(params['columns'], -1).T.ravel()
             else:
@@ -427,4 +434,5 @@ def run(compiled, source, texts, source_count, rng):
     media=business.media_result(p,source,data)
     if media: result['sink']['media']=media
     if learning: result['learning']=learning
+    if node_details: result['node_details'] = node_details
     return result

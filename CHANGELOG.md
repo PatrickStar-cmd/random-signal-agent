@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.5.1 板端信源、纠错编码与 QPSK 实验 2026-11-22
+
+- Pico 和 Pico W 的 C++、MicroPython 工程支持 UTF-8 文本、PRBS7/9/15、Hamming(7,4) 编译码、指定位置翻转及 QPSK 调制解调。
+- UART 电脑参考链路保留有效位数，并独立记录软件注错。开发板面板展示逐码字综合征、恢复文字、QPSK 星座和 I/Q 实际回读。
+- 增加文字回环、PN 回环、Hamming 单错纠正和 QPSK 四象限四个示例。[版本指南](工程文件/代码/docs/communications-v051.md)
+
 ## v0.5.0 积木代码生成与开发板实测 2026-11-21
 
 - 🔌 从线性积木工程生成 Pico / Pico W 的 C++ 或 MicroPython，代码与积木双向定位，支持下载完整源码。

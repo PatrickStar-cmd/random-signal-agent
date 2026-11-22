@@ -33,6 +33,10 @@
 .cm-board-metrics div{padding:7px 9px;background:#e3f2f4;border-radius:8px}
 .cm-board-metrics dd{margin:3px 0 0;font-size:14px;font-weight:700;color:#24556b}
 #cmBoardMicroSetup a{font-size:13px;color:#375b98;text-decoration:underline}
+#cmBoardScatter{display:block;width:min(100%,250px);margin:6px auto;background:#f4fbff;border:2px solid #bfd7df;border-radius:10px}
+#cmBoardScatter text{font:10px sans-serif;fill:#38556c}
+.cm-board-panel .cm-board-index{display:flex;align-items:center;gap:8px;margin:8px 0}
+.cm-board-index input{width:6em;border:2px solid #a5bddb;border-radius:7px;padding:4px 6px;background:white;color:#294b73}
 @media(min-width:1001px){
   .cm-layout.cm-board-open .cm-lab{grid-template-columns:minmax(170px,.6fr) minmax(300px,1.3fr) minmax(330px,1fr)}
   .cm-layout.cm-board-open .cm-right{display:none}

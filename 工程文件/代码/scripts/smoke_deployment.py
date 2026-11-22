@@ -72,7 +72,7 @@ def check(base_url):
         received = json.loads(request('/api/communications/run', {'program':compiled['program'],'token':compiled['token']}))
         assert received['transport']=='advanced' and received['metrics']['ber']<.02
         assert received['sink']['count']>0
-    for preset in ('board_bpsk', 'board_uart'):
+    for preset in ('board_bpsk', 'board_uart', 'board_text_uart', 'board_pn', 'board_hamming_fault', 'board_qpsk'):
         document = {'document_schema': 2, 'program': communication_catalog['presets'][preset]['program']}
         for language, board in [('cpp', 'pico'), ('micropython', 'pico_w')]:
             payload = {'document': document, 'language': language, 'board': board}

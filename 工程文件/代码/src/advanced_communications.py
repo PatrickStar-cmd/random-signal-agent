@@ -191,6 +191,8 @@ def build(p):
             for tx,rx in [('tx_frame','rx_frame'),('tx_rrc','rx_timing'),('tx_pilots','rx_pilots'),('tx_ofdm','rx_ofdm')]:
                 if tx in features and rx not in consumed: fail('缺少 '+c.BLOCKS[rx]['label']+'。')
             count=features['coded_count']; domain='LLR' if k.startswith('soft_') else '比特'; direction='rx'
+        elif k == 'bit_flip':
+            c.validate_bit_flip(q, direction, domain, stack, count, fail)
         elif k in c.PAIRS:
             if direction!='rx' or not stack: fail('缺少配对发送编码器。')
             expected,params,original=stack.pop()
@@ -382,6 +384,9 @@ def run(compiled, source, texts, source_count, rng):
                 data=runtime.decision(b,received,scheme,data,variance if k.startswith('soft_') else decision_variance)
             demapped=(data<0).astype(np.uint8) if k.startswith('soft_') else data.copy()
             if k.startswith('soft_'): _,decided_indices=dsp.map_bits(demapped,scheme)
+        elif k == 'bit_flip':
+            data, detail = c.flip_hamming_bit(data, q)
+            info.setdefault('node_details', {})[b['id']] = detail
         elif k in c.PAIRS:
             encoder,params,size=stack.pop()
             if encoder in codec.SOURCE_CODECS or encoder=='pcm_encode': decoded_bits=data.copy()
@@ -391,7 +396,10 @@ def run(compiled, source, texts, source_count, rng):
                 if k=='adpcm_decode': learning.append(details)
                 if 'learning' in details: learning.append(details['learning'])
             elif k=='repeat_decode': data=(data.reshape(-1,q['factor']).sum(axis=1)>q['factor']//2).astype(np.uint8)
-            elif k=='hamming_decode': data,n=c.hamming_decode(data); corrections+=n
+            elif k == 'hamming_decode':
+                data, n, detail = c.decode_hamming_frame(data, size)
+                corrections += n
+                info.setdefault('node_details', {})[b['id']] = detail
             elif k=='conv_decode': data,lesson=c.viterbi_decode(data,True);learning.append(lesson)
             elif k=='deinterleave': data=data.reshape(q['columns'],-1).T.ravel()
             elif k=='pcm_decode': data=codec.bits_to_words(data,q['bits'])/(2**q['bits']-1)*2*q['full_scale']-q['full_scale']
@@ -421,6 +429,7 @@ def run(compiled, source, texts, source_count, rng):
     frequency=np.fft.fftshift(np.fft.fftfreq(len(tx),1/channel_fs(compiled)))
     selected=np.linspace(0,len(tx)-1,min(1024,len(tx)),dtype=int); spectrum=spectrum[selected]; frequency=frequency[selected]
     shown=c.CONFIG['plot_points']
+    node_details = info.pop('node_details', {})
     advanced={'scheme':scheme.upper(),'sample_rate':channel_fs(compiled),'transmitter':view(tx,shown,channel_fs(compiled)), 'warnings':[], 'spectrum':{'frequency_hz':frequency.tolist(),'density_db':(10*np.log10(np.maximum(spectrum,1e-12))).tolist()},'recovery':recovery,'stages':snapshots,'learning':learning,'algorithm_traces':algorithm_traces,**info}
     if eye is not None: advanced['eye']=eye
     if any(b['kind']=='pn_bits' for b in p['blocks']):
@@ -431,6 +440,7 @@ def run(compiled, source, texts, source_count, rng):
             'channel':view(channel,shown,channel_fs(compiled)), 'advanced':advanced,
             'constellation':{'scheme':scheme,'count':scatter,'i':decision_symbols[:scatter].real.tolist(),'q':decision_symbols[:scatter].imag.tolist(),'ideal_i':points.real.tolist(),'ideal_q':points.imag.tolist(),'labels':[]},'text':None}
     if not analog and len(texts)==source_count: result['text']={'sent':b''.join(texts).decode('utf-8'),'received':np.packbits(decoded_bits).tobytes().decode('utf-8',errors='replace')}
+    if node_details: result['node_details'] = node_details
     media=business.media_result(p,source,data)
     if media: result['sink']['media']=media
     result['analysis']=rf.analyze(tx,channel,mapped,decision_symbols,channel_fs(compiled),bit_count,info.get('ofdm'),rf_stages)

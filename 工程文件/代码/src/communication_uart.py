@@ -4,17 +4,23 @@ import numpy as np
 from src import communication_runtime as runtime
 
 
-def reference_run(compiled, source, source_count):
-    from src.communications import CONFIG
+def reference_run(compiled, source, texts, source_count):
+    from src.communications import CONFIG, decode_hamming_frame, flip_hamming_bit, hamming_encode
 
     program = compiled['program']
     data = source.copy()
+    hamming_lengths = []
+    node_details = {}
+    corrections = 0
     for block in program['blocks'][source_count:]:
         runtime.enter(block)
         kind = block['kind']
         params = block['params']
         if kind == 'repeat_encode':
             data = np.repeat(data, params['factor'])
+        elif kind == 'hamming_encode':
+            hamming_lengths.append(len(data))
+            data = hamming_encode(data)
         elif kind == 'uart_loopback':
             sent = data.copy()
             packed = np.packbits(sent, bitorder='big')
@@ -23,6 +29,11 @@ def reference_run(compiled, source, source_count):
         elif kind == 'repeat_decode':
             factor = params['factor']
             data = (data.reshape(-1, factor).sum(axis=1) > factor // 2).astype(np.uint8)
+        elif kind == 'bit_flip':
+            data, node_details[block['id']] = flip_hamming_bit(data, params)
+        elif kind == 'hamming_decode':
+            data, n, node_details[block['id']] = decode_hamming_frame(data, hamming_lengths.pop())
+            corrections += n
         data = runtime.record(block, data)
         if kind == 'uart_loopback':
             received = data.copy()
@@ -30,7 +41,11 @@ def reference_run(compiled, source, source_count):
     errors = int(np.count_nonzero(source != data))
     coded_errors = int(np.count_nonzero(sent != received))
     peek = received[:CONFIG['plot_points']].tolist()
-    return {
+    text = None
+    if len(texts) == source_count:
+        text = {'sent': b''.join(texts).decode('utf-8'),
+                'received': np.packbits(data, bitorder='big').tobytes().decode('utf-8', errors='replace')}
+    result = {
         'token': compiled['token'], 'seed': program['seed'], 'model': compiled['model'],
         'transport': 'uart', 'summary': compiled['summary'], 'plan': compiled['plan'],
         'metrics': {'bit_count': len(source), 'bit_errors': errors, 'ber': errors / len(source),
@@ -41,5 +56,9 @@ def reference_run(compiled, source, source_count):
         'sink': {'kind': 'digital', 'values': data.tolist(), 'reference': source.tolist(),
                  'sample_rate': None, 'count': len(data), 'plot_count': min(len(data), CONFIG['plot_points'])},
         'channel': {'count': len(received), 'plot_count': len(peek), 'i': peek, 'q': [0] * len(peek)},
-        'constellation': None, 'text': None,
+        'constellation': None, 'text': text,
     }
+    if node_details:
+        result['node_details'] = node_details
+        result['metrics']['hamming_syndromes'] = corrections
+    return result

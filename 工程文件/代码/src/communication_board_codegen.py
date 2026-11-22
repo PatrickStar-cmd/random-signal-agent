@@ -10,8 +10,9 @@ from src.communication_workbench_v0412 import build_document, diagnose
 TEMPLATES = Path(__file__).with_name('board_templates')
 BOARDS = ('pico', 'pico_w')
 LANGUAGES = ('cpp', 'micropython')
-KINDS = {'bit_pattern', 'repeat_encode', 'mod_bpsk', 'ideal', 'demod_bpsk',
-         'uart_loopback', 'repeat_decode', 'sink'}
+KINDS = {'bit_pattern', 'text', 'pn_bits', 'repeat_encode', 'hamming_encode', 'mod_bpsk',
+         'mod_qpsk', 'ideal', 'demod_bpsk', 'demod_qpsk', 'uart_loopback', 'bit_flip',
+         'repeat_decode', 'hamming_decode', 'sink'}
 MAX_SAMPLES = 2048
 
 
@@ -21,27 +22,67 @@ class BoardCodeError(ValueError):
         self.block_ids = list(block_ids)
 
 
-def _cpp_block(block):
+def _cpp_block(block, count, fmt):
     kind, params = block['kind'], block['params']
     trace = f'trace(nonce, "{block["id"]}", data);'
-    if kind == 'bit_pattern':
-        return ['data.clear();',
-                f'for (char bit : std::string("{params["pattern"]}")) data.push_back(bit - \'0\');',
-                'reference.insert(reference.end(), data.begin(), data.end());',
-                trace, 'data = reference;']
+    if kind in ('bit_pattern', 'text', 'pn_bits'):
+        source = ['data.clear();']
+        if kind == 'bit_pattern':
+            source.append(f'for (char bit : std::string("{params["pattern"]}")) data.push_back(bit - \'0\');')
+        elif kind == 'text':
+            payload = ', '.join(f'0x{b:02x}' for b in params['text'].encode('utf-8'))
+            source.extend([f'const uint8_t utf8[] = {{{payload}}};',
+                           'for (uint8_t byte : utf8) {',
+                           '    for (int shift = 7; shift >= 0; --shift) data.push_back((byte >> shift) & 1);', '}'])
+        else:
+            tap = 4 if params['degree'] == 9 else 1
+            source.extend([f'unsigned state = {params["initial"]};',
+                           f'for (unsigned n = 0; n < {params["count"]}; ++n) {{',
+                           '    data.push_back(state & 1u);',
+                           f'    unsigned feedback = (state ^ (state >> {tap})) & 1u;',
+                           f'    state = (state >> 1) | (feedback << {params["degree"] - 1});', '}'])
+        return source + ['reference.insert(reference.end(), data.begin(), data.end());', trace, 'data = reference;']
     if kind == 'repeat_encode':
         return ['Samples encoded;', f'encoded.reserve(data.size() * {params["factor"]});',
                 f'for (int8_t bit : data) encoded.insert(encoded.end(), {params["factor"]}, bit);',
                 'data.swap(encoded);', trace]
     if kind == 'mod_bpsk':
         return ['for (int8_t &bit : data) bit = 1 - 2 * bit;', trace]
+    if kind == 'hamming_encode':
+        return ['data.resize(((data.size() + 3) / 4) * 4, 0);', 'Samples encoded;',
+                'for (size_t i = 0; i < data.size(); i += 4) {',
+                '    int a = data[i], b = data[i+1], c = data[i+2], d = data[i+3];',
+                '    for (int bit : {a^b^d, a^c^d, a, b^c^d, b, c, d}) encoded.push_back(bit);',
+                '}', 'data.swap(encoded);', trace]
+    if kind == 'mod_qpsk':
+        return ['// First bit selects I, second bit selects Q. Es = 1.',
+                'constexpr float axis = 0.7071067811865475f;',
+                'for (size_t i = 0; i < data.size(); i += 2) {',
+                '    int qbit = i + 1 < data.size() ? data[i+1] : 0;',
+                '    iq.push_back({axis * (1 - 2 * data[i]), axis * (1 - 2 * qbit)});',
+                '}', trace.replace(', data);', ', iq);')]
     if kind == 'ideal':
-        return ['// An ideal channel preserves every transmitted symbol.', trace]
+        return ['// An ideal channel preserves every transmitted symbol.',
+                trace.replace(', data);', ', iq);') if fmt == 'iq' else trace]
     if kind == 'uart_loopback':
         return [f'if (!uart_loopback(data, {params["baudrate"]}, {params["timeout_ms"]})) {{',
                 '    finish(nonce, false, reference, data);', '    return;', '}', trace]
     if kind == 'demod_bpsk':
         return ['for (int8_t &symbol : data) symbol = (symbol < 0);', trace]
+    if kind == 'demod_qpsk':
+        return ['data.clear();', 'for (const IQ &s : iq) {',
+                '    data.push_back(s.i < 0);', '    data.push_back(s.q < 0);', '}',
+                f'data.resize({count}); // Remove constellation padding.', trace]
+    if kind == 'bit_flip':
+        return [f'data[7 * ({params["codeword"]} - 1) + ({params["position"]} - 1)] ^= 1;', trace]
+    if kind == 'hamming_decode':
+        return ['Samples decoded, syndromes;', 'for (size_t i = 0; i < data.size(); i += 7) {',
+                '    unsigned s = 0;',
+                '    for (unsigned p = 1; p <= 7; ++p) if (data[i+p-1]) s ^= p;',
+                '    syndromes.push_back(s);', '    if (s) data[i+s-1] ^= 1;',
+                '    for (unsigned p : {3, 5, 6, 7}) decoded.push_back(data[i+p-1]);',
+                '}', f'decoded.resize({count}); // Remove data padding.', 'data.swap(decoded);',
+                trace.replace(', data);', ', data, syndromes);')]
     if kind == 'repeat_decode':
         factor = params['factor']
         return [f'for (size_t start = 0; start < data.size(); start += {factor}) {{',
@@ -54,23 +95,56 @@ def _cpp_block(block):
     raise BoardCodeError('请选择已适配的板端积木。', [block['id']])
 
 
-def _python_block(block):
+def _python_block(block, count, fmt):
     kind, params = block['kind'], block['params']
     trace = f'trace(nonce, "{block["id"]}", data)'
-    if kind == 'bit_pattern':
-        return [f'data = [int(bit) for bit in "{params["pattern"]}"]',
-                'reference.extend(data)', trace, 'data = reference']
+    if kind in ('bit_pattern', 'text', 'pn_bits'):
+        if kind == 'bit_pattern':
+            source = [f'data = [int(bit) for bit in "{params["pattern"]}"]']
+        elif kind == 'text':
+            payload = ', '.join(f'0x{b:02x}' for b in params['text'].encode('utf-8'))
+            source = [f'utf8 = bytes([{payload}])',
+                      'data = [(byte >> shift) & 1 for byte in utf8 for shift in range(7, -1, -1)]']
+        else:
+            tap = 4 if params['degree'] == 9 else 1
+            source = ['data = []', f'state = {params["initial"]}', f'for n in range({params["count"]}):',
+                      '    data.append(state & 1)', f'    feedback = (state ^ (state >> {tap})) & 1',
+                      f'    state = (state >> 1) | (feedback << {params["degree"] - 1})']
+        return source + ['reference.extend(data)', trace, 'data = reference']
     if kind == 'repeat_encode':
         return [f'data = [bit for bit in data for _ in range({params["factor"]})]', trace]
     if kind == 'mod_bpsk':
         return ['data = [1 - 2 * bit for bit in data]', trace]
+    if kind == 'hamming_encode':
+        return ['padded = data + [0] * (-len(data) % 4)', 'data = []',
+                'for i in range(0, len(padded), 4):',
+                '    a, b, c, d = padded[i:i+4]',
+                '    data.extend((a^b^d, a^c^d, a, b^c^d, b, c, d))', trace]
+    if kind == 'mod_qpsk':
+        return ['from array import array', 'iq = array("f")', 'axis = 0.7071067811865475',
+                'for i in range(0, len(data), 2):',
+                '    qbit = data[i+1] if i+1 < len(data) else 0',
+                '    iq.append(axis * (1 - 2 * data[i]))', '    iq.append(axis * (1 - 2 * qbit))',
+                trace.replace('trace(', 'trace_iq(').replace(', data)', ', iq)')]
     if kind == 'ideal':
-        return ['# An ideal channel preserves every transmitted symbol.', trace]
+        return ['# An ideal channel preserves every transmitted symbol.',
+                trace.replace('trace(', 'trace_iq(').replace(', data)', ', iq)') if fmt == 'iq' else trace]
     if kind == 'uart_loopback':
         return [f'data = uart_loopback(data, {params["baudrate"]}, {params["timeout_ms"]})',
                 'if data is None:', '    finish(nonce, False, reference, [])', '    return', trace]
     if kind == 'demod_bpsk':
         return ['data = [int(symbol < 0) for symbol in data]', trace]
+    if kind == 'demod_qpsk':
+        return ['data = [int(axis < 0) for axis in iq]', f'del data[{count}:]  # Remove constellation padding.', trace]
+    if kind == 'bit_flip':
+        return ['data = data[:]', f'data[7 * ({params["codeword"]} - 1) + ({params["position"]} - 1)] ^= 1', trace]
+    if kind == 'hamming_decode':
+        return ['decoded = []', 'syndromes = []', 'for i in range(0, len(data), 7):',
+                '    word = data[i:i+7]', '    s = 0', '    for p in range(1, 8):',
+                '        if word[p-1]: s ^= p', '    syndromes.append(s)', '    if s: word[s-1] ^= 1',
+                '    decoded.extend((word[2], word[4], word[5], word[6]))',
+                f'data = decoded[:{count}]  # Remove data padding.',
+                f'send({{"type": "node", "nonce": nonce, "id": "{block["id"]}", "values": data, "syndromes": syndromes}})']
     if kind == 'repeat_decode':
         factor = params['factor']
         return [f'data = [int(sum(data[i:i + {factor}]) > {factor // 2})',
@@ -80,27 +154,31 @@ def _python_block(block):
     raise BoardCodeError('请选择已适配的板端积木。', [block['id']])
 
 
-def _source(blocks, board, language, experiment):
+def _source(blocks, plan, formats, board, language, experiment):
     cpp = language == 'cpp'
     entry = 'main.cpp' if cpp else 'main.py'
     template = (TEMPLATES / (entry + '.in')).read_text(encoding='utf-8')
     helpers = ''
-    if experiment == 'uart':
-        helper = 'uart.cpp.in' if cpp else 'uart.py.in'
-        helpers = (TEMPLATES / helper).read_text(encoding='utf-8').rstrip() + '\n\n'
+    kinds = {b['kind'] for b in blocks}
+    for kind, helper in [('uart_loopback', 'uart'), ('mod_qpsk', 'qpsk'), ('hamming_decode', 'hamming')]:
+        if kind in kinds and (cpp or helper != 'hamming'):
+            name = helper + ('.cpp.in' if cpp else '.py.in')
+            helpers += (TEMPLATES / name).read_text(encoding='utf-8').rstrip() + '\n\n'
     template = template.replace('@UART_HELPER@', helpers).replace('@BOARD@', board).replace('@EXPERIMENT@', experiment)
     prefix, suffix = template.split('@PROGRAM@\n')
+    if cpp and 'mod_qpsk' in kinds:
+        prefix += '    std::vector<IQ> iq;\n'
     lines = prefix.splitlines()
     source_map = {}
-    for block in blocks:
+    for block, row in zip(blocks, plan, strict=True):
         start = len(lines) + 1
         if cpp:
             lines.append(f'    {{ // {block["kind"]} [{block["id"]}]')
-            lines.extend('        ' + s for s in _cpp_block(block))
+            lines.extend('        ' + s for s in _cpp_block(block, row['count'], formats[block['id']]))
             lines.append('    }')
         else:
             lines.append(f'    # {block["kind"]} [{block["id"]}]')
-            lines.extend('    ' + s for s in _python_block(block))
+            lines.extend('    ' + s for s in _python_block(block, row['count'], formats[block['id']]))
         source_map[block['id']] = {'file': entry, 'start': start, 'end': len(lines)}
     files = {entry: '\n'.join(lines) + '\n' + suffix}
     if cpp:
@@ -150,20 +228,31 @@ def generate(document, language, board):
     large = [r['id'] for r in compiled['plan'] if r['count'] > MAX_SAMPLES]
     if large:
         raise BoardCodeError(f'板端每个积木最多输出 {MAX_SAMPLES} 个数据，请缩短信源或降低重复次数。', large)
-    experiment = 'uart' if any(b['kind'] == 'uart_loopback' for b in blocks) else 'bpsk'
-    files, source_map, entry = _source(blocks, board, language, experiment)
+    kinds = {b['kind'] for b in blocks}
+    experiment = 'uart' if 'uart_loopback' in kinds else 'qpsk' if 'mod_qpsk' in kinds else 'bpsk'
+    symbol_format = 'iq' if experiment == 'qpsk' else 'bpsk'
+    formats = {b['id']: symbol_format if b['kind'] in ('mod_bpsk', 'mod_qpsk', 'ideal') else 'bits'
+               for b in blocks}
+    files, source_map, entry = _source(blocks, compiled['plan'], formats, board, language, experiment)
     # Hash the complete generated project before substituting its own identity.
     packed = json.dumps(files, sort_keys=True, separators=(',', ':')).encode()
     artifact_id = hashlib.sha256(packed).hexdigest()
     files[entry] = files[entry].replace('@ARTIFACT@', artifact_id)
     result, observer = communication_runtime.observe_run(compiled['program'], compiled['token'], retain=True)
-    nodes = {b['id']: observer.values[b['id']].real.astype(int).tolist() for b in blocks}
+    nodes = {}
+    for block_id, fmt in formats.items():
+        values = observer.values[block_id]
+        nodes[block_id] = ([[float(v.real), float(v.imag)] for v in values] if fmt == 'iq' else
+                           values.real.astype(int).tolist())
+    syndromes = {key: detail['syndromes'] for key, detail in result.get('node_details', {}).items()
+                 if 'syndromes' in detail}
     measured = result['metrics']
     metrics = {'compared_bits': measured['bit_count'], 'bit_errors': measured['bit_errors'],
                'ber': measured['ber'], 'expected_frames': 1, 'received_frames': 1, 'lost_frames': 0}
-    steps = [{'id': b['id'], 'kind': b['kind'], 'label': communications.BLOCKS[b['kind']]['label']}
+    steps = [{'id': b['id'], 'kind': b['kind'], 'label': communications.BLOCKS[b['kind']]['label'],
+              'format': formats[b['id']], **(b['params'] if b['kind'] == 'bit_flip' else {})}
              for b in blocks]
     return {'files': files, 'entry_file': entry, 'source_map': source_map, 'steps': steps,
-            'expected': {'nodes': nodes, 'metrics': metrics}, 'experiment': experiment,
+            'expected': {'nodes': nodes, 'syndromes': syndromes, 'metrics': metrics}, 'experiment': experiment,
             'artifact_id': artifact_id, 'board': board, 'language': language,
             'host_tools': [tool['id'] for tool in built['document']['tools']]}

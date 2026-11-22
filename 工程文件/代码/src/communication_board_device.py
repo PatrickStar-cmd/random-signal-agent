@@ -199,7 +199,29 @@ def deploy(generated, device_id, build_id=None):
     return {'status': 'written', 'device_id': device_id, 'board': board, 'language': language}
 
 
-def _finish(generated, nodes, frame):
+IQ_TOLERANCE = 1e-5
+MAX_RECORD_BYTES = 128 * 1024
+
+
+def _valid_samples(values, expected, sample_format):
+    if not isinstance(values, list) or len(values) != len(expected):
+        return False
+    if sample_format == 'iq':
+        return all(isinstance(pair, list) and len(pair) == 2 and all(
+            type(v) in (int, float) and -sys.float_info.max <= v <= sys.float_info.max
+            for v in pair) for pair in values)
+    allowed = (-1, 1) if sample_format == 'bpsk' else (0, 1)
+    return all(type(v) is int and v in allowed for v in values)
+
+
+def _match_samples(values, expected, step):
+    if step.get('format') == 'iq':
+        return all(math.isclose(v, ref, rel_tol=0, abs_tol=IQ_TOLERANCE)
+                   for point, reference in zip(values, expected) for v, ref in zip(point, reference))
+    return values == expected
+
+
+def _finish(generated, nodes, syndromes, frame):
     for key in ('artifact_id', 'board', 'language', 'experiment'):
         if frame.get(key) != generated[key]:
             raise ValueError('设备回传的工程或板型与当前选择不一致。')
@@ -209,14 +231,18 @@ def _finish(generated, nodes, frame):
     if not isinstance(metrics, dict):
         raise ValueError('设备指标缺失。')
     status = frame.get('status')
+    steps = generated['steps']
     if status == 'ok' and list(nodes) == order:
-        reference = expected[order[-1]]
+        reference = [bit for key, step in zip(order, steps)
+                     if step['kind'] in ('bit_pattern', 'text', 'pn_bits') for bit in nodes[key]]
         compared = len(reference)
+        if len(nodes[order[-1]]) != compared:
+            raise ValueError('信宿与信源回传的有效比特数不一致。')
         errors = sum(a != b for a, b in zip(reference, nodes[order[-1]]))
         received = 1
-    elif status == 'timeout' and generated['experiment'] == 'uart':
-        uart = next(i for i, s in enumerate(generated['steps']) if s['kind'] == 'uart_loopback')
-        if list(nodes) != order[:uart]:
+    elif status == 'timeout':
+        uart = next((i for i, step in enumerate(steps) if step['kind'] == 'uart_loopback'), None)
+        if uart is None or list(nodes) != order[:uart]:
             raise ValueError('串口超时前的节点回传不完整。')
         compared, errors, received = 0, 0, 0
     else:
@@ -229,19 +255,25 @@ def _finish(generated, nodes, frame):
     if 'ber' not in metrics or (not compared and ber is not None) or (compared and
             (type(ber) not in (int, float) or not math.isclose(ber, errors / compared, rel_tol=1e-5, abs_tol=1e-9))):
         raise ValueError('板端 BER 与回传比特不符。')
+    matches = status == 'ok' and all(_match_samples(nodes[key], expected[key], step)
+                                     for key, step in zip(order, steps))
     return {k: frame[k] for k in ('artifact_id', 'board', 'language', 'experiment', 'status', 'metrics')} | {
-        'nodes': nodes, 'matches_reference': status == 'ok' and nodes == expected}
+        'nodes': nodes, 'syndromes': syndromes, 'matches_reference': matches}
 
 
 def _receive(serial_port, generated, nonce):
     expected = generated['expected']['nodes']
+    order = list(expected)
     nodes = {}
+    syndromes = {}
     deadline = time.monotonic() + 20
     pending = bytearray()
     while time.monotonic() < deadline:
         pending.extend(serial_port.read(min(8192, max(1, serial_port.in_waiting))))
         while b'\n' in pending:
             end = pending.index(b'\n') + 1
+            if end > MAX_RECORD_BYTES:
+                raise ValueError('设备回传行过长。')
             line = bytes(pending[:end]).strip()
             del pending[:end]
             if not line.startswith(b'RS050 '):
@@ -250,14 +282,27 @@ def _receive(serial_port, generated, nonce):
             if not isinstance(frame, dict) or frame.get('nonce') != nonce:
                 continue
             if frame.get('type') == 'done':
-                return _finish(generated, nodes, frame)
+                return _finish(generated, nodes, syndromes, frame)
             key, values = frame.get('id'), frame.get('values')
-            if (frame.get('type') != 'node' or not isinstance(key, str) or key not in expected or key in nodes
-                    or not isinstance(values, list) or len(values) != len(expected[key])
-                    or any(type(x) is not int or x not in (-1, 0, 1) for x in values)):
+            idx = len(nodes)
+            if frame.get('type') != 'node' or idx >= len(order) or key != order[idx]:
+                raise ValueError('设备回传的节点顺序异常。')
+            step = generated['steps'][idx]
+            fmt = step.get('format', 'bpsk' if step['kind'] in ('mod_bpsk', 'ideal') else 'bits')
+            if not _valid_samples(values, expected[key], fmt):
                 raise ValueError('设备回传的节点或数据格式异常。')
+            if step['kind'] == 'hamming_decode':
+                import numpy as np
+                from src.communications import hamming_decisions
+                reported = frame.get('syndromes')
+                received_bits = np.asarray(nodes[order[idx - 1]], dtype=np.uint8)
+                _, verified = hamming_decisions(received_bits)
+                if (not isinstance(reported, list) or any(type(v) is not int for v in reported)
+                        or reported != verified.tolist()):
+                    raise ValueError('板端 Hamming 综合征与收到的码字不符。')
+                syndromes[key] = reported
             nodes[key] = values
-        if len(pending) > 16384:
+        if len(pending) > MAX_RECORD_BYTES:
             raise ValueError('设备回传行过长。')
     raise ValueError('开发板实验响应超时，请确认串口和当前部署的工程。')
 

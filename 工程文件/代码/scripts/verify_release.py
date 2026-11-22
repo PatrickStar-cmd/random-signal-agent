@@ -80,6 +80,7 @@ def main():
         assert (code / 'docs/communications-v0411.md').is_file()
         assert (code / 'docs/communications-v0412.md').is_file()
         assert (code / 'docs/communications-v050.md').is_file()
+        assert (code / 'docs/communications-v051.md').is_file()
         for name in ('communication_workbench_v0412.py','communication_delivery_v0412.py'):
             assert (code / 'src' / name).is_file()
         for name in ('communication-scratch-v0412.css','communication-workbench-v0412.js','communication-workbench-plots-v0412.js','communication-workbench-v0412.css','communication-delivery-v0412.js','communication-delivery-v0412.css'):
