@@ -1,4 +1,4 @@
-"""Local Pico build, USB deployment and experiment telemetry."""
+"""Local firmware builds, USB deployment and experiment telemetry."""
 import ctypes
 import hashlib
 import importlib.util
@@ -18,6 +18,7 @@ import time
 
 FIRMWARE = {
     'pico': 'https://micropython.org/download/RPI_PICO/',
+    'esp32s3': 'https://micropython.org/download/ESP32_GENERIC_S3/',
     'pico_w': 'https://micropython.org/download/RPI_PICO_W/',
 }
 PICO_HOME = Path.home() / '.pico-sdk'
@@ -80,15 +81,18 @@ def _connected():
     if importlib.util.find_spec('serial'):
         from serial.tools.list_ports import comports
         for port in comports():
-            if port.vid == 0x2E8A:
+            family = ('pico' if port.vid == 0x2E8A else 'esp32s3' if port.vid == 0x303A or
+                      (port.vid, port.pid) == (0x10c4, 0xea60) else None)
+            if family:
                 yield {'id': f'serial:{port.device}:{port.serial_number or ""}', 'kind': 'serial',
-                       'label': f'{port.description} ({port.device})', 'path': port.device}
+                       'label': f'{port.description} ({port.device})', 'path': port.device, 'family': family}
 
 
 def devices():
     capabilities = {k: bool(v) for k, v in _toolchain().items() if k != 'picotool_config'}
     capabilities.update({k: bool(importlib.util.find_spec(k)) for k in ('serial', 'mpremote')})
-    return {'devices': [{k: d[k] for k in ('id', 'kind', 'label')} for d in _connected()],
+    capabilities['esp_idf'] = bool(_esp_tools())
+    return {'devices': [{k: v for k, v in d.items() if k != 'path'} for d in _connected()],
             'tools': capabilities, 'micropython_firmware': FIRMWARE}
 
 
@@ -96,7 +100,7 @@ def _select(device_id, kind):
     for device in _connected():
         if device['id'] == device_id and device['kind'] == kind:
             return device
-    raise ValueError('请刷新设备并选择已连接的 ' + ('RP2040 BOOTSEL 盘。' if kind == 'bootsel' else 'Pico USB 串口。'))
+    raise ValueError('请刷新设备并选择已连接的 ' + ('RP2040 BOOTSEL 盘。' if kind == 'bootsel' else '开发板 USB 串口。'))
 
 
 def _command(args, timeout, env=None):
@@ -114,16 +118,47 @@ def _digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def _esp_tools():
+    sdk = os.environ.get('IDF_PATH')
+    script = Path(sdk) / 'tools/idf.py' if sdk else None
+    venv = os.environ.get('IDF_PYTHON_ENV_PATH')
+    python = (Path(venv) / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')) if venv else None
+    if script and script.is_file() and python and python.is_file():
+        return str(python), str(script)
+    return None
+
+
+def _require_esp_tools():
+    tools = _esp_tools()
+    if not tools:
+        raise ValueError('请从已激活的 ESP-IDF 终端启动本地工作台。')
+    return tools
+
+
+def _build_esp(generated):
+    python, idf = _require_esp_tools()
+    with tempfile.TemporaryDirectory(prefix='rs-esp-') as temporary:
+        project = Path(temporary)
+        for name, source in generated['files'].items():
+            target = project / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(source, encoding='utf-8')
+        _command([python, idf, '-C', str(project), 'build', 'merge-bin'], 1200)
+        return (project / 'build/merged-binary.bin').read_bytes()
+
+
 def build_firmware(generated):
     if generated['language'] != 'cpp' or generated['board'] not in FIRMWARE:
-        raise ValueError('请选择 Pico 或 Pico W 的 C++ 工程进行固件构建。')
+        raise ValueError('请选择受支持板型的 C++ 工程。')
+    if generated['board'] == 'esp32s3':
+        return _store_firmware(generated, 'randomsign_esp32s3.bin', _build_esp(generated))
     tools = _toolchain()
     missing = [k for k in ('sdk', 'compiler', 'cmake', 'ninja') if not tools[k]]
     if missing:
         raise ValueError('请配置开发板构建工具 ' + ', '.join(missing))
     with tempfile.TemporaryDirectory(prefix='rs-pico-') as temporary:
         project = Path(temporary)
-        for name in ('main.cpp', 'CMakeLists.txt'):
+        for name in generated['files']:
             (project / name).write_text(generated['files'][name], encoding='utf-8')
         build = project / 'build'
         cc_bin = str(Path(tools['compiler']).parent)
@@ -137,11 +172,15 @@ def build_firmware(generated):
         _command(configure, 180, env)
         _command([tools['cmake'], '--build', str(build), '--parallel', '4'], 300, env)
         binary = (build / 'randomsign_board.uf2').read_bytes()
+    return _store_firmware(generated, 'randomsign_board.uf2', binary)
+
+
+def _store_firmware(generated, filename, binary):
     sha = _digest(binary)
     artifact = generated['artifact_id']
     build_id = _digest((artifact + sha).encode('ascii'))
     info = {'build_id': build_id, 'artifact_id': artifact, 'board': generated['board'],
-            'filename': 'randomsign_board.uf2', 'size': len(binary), 'sha256': sha}
+            'filename': filename, 'size': len(binary), 'sha256': sha}
     CACHE.mkdir(exist_ok=True, parents=True)
     with tempfile.TemporaryDirectory(dir=CACHE) as temporary:
         staged = Path(temporary) / 'complete'
@@ -160,10 +199,12 @@ def firmware_path(build_id, artifact_id=None):
     if not isinstance(build_id, str) or not re.fullmatch(r'[a-f0-9]{64}', build_id):
         raise ValueError('请选择已构建的固件。')
     folder = CACHE / build_id
-    binary = folder / 'randomsign_board.uf2'
-    if not binary.is_file():
+    if not (folder / 'manifest.json').is_file():
         raise ValueError('固件尚未构建。')
     info = json.loads((folder / 'manifest.json').read_text(encoding='ascii'))
+    binary = folder / ('randomsign_esp32s3.bin' if info['board'] == 'esp32s3' else 'randomsign_board.uf2')
+    if not binary.is_file():
+        raise ValueError('固件尚未构建。')
     checked_id = _digest((info['artifact_id'] + _digest(binary.read_bytes())).encode('ascii'))
     if checked_id != build_id or (artifact_id is not None and artifact_id != info['artifact_id']):
         raise ValueError('当前工程与固件不匹配，请重新构建。')
@@ -177,18 +218,26 @@ def deploy(generated, device_id, build_id=None):
     with _device_lock:
         if language == 'cpp':
             binary = firmware_path(build_id, generated['artifact_id'])
+            if board == 'esp32s3':
+                device = _serial_for(device_id, board)
+                python, _ = _require_esp_tools()
+                _command([python, '-m', 'esptool', '--chip', 'esp32s3', '--port', device['path'],
+                          'write_flash', '0x0', str(binary)], 180)
+                return {'status': 'written', 'device_id': device_id, 'board': board, 'language': language}
             root = Path(_select(device_id, 'bootsel')['path'])
             try:
                 shutil.copyfile(binary, root / 'randomsign.uf2')
             except OSError as exc:
                 raise ValueError('BOOTSEL 写入失败，请检查所选开发板的 USB 连接。') from exc
         else:
-            device = _select(device_id, 'serial')
+            device = _serial_for(device_id, board)
             if not importlib.util.find_spec('mpremote'):
                 raise ValueError('请在当前 Python 环境安装 mpremote。')
             machine = 'Raspberry Pi Pico W' if board == 'pico_w' else 'Raspberry Pi Pico'
             # Check the installed interpreter's board identity in the same connection as the upload.
             check = f"import sys; assert sys.implementation._machine == '{machine} with RP2040', sys.implementation._machine"
+            if board == 'esp32s3':
+                check = "import sys; assert 'ESP32S3' in sys.implementation._machine.upper().replace('-', ''), sys.implementation._machine"
             with tempfile.TemporaryDirectory(prefix='rs-mp-') as temporary:
                 local = Path(temporary) / 'main.py'
                 local.write_text(generated['files']['main.py'], encoding='utf-8')
@@ -261,11 +310,7 @@ def _finish(generated, nodes, syndromes, frame):
         'nodes': nodes, 'syndromes': syndromes, 'matches_reference': matches}
 
 
-def _receive(serial_port, generated, nonce):
-    expected = generated['expected']['nodes']
-    order = list(expected)
-    nodes = {}
-    syndromes = {}
+def _records(serial_port, nonce):
     deadline = time.monotonic() + 20
     pending = bytearray()
     while time.monotonic() < deadline:
@@ -281,39 +326,72 @@ def _receive(serial_port, generated, nonce):
             frame = json.loads(line[6:])
             if not isinstance(frame, dict) or frame.get('nonce') != nonce:
                 continue
-            if frame.get('type') == 'done':
-                return _finish(generated, nodes, syndromes, frame)
-            key, values = frame.get('id'), frame.get('values')
-            idx = len(nodes)
-            if frame.get('type') != 'node' or idx >= len(order) or key != order[idx]:
-                raise ValueError('设备回传的节点顺序异常。')
-            step = generated['steps'][idx]
-            fmt = step.get('format', 'bpsk' if step['kind'] in ('mod_bpsk', 'ideal') else 'bits')
-            if not _valid_samples(values, expected[key], fmt):
-                raise ValueError('设备回传的节点或数据格式异常。')
-            if step['kind'] == 'hamming_decode':
-                import numpy as np
-                from src.communications import hamming_decisions
-                reported = frame.get('syndromes')
-                received_bits = np.asarray(nodes[order[idx - 1]], dtype=np.uint8)
-                _, verified = hamming_decisions(received_bits)
-                if (not isinstance(reported, list) or any(type(v) is not int for v in reported)
-                        or reported != verified.tolist()):
-                    raise ValueError('板端 Hamming 综合征与收到的码字不符。')
-                syndromes[key] = reported
-            nodes[key] = values
+            yield frame
         if len(pending) > MAX_RECORD_BYTES:
             raise ValueError('设备回传行过长。')
     raise ValueError('开发板实验响应超时，请确认串口和当前部署的工程。')
 
 
+def _record_node(generated, nodes, syndromes, frame):
+    expected = generated['expected']['nodes']
+    order = list(expected)
+    key, values = frame.get('id'), frame.get('values')
+    idx = len(nodes)
+    if frame.get('type') != 'node' or idx >= len(order) or key != order[idx]:
+        raise ValueError('设备回传的节点顺序异常。')
+    step = generated['steps'][idx]
+    fmt = step.get('format', 'bpsk' if step['kind'] in ('mod_bpsk', 'ideal') else 'bits')
+    if not _valid_samples(values, expected[key], fmt):
+        raise ValueError('设备回传的节点或数据格式异常。')
+    if step['kind'] == 'hamming_decode':
+        import numpy as np
+        from src.communications import hamming_decisions
+        reported = frame.get('syndromes')
+        received_bits = np.asarray(nodes[order[idx - 1]], dtype=np.uint8)
+        _, verified = hamming_decisions(received_bits)
+        if (not isinstance(reported, list) or any(type(v) is not int for v in reported)
+                or reported != verified.tolist()):
+            raise ValueError('板端 Hamming 综合征与收到的码字不符。')
+        syndromes[key] = reported
+    nodes[key] = values
+
+
+def _receive(serial_port, generated, nonce):
+    nodes, syndromes = {}, {}
+    for frame in _records(serial_port, nonce):
+        if frame.get('type') == 'done':
+            return _finish(generated, nodes, syndromes, frame)
+        _record_node(generated, nodes, syndromes, frame)
+
+
+def _serial_for(device_id, board):
+    device = _select(device_id, 'serial')
+    family = 'esp32s3' if board == 'esp32s3' else 'pico'
+    if device.get('family', family) != family:
+        raise ValueError('请选择与目标板对应的 USB 串口。')
+    return device
+
+
+def _usb_port(device, board):
+    import serial
+    # The Pico SDK uses DTR to detect its USB console. On the ESP USB bridge
+    # DTR and RTS drive the automatic reset circuit.
+    port = serial.Serial(port=None, baudrate=115200, timeout=0.2, write_timeout=2)
+    if board == 'esp32s3':
+        port.dtr = port.rts = False
+    port.port = device['path']
+    port.open()
+    return port
+
+
+
 def measure(generated, device_id):
     import serial
     with _device_lock:
-        device = _select(device_id, 'serial')
+        device = _serial_for(device_id, generated['board'])
         nonce = secrets.token_hex(12)
         try:
-            with serial.Serial(device['path'], 115200, timeout=0.2, write_timeout=2) as port:
+            with _usb_port(device, generated['board']) as port:
                 port.reset_input_buffer()
                 port.write(f"RUN {generated['artifact_id']} {nonce}\n".encode('ascii'))
                 port.flush()

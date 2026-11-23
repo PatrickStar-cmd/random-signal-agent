@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## v0.5.2 ESP32 接入与双板 UART 收发实验 2026-11-23
+
+- 增加 ESP32-S3-DevKitC-1-N8 目标，支持 ESP-IDF C++ 固件与 MicroPython 工程。
+- 「板间 UART」从一张 Scratch 链路图生成两端工程，可混用 Pico、Pico W、ESP32-S3 及两种语言。
+- 新增跨板中文、127 位 PN 和 Hamming 单错纠正三个示例，工作台按帧号对照收发数据和 CRC。实体板验收待完成。[实验指南](工程文件/代码/docs/communications-v052.md)
 
 ## v0.5.1 板端信源、纠错编码与 QPSK 实验 2026-11-22
 

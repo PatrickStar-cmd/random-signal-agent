@@ -54,6 +54,30 @@ class BoardApiTests(unittest.TestCase):
                             self.assertEqual(json.loads(files.read('experiment.json'))['source_map'], generated['source_map'])
                             self.assertEqual(files.read(generated['entry_file']).decode(), generated['files'][generated['entry_file']])
 
+    def test_pair_endpoint_export_and_local_actions(self):
+        payload = {'document': comm.PRESETS['board_link_hamming']['program'],
+                   'targets': {'tx': {'board': 'esp32s3', 'language': 'cpp'},
+                               'rx': {'board': 'pico_w', 'language': 'micropython'}}}
+        base = '/api/communications/board-'
+        project = self.client.post(base+'generate', json=payload).json()
+        for role, ep in project['endpoints'].items():
+            response = self.client.post(base+'export', json={**payload, 'role': role})
+            with ZipFile(io.BytesIO(response.content)) as archive:
+                self.assertEqual(archive.read(ep['entry_file']).decode(), ep['files'][ep['entry_file']])
+        self.assertEqual(self.client.post(base+'run', json=payload).status_code, 403)
+        with TestClient(self.app, base_url='http://localhost', client=('127.0.0.1', 12345)) as local:
+            self.assertEqual(local.post(base+'build', json=payload).status_code, 400)
+            with patch('src.communication_board_device.build_firmware', return_value={'size':10}) as build:
+                self.assertEqual(local.post(base+'build', json={**payload,'role':'tx'}).status_code, 200)
+                self.assertEqual(build.call_args.args[0]['artifact_id'], project['endpoints']['tx']['artifact_id'])
+            with patch('src.communication_board_pair.measure', return_value={'status':'ok'}) as run:
+                ids = {'tx':'serial:A','rx':'serial:B'}
+                self.assertEqual(local.post(base+'run', json={**payload,'device_ids':ids}).json()['status'],'ok')
+                self.assertEqual(run.call_args.args[1],ids)
+            with patch('src.communication_board_device._connected', return_value=[{'id':'same','path':'COM1','kind':'serial'}]):
+                response = local.post(base+'run', json={**payload,'device_ids':{'tx':'same','rx':'same'}})
+                self.assertEqual(response.status_code,400)
+
     def test_device_actions_require_local_access(self):
         for action in ('devices', 'build', 'deploy', 'run'):
             response = self.client.post('/api/communications/board-' + action, json={})

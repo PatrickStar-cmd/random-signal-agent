@@ -1,0 +1,68 @@
+def open_link(baudrate, timeout_ms):
+    from machine import Pin, UART
+    port = UART(@UART@, baudrate=baudrate, bits=8, parity=None, stop=1,
+                tx=Pin(@TX@), rx=Pin(@RX@, Pin.IN, Pin.PULL_UP), timeout=timeout_ms)
+    if port.any():
+        port.read(port.any())
+    return port
+
+
+def crc16(data):
+    crc = 0xffff
+    for byte in data:
+        crc ^= byte << 8
+        for _ in range(8):
+            crc = ((crc << 1) ^ (0x1021 if crc & 0x8000 else 0)) & 0xffff
+    return crc
+
+
+def endpoint_event(nonce, kind, status):
+    send({"type": kind, "nonce": nonce, "artifact_id": ARTIFACT_ID, "board": "@BOARD@",
+          "language": "micropython", "experiment": "link", "role": "@ROLE@",
+          "sequence": int(nonce[-4:], 16), "status": status})
+
+
+@DIRECTION@
+def transmit_frame(port, bits, sequence):
+    frame = bytearray(b'RS\x01')
+    frame.extend(sequence.to_bytes(2, 'big'))
+    frame.extend(len(bits).to_bytes(2, 'big'))
+    for start in range(0, len(bits), 8):
+        frame.append(sum(bit << (7-i) for i, bit in enumerate(bits[start:start+8])))
+    frame.extend(crc16(frame).to_bytes(2, 'big'))
+    if port.write(frame) != len(frame):
+        raise OSError('UART write')
+
+
+@DIRECTION@
+def read_exact(port, count):
+    data = bytearray()
+    while len(data) < count:
+        part = port.read(count-len(data))
+        if not part:
+            return None
+        data.extend(part)
+    return data
+
+
+def receive_frame(port, nonce, expected):
+    header = read_exact(port, 7)
+    if header is None:
+        return 'timeout', []
+    if header[:3] != b'RS\x01':
+        return 'frame_error', []
+    count = int.from_bytes(header[5:7], 'big')
+    if count != expected:
+        return 'length_error', []
+    tail = read_exact(port, (count+7)//8 + 2)
+    if tail is None:
+        return 'timeout', []
+    seen_seq = int.from_bytes(header[3:5], 'big')
+    wire_crc = int.from_bytes(tail[-2:], 'big')
+    send({"type": "wire", "nonce": nonce, "sequence": seen_seq, "count": count,
+          "crc16": wire_crc, "payload": list(tail[:-2])})
+    if crc16(header + tail[:-2]) != wire_crc:
+        return 'crc_error', []
+    if seen_seq != int(nonce[-4:], 16):
+        return 'sequence_error', []
+    return 'ok', [(tail[i//8] >> (7-i%8)) & 1 for i in range(count)]

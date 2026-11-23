@@ -295,7 +295,8 @@ def create_app(agent=None, data_dir=None, static_dir=None, upload_dir=None, outp
         from src.communication_board_device import firmware_path
         if not local_device_request(request):
             return JSONResponse({'error': '请在本机工作台下载已构建固件。'}, 403)
-        return FileResponse(firmware_path(build_id), media_type='application/octet-stream', filename='randomsign.uf2')
+        binary = firmware_path(build_id)
+        return FileResponse(binary, media_type='application/octet-stream', filename=binary.name)
 
     @app.get('/api/model/settings')
     def model_status(session_id: str):

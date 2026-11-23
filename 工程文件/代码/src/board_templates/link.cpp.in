@@ -1,0 +1,59 @@
+#include <cstdlib>
+
+static uint16_t frame_seq(const char *nonce) {
+    return uint16_t(std::strtoul(nonce + std::strlen(nonce) - 4, nullptr, 16));
+}
+
+static uint16_t crc16(const uint8_t *bytes, size_t count) {
+    uint16_t crc = 0xffff;
+    for (size_t n = 0; n < count; ++n) {
+        crc ^= uint16_t(bytes[n]) << 8;
+        for (unsigned i = 0; i < 8; ++i)
+            crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : crc << 1;
+    }
+    return crc;
+}
+
+static void endpoint_event(const char *nonce, const char *type, const char *status) {
+    std::printf("RS050 {\"type\":\"%s\",\"nonce\":\"%s\",\"artifact_id\":\"%s\","
+                "\"board\":\"@BOARD@\",\"language\":\"cpp\",\"experiment\":\"link\",\"role\":\"@ROLE@\","
+                "\"sequence\":%u,\"status\":\"%s\"}\n", type, nonce, artifact_id,
+                unsigned(frame_seq(nonce)), status);
+    std::fflush(stdout);
+}
+
+@DIRECTION@
+static void transmit_frame(const Samples &bits, uint16_t sequence) {
+    const unsigned count = bits.size();
+    std::vector<uint8_t> frame = {'R','S',1, uint8_t(sequence >> 8), uint8_t(sequence),
+                                 uint8_t(count >> 8), uint8_t(count)};
+    frame.resize(7 + (count + 7) / 8);
+    for (unsigned i = 0; i < count; ++i) frame[7+i/8] |= uint8_t(bits[i]) << (7-i%8);
+    uint16_t crc = crc16(frame.data(),frame.size());
+    frame.push_back(uint8_t(crc >> 8));
+    frame.push_back(uint8_t(crc));
+    link_write(frame.data(),frame.size());
+}
+
+@DIRECTION@
+static const char *receive_frame(Samples &bits, const char *nonce, unsigned expected, unsigned timeout_ms) {
+    std::vector<uint8_t> frame(7);
+    for (auto &byte : frame) if (!link_read(byte,timeout_ms)) return "timeout";
+    if (frame[0]!='R' || frame[1]!='S' || frame[2]!=1) return "frame_error";
+    unsigned count = (unsigned(frame[5]) << 8) | frame[6];
+    if (count != expected) return "length_error";
+    frame.resize(7 + (count + 7)/8 + 2);
+    for (size_t i=7; i<frame.size(); ++i) if (!link_read(frame[i],timeout_ms)) return "timeout";
+    size_t end = frame.size()-2;
+    unsigned seen_seq = (unsigned(frame[3]) << 8) | frame[4];
+    unsigned wire_crc = (unsigned(frame[end]) << 8) | frame[end+1];
+    std::printf("RS050 {\"type\":\"wire\",\"nonce\":\"%s\",\"sequence\":%u,\"count\":%u,\"crc16\":%u,\"payload\":[",
+                nonce, seen_seq, count, wire_crc);
+    for (size_t i=7; i<end; ++i) std::printf("%s%u", i == 7 ? "" : ",", unsigned(frame[i]));
+    std::printf("]}\n");
+    if (crc16(frame.data(),end) != wire_crc) return "crc_error";
+    if (seen_seq != frame_seq(nonce)) return "sequence_error";
+    bits.resize(count);
+    for (unsigned i=0; i<count; ++i) bits[i] = (frame[7+i/8] >> (7-i%8)) & 1;
+    return "ok";
+}

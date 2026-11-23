@@ -128,6 +128,22 @@ class BoardDeviceTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, '不匹配'):
                 device.firmware_path(result['build_id'])
 
+    def test_esp_merged_image_and_serial_deployment(self):
+        esp = {**self.program, 'board':'esp32s3'}
+        target = {'id':'serial:esp','kind':'serial','family':'esp32s3','path':'COM7'}
+        with TemporaryDirectory() as tmp, patch.object(device, 'CACHE', Path(tmp)), \
+                patch.object(device, '_build_esp', return_value=b'image'), \
+                patch.object(device, '_require_esp_tools', return_value=('idf-python','idf.py')), \
+                patch.object(device, '_connected', return_value=[target]), patch.object(device, '_command') as call:
+            result = device.build_firmware(esp)
+            self.assertEqual(device.firmware_path(result['build_id']).suffix,'.bin')
+            device.deploy(esp,target['id'],result['build_id'])
+            args = call.call_args.args[0]
+            self.assertEqual(args[3:9],['--chip','esp32s3','--port','COM7','write_flash','0x0'])
+            mp = {**esp,'language':'micropython','files':{'main.py':'pass'}}
+            device.deploy(mp,target['id'])
+            self.assertIn('ESP32S3',call.call_args.args[0][6])
+
     def test_micropython_uses_selected_serial_and_installed_board_identity(self):
         connected = [{'id': 'serial:COM4:1234', 'path': 'COM4', 'kind': 'serial'}]
         program = {**self.program, 'board': 'pico_w', 'language': 'micropython', 'files': {'main.py': '# pico'}}

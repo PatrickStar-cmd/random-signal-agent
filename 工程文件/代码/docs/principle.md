@@ -1,5 +1,9 @@
 # 实现原理
 
+板间 UART 将一张链路图拆成发送端与接收端。序号、有效位数和 CRC-16 随载荷传输。电脑等待接收端就绪后启动发送端，用两路实际回读计算 BER。[双板帧格式与回读](communications-v052.md)
+
+本地验收记录位于 `logs/board-v052/verification.json`。`cpp` 和 `micropython` 列出各工程的构建标识与校验值，`concurrent_uart_simulation` 记录两个程序在模拟串口上的逐例收发和超时结果，`physical_board_acceptance` 记录实体板验收状态。
+
 v0.5.1 的 PN 信源在电脑、C++ 和 MicroPython 中使用相同的移位寄存器递推。Hamming 用收到的 7 位计算综合征，QPSK 在遥测中分别保留 I/Q 分量。[编码位序、映射与比较](communications-v051.md)
 
 开发板代码生成器以已构建的线性积木序列为输入，按积木 ID 记录源码行。BPSK 把 0 映射为 +1、1 映射为 −1；UART 将有效比特按高位优先装包，保留尾字节有效长度。电脑参考和设备回传各自保留逐块结果。[开发板协议与实验指南](communications-v050.md)

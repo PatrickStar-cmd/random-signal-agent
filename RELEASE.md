@@ -1,10 +1,10 @@
-# v0.5.1 Installation and deployment
+# v0.5.2 Installation and deployment
 
-**v0.5.1 板端信源、纠错编码与 QPSK 实验** extends the Pico and Pico W workbench with UTF-8 text, PRBS7/9/15, Hamming (7,4) encoding and decoding, single-bit injection and normalized QPSK I/Q readback. See the [lab guide](工程文件/代码/docs/communications-v051.md).
+**v0.5.2 ESP32 接入与双板 UART 收发实验** adds ESP32-S3 and generates independent C++ or MicroPython projects for both sides of a UART link. The lab includes UTF-8 text, a 127-bit PRBS sequence and Hamming single-bit correction. Software simulation and firmware builds passed. Physical board acceptance is pending. [Dual-board lab guide](工程文件/代码/docs/communications-v052.md)
 
-Download the [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.5.1/random-signal-agent-v0.5.1-deploy.zip) for the complete application. The [Pico example bundle](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.5.1/random-signal-agent-v0.5.1-pico-examples.zip) supplies the generated sources and UF2 firmware. Use Python 3.12–3.14 for local USB deployment. The [v0.5.0 release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.5.0) remains available.
+Download the [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.5.2/random-signal-agent-v0.5.2-deploy.zip) for the complete application. The [dual-board example bundle](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.5.2/random-signal-agent-v0.5.2-board-examples.zip) supplies generated sources and compiled images for the sample projects. Use Python 3.12–3.14 for local USB deployment. [Previous release](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.5.1)
 
-Open a terminal in `random-signal-agent/工程文件/代码` (or `random-signal-agent-v0.5.1/工程文件/代码` in a deployment archive).
+Open a terminal in `random-signal-agent/工程文件/代码` (or `random-signal-agent-v0.5.2/工程文件/代码` in a deployment archive).
 
 ## Windows
 
@@ -47,7 +47,7 @@ The check covers health, Web assets, Agent mode, streaming responses, CSV upload
 
 ## 中文说明
 
-下载 v0.5.1 部署包并解压，进入 `工程文件/代码` 后按上方命令启动。支持 Python 3.12–3.14，依赖版本在 `requirements-repro.txt` 固定。也可使用 Docker Compose；默认地址为 <http://127.0.0.1:8000>。实验可导出 ZIP，升级前停止服务并备份整个 `data/` 目录。
+下载 v0.5.2 部署包并解压，进入 `工程文件/代码` 后按上方命令启动。支持 Python 3.12–3.14，依赖版本在 `requirements-repro.txt` 固定。也可使用 Docker Compose；默认地址为 <http://127.0.0.1:8000>。实验可导出 ZIP，升级前停止服务并备份整个 `data/` 目录。
 
 完整应用包含对话、分析、上传及音频处理，不需要外部模型密钥即可使用本地工具链。服务器部署、模型配置与日志查看见[部署说明](工程文件/代码/DEPLOY.md)。
 

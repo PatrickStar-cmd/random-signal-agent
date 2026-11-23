@@ -16,7 +16,7 @@ def contract(kind):
     if kind in ('sine','square','gaussian','audio_source'): return ['起点'],'模拟样本'
     if kind in c.SOURCES: return ['起点'],'比特'
     if kind=='sink': return ['比特','模拟样本'],'信宿'
-    if kind in ('uart_loopback', 'bit_flip'): return ['比特'],'比特'
+    if kind in ('uart_loopback', 'uart_link', 'bit_flip'): return ['比特'],'比特'
     if kind in ('pcm_encode','compand_encode','dpcm_encode','delta_encode','adpcm_encode'): return ['模拟样本'],'比特'
     if kind in ('pcm_decode','compand_decode','dpcm_decode','delta_decode','adpcm_decode'): return ['比特'],'模拟样本'
     if kind.startswith('line_'): return (['比特'],'线路电平') if kind.endswith('encode') else (['线路电平'],'比特')
@@ -111,7 +111,7 @@ def complete_receiver(raw):
     if blocks[0]['kind']=='iq_source': return complete_iq_receiver(p)
     def make(k,q=None):
         return {'id':'auto-'+uuid.uuid4().hex[:12],'kind':k,'params':{name:(q or {}).get(name,s['default']) for name,s in c.BLOCKS[k]['params'].items()}}
-    uart = next((b for b in blocks if b['kind'] == 'uart_loopback'), None)
+    uart = next((b for b in blocks if b['kind'] in ('uart_loopback', 'uart_link')), None)
     if uart is not None:
         return _complete_decoders(p, uart, make)
     if tx is None: raise ValueError('请先添加调制器，再补齐接收链路。')

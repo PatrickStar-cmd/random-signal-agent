@@ -222,7 +222,7 @@ class BoardCodegenTests(unittest.TestCase):
             (folder / 'pico/stdlib.h').write_text('inline void stdio_init_all() {}\n')
             (folder / 'hardware').mkdir()
             (folder / 'hardware/uart.h').write_text(CPP_UART)
-            programs = [entry['program'] for name, entry in c.PRESETS.items() if name.startswith('board_')]
+            programs = [entry['program'] for name, entry in c.PRESETS.items() if name.startswith('board_') and not name.startswith('board_link_')]
             programs.append(c.preset(['bit_pattern', 'hamming_encode', 'mod_qpsk', 'ideal', 'demod_qpsk',
                                       'bit_flip', 'hamming_decode', 'sink'],
                                      {0: {'pattern': '101100101'}, 5: {'codeword': 3, 'position': 7}}))

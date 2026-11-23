@@ -1,0 +1,13 @@
+static bool uart_loopback(Samples &bits, unsigned baud, unsigned timeout_ms) {
+    link_open(baud);
+    for (size_t start = 0; start < bits.size(); start += 8) {
+        uint8_t byte = 0;
+        for (unsigned i = 0; i < 8 && start + i < bits.size(); ++i)
+            byte |= uint8_t(bits[start+i]) << (7-i);
+        link_write(&byte, 1);
+        if (!link_read(byte, timeout_ms)) return false;
+        for (unsigned i = 0; i < 8 && start + i < bits.size(); ++i)
+            bits[start+i] = (byte >> (7-i)) & 1;
+    }
+    return true;
+}

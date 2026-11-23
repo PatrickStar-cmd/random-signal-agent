@@ -1,12 +1,11 @@
-// RandomSign Pico experiment. The USB console carries commands and measurements.
+// RandomSign @PLATFORM@ experiment. The USB console carries commands and measurements.
 #include <cctype>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <string>
 #include <vector>
-#include "pico/stdlib.h"
-#include "hardware/uart.h"
+@PLATFORM_INCLUDES@
 
 using Samples = std::vector<int8_t>;
 constexpr char artifact_id[] = "@ARTIFACT@";
@@ -23,6 +22,7 @@ static void trace(const char *nonce, const char *id, const Samples &values) {
                 nonce, id, numbers.c_str());
 }
 
+@SINGLE_ONLY@
 static void finish(const char *nonce, bool received, const Samples &reference, const Samples &data) {
     unsigned count = received ? unsigned(data.size()) : 0;
     unsigned errors = 0;
@@ -50,6 +50,7 @@ static void finish(const char *nonce, bool received, const Samples &reference, c
     std::fflush(stdout);
 }
 
+@SINGLE_ONLY@
 @UART_HELPER@
 static void run_experiment(const char *nonce) {
     Samples data;
@@ -57,8 +58,8 @@ static void run_experiment(const char *nonce) {
 @PROGRAM@
 }
 
-int main() {
-    stdio_init_all();
+@MAIN@ {
+    @CONSOLE_INIT@;
     char line[160];
     while (std::fgets(line, sizeof(line), stdin)) {
         char target[65], nonce[33], extra;
@@ -70,7 +71,7 @@ int main() {
         for (const char *p = nonce; *p; ++p) {
             if (!std::isalnum(static_cast<unsigned char>(*p))) valid = false;
         }
-        if (valid) run_experiment(nonce);
+        if (@VALID_NONCE@) run_experiment(nonce);
     }
-    return 0;
+    @MAIN_RETURN@;
 }

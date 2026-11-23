@@ -1,0 +1,14 @@
+#pragma once
+#include <cstdio>
+#include <fcntl.h>
+#include "driver/uart.h"
+#include "driver/uart_vfs.h"
+#include "esp_check.h"
+
+inline void start_console() {
+    ESP_ERROR_CHECK(uart_driver_install(UART_NUM_0, 1024, 0, 0, nullptr, 0));
+    uart_vfs_dev_use_driver(UART_NUM_0);
+    uart_vfs_dev_port_set_rx_line_endings(UART_NUM_0, ESP_LINE_ENDINGS_LF);
+    fcntl(fileno(stdin), F_SETFL, 0);
+    setvbuf(stdin, nullptr, _IONBF, 0);
+}

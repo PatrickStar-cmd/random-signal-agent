@@ -267,8 +267,20 @@
     <aside id="cmBoardPanel" class="cm-panel cm-board-panel" aria-labelledby="cmBoardHeading" hidden>
       <header class="cm-panel-heading"><h3 id="cmBoardHeading">🔌 开发板</h3><button type="button" id="cmBoardClose" aria-label="关闭开发板面板">收起</button></header>
       <div class="cm-board-body">
-        <div class="cm-board-fields"><label>编程语言<select id="cmBoardLanguage"><option value="cpp">C++</option><option value="micropython">MicroPython</option></select></label><label>目标板卡<select id="cmBoardTarget"><option value="pico">Pico</option><option value="pico_w">Pico W</option></select></label></div>
-        <div class="cm-board-preset"><label>开发板示例<select id="cmBoardPreset"><option value="board_bpsk">板端 BPSK 收发</option><option value="board_uart">UART 实物回环</option><option value="board_text_uart">UTF-8 文字回环</option><option value="board_pn">PN 序列回环</option><option value="board_hamming_fault">Hamming 单错纠正</option><option value="board_qpsk">QPSK 四象限收发</option></select></label><button type="button" id="cmBoardLoad">载入示例</button></div>
+        <div id="cmBoardSingleTargets" class="cm-board-fields"><label>编程语言<select id="cmBoardLanguage"><option value="cpp">C++</option><option value="micropython">MicroPython</option></select></label><label>目标板卡<select id="cmBoardTarget"><option value="pico">Pico</option><option value="pico_w">Pico W</option><option value="esp32s3" title="ESP32-S3-DevKitC-1-N8">ESP32-S3 N8</option></select></label></div>
+        <div id="cmBoardPairTargets" class="cm-board-pair" hidden>
+          <fieldset class="cm-board-endpoint"><legend>📤 发送端</legend>
+            <div class="cm-board-fields"><label>板卡<select id="cmBoardtxTarget"><option value="pico" selected>Pico</option><option value="pico_w">Pico W</option><option value="esp32s3" title="ESP32-S3-DevKitC-1-N8">ESP32-S3 N8</option></select></label><label>语言<select id="cmBoardtxLanguage"><option value="cpp" selected>C++</option><option value="micropython">MicroPython</option></select></label></div>
+            <button type="button" id="cmBoardtxExport">下载本端源码</button>
+            <div id="cmBoardtxDevicePane" hidden><label>本端 USB 设备<select id="cmBoardtxDevice"><option value="">请选择设备</option></select></label>
+              <p id="cmBoardtxSetup"></p><div class="cm-board-actions"><button type="button" id="cmBoardtxBuild">编译固件</button><a id="cmBoardtxFirmware" hidden download>下载固件</a><button type="button" id="cmBoardtxDeploy">写入程序</button></div></div></fieldset>
+          <fieldset class="cm-board-endpoint"><legend>📥 接收端</legend>
+            <div class="cm-board-fields"><label>板卡<select id="cmBoardrxTarget"><option value="pico">Pico</option><option value="pico_w">Pico W</option><option value="esp32s3" title="ESP32-S3-DevKitC-1-N8" selected>ESP32-S3 N8</option></select></label><label>语言<select id="cmBoardrxLanguage"><option value="cpp">C++</option><option value="micropython" selected>MicroPython</option></select></label></div>
+            <button type="button" id="cmBoardrxExport">下载本端源码</button>
+            <div id="cmBoardrxDevicePane" hidden><label>本端 USB 设备<select id="cmBoardrxDevice"><option value="">请选择设备</option></select></label>
+              <p id="cmBoardrxSetup"></p><div class="cm-board-actions"><button type="button" id="cmBoardrxBuild">编译固件</button><a id="cmBoardrxFirmware" hidden download>下载固件</a><button type="button" id="cmBoardrxDeploy">写入程序</button></div></div></fieldset>
+        </div>
+        <div class="cm-board-preset"><label>开发板示例<select id="cmBoardPreset"><option value="board_bpsk">板端 BPSK 收发</option><option value="board_uart">UART 实物回环</option><option value="board_text_uart">UTF-8 文字回环</option><option value="board_pn">PN 序列回环</option><option value="board_hamming_fault">Hamming 单错纠正</option><option value="board_qpsk">QPSK 四象限收发</option><option value="board_link_text">双板传中文</option><option value="board_link_pn">双板 PN 序列</option><option value="board_link_hamming">双板 Hamming 纠错</option></select></label><button type="button" id="cmBoardLoad">载入示例</button></div>
         <div class="cm-board-switch" role="group" aria-label="开发板工作区"><button type="button" id="cmBoardCodeTab" aria-controls="cmBoardCodePane" aria-pressed="true">积木与源码</button><button type="button" id="cmBoardDeviceTab" aria-controls="cmBoardDevicePane" aria-pressed="false">部署与实测</button></div>
         <p id="cmBoardStatus" class="cm-board-status" role="status"></p><div id="cmBoardIssues" class="cm-board-issues"></div>
         <section id="cmBoardCodePane" aria-label="积木与源码">
@@ -277,12 +289,12 @@
         </section>
         <section id="cmBoardDevicePane" aria-label="部署与实测" hidden>
           <p id="cmBoardWiring" class="cm-board-wiring"></p>
-          <div class="cm-board-preset"><label>本机 USB 设备<select id="cmBoardDevice"><option value="">请选择设备</option></select></label><button type="button" id="cmBoardRefresh">刷新</button></div>
-          <div id="cmBoardMicroSetup" hidden><a id="cmBoardFirmwareHelp" target="_blank" rel="noopener">下载本板 MicroPython 固件 ↗</a><p>首次安装时按住 BOOTSEL 接入 USB，将对应 UF2 复制到 RPI-RP2 盘。重启后刷新并选择串口。</p></div>
-          <div id="cmBoardCppSetup"><p>按住 BOOTSEL 接入 USB，刷新并选择启动盘。烧录完成后刷新并选择串口测量。</p></div>
+          <div class="cm-board-preset"><label id="cmBoardSingleDevice">本机 USB 设备<select id="cmBoardDevice"><option value="">请选择设备</option></select></label><button type="button" id="cmBoardRefresh">刷新</button></div>
+          <div id="cmBoardMicroSetup" hidden><a id="cmBoardFirmwareHelp" target="_blank" rel="noopener">下载本板 MicroPython 固件 ↗</a><p id="cmBoardMicroHint">首次安装时按住 BOOTSEL 接入 USB，将对应 UF2 复制到 RPI-RP2 盘。重启后刷新并选择串口。</p></div>
+          <div id="cmBoardCppSetup"><p id="cmBoardCppHint">按住 BOOTSEL 接入 USB，刷新并选择启动盘。烧录完成后刷新并选择串口测量。</p></div>
           <p id="cmBoardTools"></p>
           <div class="cm-board-actions"><button type="button" id="cmBoardBuild">编译固件</button><a id="cmBoardFirmware" hidden download>下载 UF2</a><button type="button" id="cmBoardDeploy">烧录固件</button><button type="button" id="cmBoardMeasure">运行并回读</button></div>
-          <div id="cmBoardResult" hidden><h4>板端实测</h4><dl id="cmBoardMetrics" class="cm-board-metrics"></dl><button type="button" id="cmBoardResultSave">导出测量 JSON</button></div>
+          <div id="cmBoardResult" hidden><h4>板端实测</h4><div id="cmBoardFrame" class="cm-board-frame" hidden></div><dl id="cmBoardMetrics" class="cm-board-metrics"></dl><button type="button" id="cmBoardResultSave">导出测量 JSON</button></div>
         </section>
         <section id="cmBoardProbe" class="cm-board-probe" aria-label="选中积木输出" hidden>
           <h4 id="cmBoardNodeTitle"></h4><dl><dt>电脑参考</dt><dd id="cmBoardExpected"></dd><dt>板端回读</dt><dd id="cmBoardActual"></dd></dl>

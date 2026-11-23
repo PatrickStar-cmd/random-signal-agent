@@ -8,10 +8,11 @@ from src.communication_workbench_v0412 import build_document, diagnose
 
 
 TEMPLATES = Path(__file__).with_name('board_templates')
-BOARDS = ('pico', 'pico_w')
+ESP32 = 'esp32s3'
+BOARDS = ('pico', 'pico_w', ESP32)
 LANGUAGES = ('cpp', 'micropython')
 KINDS = {'bit_pattern', 'text', 'pn_bits', 'repeat_encode', 'hamming_encode', 'mod_bpsk',
-         'mod_qpsk', 'ideal', 'demod_bpsk', 'demod_qpsk', 'uart_loopback', 'bit_flip',
+         'mod_qpsk', 'ideal', 'demod_bpsk', 'demod_qpsk', 'uart_loopback', 'uart_link', 'bit_flip',
          'repeat_decode', 'hamming_decode', 'sink'}
 MAX_SAMPLES = 2048
 
@@ -154,17 +155,74 @@ def _python_block(block, count, fmt):
     raise BoardCodeError('请选择已适配的板端积木。', [block['id']])
 
 
-def _source(blocks, plan, formats, board, language, experiment):
+def _link_block(block, count, language, role):
     cpp = language == 'cpp'
-    entry = 'main.cpp' if cpp else 'main.py'
-    template = (TEMPLATES / (entry + '.in')).read_text(encoding='utf-8')
-    helpers = ''
+    key = block['id']
+    if block['kind'] == 'sink':
+        return ([f'trace(nonce, "{key}", data);', 'endpoint_event(nonce, "done", "ok");'] if cpp else
+                [f'trace(nonce, "{key}", data)', 'endpoint_event(nonce, "done", "ok")'])
+    baud, timeout = (block['params'][k] for k in ('baudrate', 'timeout_ms'))
+    if cpp:
+        lines = [f'link_open({baud});']
+        if role == 'tx':
+            return lines + ['transmit_frame(data, frame_seq(nonce));', f'trace(nonce, "{key}", data);',
+                            'endpoint_event(nonce, "done", "ok");']
+        return lines + ['endpoint_event(nonce, "ready", "ready");',
+                        f'const char *status = receive_frame(data, nonce, {count}, {timeout});',
+                        'if (std::strcmp(status, "ok")) { endpoint_event(nonce, "done", status); return; }',
+                        f'trace(nonce, "{key}", data);']
+    lines = [f'port = open_link({baud}, {timeout})']
+    if role == 'tx':
+        return lines + ['transmit_frame(port, data, int(nonce[-4:], 16))', f'trace(nonce, "{key}", data)',
+                        'endpoint_event(nonce, "done", "ok")']
+    return lines + ['endpoint_event(nonce, "ready", "ready")',
+                    f'status, data = receive_frame(port, nonce, {count})',
+                    'if status != "ok":', '    endpoint_event(nonce, "done", status)', '    return',
+                    f'trace(nonce, "{key}", data)']
+
+
+def _source(blocks, plan, formats, board, language, experiment, role=None):
+    cpp = language == 'cpp'
+    esp = board == ESP32
+    filename = 'main.cpp' if cpp else 'main.py'
+    entry = 'main/main.cpp' if cpp and esp else filename
+    extension = '.cpp.in' if cpp else '.py.in'
+    template = (TEMPLATES / (filename + '.in')).read_text(encoding='utf-8')
+    before, single_finish, after = template.split('@SINGLE_ONLY@\n')
+    template = before + ('' if role else single_finish) + after
+    files = {}
+    if cpp and esp:
+        files['main/esp_console.hpp'] = (TEMPLATES / 'esp_console.hpp.in').read_text(encoding='utf-8')
     kinds = {b['kind'] for b in blocks}
-    for kind, helper in [('uart_loopback', 'uart'), ('mod_qpsk', 'qpsk'), ('hamming_decode', 'hamming')]:
+    helpers = ''
+    if cpp and (role or esp and 'uart_loopback' in kinds):
+        driver = 'esp_uart.hpp.in' if esp else 'pico_uart.hpp.in'
+        files[Path(entry).with_name('board_uart.hpp').as_posix()] = (TEMPLATES / driver).read_text(encoding='utf-8')
+        helpers += '#include "board_uart.hpp"\n'
+    for kind, helper in [('uart_loopback', 'esp_loopback' if esp and cpp else 'uart'), ('uart_link', 'link'),
+                         ('mod_qpsk', 'qpsk'), ('hamming_decode', 'hamming')]:
         if kind in kinds and (cpp or helper != 'hamming'):
-            name = helper + ('.cpp.in' if cpp else '.py.in')
-            helpers += (TEMPLATES / name).read_text(encoding='utf-8').rstrip() + '\n\n'
-    template = template.replace('@UART_HELPER@', helpers).replace('@BOARD@', board).replace('@EXPERIMENT@', experiment)
+            code = (TEMPLATES / (helper + extension)).read_text(encoding='utf-8').rstrip()
+            if helper == 'link':
+                common, sender, receiver = code.split('@DIRECTION@\n')
+                code = common + (sender if role == 'tx' else receiver).rstrip()
+            helpers += code + '\n\n'
+    if cpp:
+        valid_nonce = ('valid && std::strlen(nonce) >= 4 && std::strspn(nonce, "0123456789abcdefABCDEF") == std::strlen(nonce)'
+                       if role else 'valid')
+    else:
+        valid_nonce = ('4 <= len(nonce) <= 32 and all(c in "0123456789abcdefABCDEF" for c in nonce)' if role else
+                       '1 <= len(nonce) <= 32 and all(c in NONCE_CHARS for c in nonce)')
+    substitutions = {'UART_HELPER': helpers, 'PLATFORM': 'ESP32-S3' if esp else 'Pico', 'BOARD': board,
+                     'EXPERIMENT': experiment, 'ROLE': role or '', 'VALID_NONCE': valid_nonce,
+                     'PLATFORM_INCLUDES': '#include "esp_console.hpp"' if esp else '#include "pico/stdlib.h"\n#include "hardware/uart.h"',
+                     'MAIN': 'extern "C" void app_main()' if esp else 'int main()',
+                     'CONSOLE_INIT': 'start_console()' if esp else 'stdio_init_all()',
+                     'MAIN_RETURN': 'return' if esp else 'return 0', 'UART': '1' if esp else '0',
+                     'TX': '17' if esp else '0', 'RX': '18' if esp else '1',
+                     'WIRE_PINS': 'GPIO17 to GPIO18' if esp else 'GP0 to GP1'}
+    for key, value in substitutions.items():
+        template = template.replace('@'+key+'@', value)
     prefix, suffix = template.split('@PROGRAM@\n')
     if cpp and 'mod_qpsk' in kinds:
         prefix += '    std::vector<IQ> iq;\n'
@@ -172,16 +230,26 @@ def _source(blocks, plan, formats, board, language, experiment):
     source_map = {}
     for block, row in zip(blocks, plan, strict=True):
         start = len(lines) + 1
+        if role and block['kind'] in ('uart_link', 'sink'):
+            body = _link_block(block, row['count'], language, role)
+        else:
+            emitter = _cpp_block if cpp else _python_block
+            body = emitter(block, row['count'], formats[block['id']])
         if cpp:
             lines.append(f'    {{ // {block["kind"]} [{block["id"]}]')
-            lines.extend('        ' + s for s in _cpp_block(block, row['count'], formats[block['id']]))
+            lines.extend('        ' + s for s in body)
             lines.append('    }')
         else:
             lines.append(f'    # {block["kind"]} [{block["id"]}]')
-            lines.extend('    ' + s for s in _python_block(block, row['count'], formats[block['id']]))
+            lines.extend('    ' + s for s in body)
         source_map[block['id']] = {'file': entry, 'start': start, 'end': len(lines)}
-    files = {entry: '\n'.join(lines) + '\n' + suffix}
-    if cpp:
+    files[entry] = '\n'.join(lines) + '\n' + suffix
+    if cpp and esp:
+        files['CMakeLists.txt'] = ('cmake_minimum_required(VERSION 3.16)\nset(IDF_TARGET esp32s3)\n'
+                                   'set(COMPONENTS main)\ninclude($ENV{IDF_PATH}/tools/cmake/project.cmake)\nproject(randomsign_board)\n')
+        files['main/CMakeLists.txt'] = 'idf_component_register(SRCS "main.cpp" INCLUDE_DIRS "." REQUIRES esp_driver_uart esp_driver_gpio vfs)\n'
+        files['sdkconfig.defaults'] = 'CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y\nCONFIG_ESP_CONSOLE_UART_DEFAULT=y\nCONFIG_ESP_MAIN_TASK_STACK_SIZE=8192\n'
+    elif cpp:
         cmake = (TEMPLATES / 'CMakeLists.txt.in').read_text(encoding='utf-8')
         files['CMakeLists.txt'] = cmake.replace('@BOARD@', board)
     return files, source_map, entry
@@ -211,10 +279,10 @@ def _checked(document):
         raise BoardCodeError(str(exc), ids) from exc
 
 
-def generate(document, language, board):
+def generate(document, language, board, targets=None):
     """Return printable sources and line spans with a reference from the desktop engine."""
     if language not in LANGUAGES or board not in BOARDS:
-        raise BoardCodeError('请选择 C++ 或 MicroPython，以及 Pico 或 Pico W。')
+        raise BoardCodeError('请选择支持的开发板和编程语言。')
     built = _checked(document)
     if built['kind'] != 'linear':
         raise BoardCodeError('板端生成支持线性链路，请选择线性工程。', ['merge'])
@@ -233,11 +301,6 @@ def generate(document, language, board):
     symbol_format = 'iq' if experiment == 'qpsk' else 'bpsk'
     formats = {b['id']: symbol_format if b['kind'] in ('mod_bpsk', 'mod_qpsk', 'ideal') else 'bits'
                for b in blocks}
-    files, source_map, entry = _source(blocks, compiled['plan'], formats, board, language, experiment)
-    # Hash the complete generated project before substituting its own identity.
-    packed = json.dumps(files, sort_keys=True, separators=(',', ':')).encode()
-    artifact_id = hashlib.sha256(packed).hexdigest()
-    files[entry] = files[entry].replace('@ARTIFACT@', artifact_id)
     result, observer = communication_runtime.observe_run(compiled['program'], compiled['token'], retain=True)
     nodes = {}
     for block_id, fmt in formats.items():
@@ -252,7 +315,36 @@ def generate(document, language, board):
     steps = [{'id': b['id'], 'kind': b['kind'], 'label': communications.BLOCKS[b['kind']]['label'],
               'format': formats[b['id']], **(b['params'] if b['kind'] == 'bit_flip' else {})}
              for b in blocks]
-    return {'files': files, 'entry_file': entry, 'source_map': source_map, 'steps': steps,
-            'expected': {'nodes': nodes, 'syndromes': syndromes, 'metrics': metrics}, 'experiment': experiment,
-            'artifact_id': artifact_id, 'board': board, 'language': language,
-            'host_tools': [tool['id'] for tool in built['document']['tools']]}
+    common = {'steps': steps, 'expected': {'nodes': nodes, 'syndromes': syndromes, 'metrics': metrics},
+              'host_tools': [tool['id'] for tool in built['document']['tools']]}
+    if 'uart_link' not in kinds:
+        return {**common, **_project(blocks, compiled['plan'], formats, board, language, experiment)}
+    if not isinstance(targets, dict):
+        raise BoardCodeError('请分别选择发送端和接收端的板型与语言。')
+    split = next(i for i, b in enumerate(blocks) if b['kind'] == 'uart_link')
+    endpoints, files, ranges = {}, {}, {}
+    for role, section in [('tx', slice(None, split+1)), ('rx', slice(split, None))]:
+        choice = targets.get(role)
+        if not isinstance(choice, dict) or choice.get('board') not in BOARDS or choice.get('language') not in LANGUAGES:
+            raise BoardCodeError('请选择两个端点的板型与语言。')
+        ep = _project(blocks[section], compiled['plan'][section], formats, choice['board'], choice['language'], 'link', role)
+        ep['role'] = role
+        ep['steps'] = steps[section]
+        ep['expected'] = {'nodes': {s['id']: nodes[s['id']] for s in ep['steps']},
+                          'syndromes': {k: v for k, v in syndromes.items() if k in ep['source_map']}}
+        endpoints[role] = ep
+        files.update({role+'/'+name: contents for name, contents in ep['files'].items()})
+        ranges.update({k: {**span, 'file': role+'/'+span['file']} for k, span in ep['source_map'].items()})
+    key = hashlib.sha256(''.join(ep['artifact_id'] for ep in endpoints.values()).encode()).hexdigest()
+    return {**common, 'experiment': 'link', 'endpoints': endpoints, 'files': files, 'source_map': ranges,
+            'entry_file': 'tx/'+endpoints['tx']['entry_file'], 'artifact_id': key,
+            'frame': result['uart']['frame'], 'bridge': blocks[split]['id']}
+
+
+def _project(blocks, plan, formats, board, language, experiment, role=None):
+    files, source_map, entry = _source(blocks, plan, formats, board, language, experiment, role)
+    packed = json.dumps(files, sort_keys=True, separators=(',', ':')).encode()
+    artifact_id = hashlib.sha256(packed).hexdigest()
+    files[entry] = files[entry].replace('@ARTIFACT@', artifact_id)
+    return {'files': files, 'source_map': source_map, 'entry_file': entry, 'artifact_id': artifact_id,
+            'board': board, 'language': language, 'experiment': experiment}

@@ -11,6 +11,7 @@ def reference_run(compiled, source, texts, source_count):
     data = source.copy()
     hamming_lengths = []
     node_details = {}
+    link = None
     corrections = 0
     for block in program['blocks'][source_count:]:
         runtime.enter(block)
@@ -21,11 +22,18 @@ def reference_run(compiled, source, texts, source_count):
         elif kind == 'hamming_encode':
             hamming_lengths.append(len(data))
             data = hamming_encode(data)
-        elif kind == 'uart_loopback':
+        elif kind in ('uart_loopback', 'uart_link'):
             sent = data.copy()
             packed = np.packbits(sent, bitorder='big')
-            data = np.unpackbits(packed, count=len(sent), bitorder='big')
             baudrate = params['baudrate']
+            if kind == 'uart_link':
+                from src.communication_board_link import encode_frame, decode_frame
+                wire = encode_frame(sent, 0)
+                data = decode_frame(wire, 0)
+                link = {'sequence': 0, 'valid_bits': len(data), 'crc16': int.from_bytes(wire[-2:], 'big'),
+                        'wire_bytes': list(wire)}
+            else:
+                data = np.unpackbits(packed, count=len(sent), bitorder='big')
         elif kind == 'repeat_decode':
             factor = params['factor']
             data = (data.reshape(-1, factor).sum(axis=1) > factor // 2).astype(np.uint8)
@@ -35,7 +43,7 @@ def reference_run(compiled, source, texts, source_count):
             data, n, node_details[block['id']] = decode_hamming_frame(data, hamming_lengths.pop())
             corrections += n
         data = runtime.record(block, data)
-        if kind == 'uart_loopback':
+        if kind in ('uart_loopback', 'uart_link'):
             received = data.copy()
 
     errors = int(np.count_nonzero(source != data))
@@ -58,6 +66,8 @@ def reference_run(compiled, source, texts, source_count):
         'channel': {'count': len(received), 'plot_count': len(peek), 'i': peek, 'q': [0] * len(peek)},
         'constellation': None, 'text': text,
     }
+    if link is not None:
+        result['uart']['frame'] = link
     if node_details:
         result['node_details'] = node_details
         result['metrics']['hamming_syndromes'] = corrections

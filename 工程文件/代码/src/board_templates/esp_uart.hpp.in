@@ -1,0 +1,27 @@
+#pragma once
+#include "driver/gpio.h"
+#include "driver/uart.h"
+#include "esp_check.h"
+
+static void link_open(unsigned baud) {
+    constexpr auto port = UART_NUM_1;
+    uart_config_t cfg{};
+    cfg.baud_rate = baud;
+    cfg.data_bits = UART_DATA_8_BITS;
+    cfg.parity = UART_PARITY_DISABLE;
+    cfg.stop_bits = UART_STOP_BITS_1;
+    cfg.source_clk = UART_SCLK_DEFAULT;
+    ESP_ERROR_CHECK(uart_param_config(port, &cfg));
+    ESP_ERROR_CHECK(uart_set_pin(port, 17, 18, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    ESP_ERROR_CHECK(gpio_pullup_en(GPIO_NUM_18));
+    if (!uart_is_driver_installed(port)) ESP_ERROR_CHECK(uart_driver_install(port, 1024, 0, 0, nullptr, 0));
+    ESP_ERROR_CHECK(uart_flush_input(port));
+}
+
+static void link_write(const uint8_t *bytes, size_t count) {
+    ESP_ERROR_CHECK(uart_write_bytes(UART_NUM_1, bytes, count) == int(count) ? ESP_OK : ESP_FAIL);
+}
+
+static bool link_read(uint8_t &byte, unsigned timeout_ms) {
+    return uart_read_bytes(UART_NUM_1, &byte, 1, pdMS_TO_TICKS(timeout_ms) + 1) == 1;
+}

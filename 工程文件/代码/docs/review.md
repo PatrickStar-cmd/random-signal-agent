@@ -1,5 +1,9 @@
 # 需求与实现情况
 
+## v0.5.2
+
+已实现 ESP32-S3-DevKitC-1-N8 的 C++ 和 MicroPython 工程、板间 UART 积木、双端独立导出与部署，以及文本、PN、Hamming 三个双板示例。实物接线验收待完成。[操作指南](communications-v052.md)
+
 ## 完整性结论
 
 核心源代码、Web 资源、NumPy 依赖、环境变量模板、跨平台启动脚本、Docker/systemd 模板及 PDF 教程均存在。无需原作者的私有路径、密钥、数据集或权重即可运行本地流程。

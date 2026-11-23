@@ -19,7 +19,7 @@ Diting brings Random Signals and Communication Principles experiments into one o
 
 🎓 Built for **UESTC Random Signals and Communication Principles coursework**, with local computation, seeded reproduction and optional model-assisted dialogue.
 
-[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/)   [📦 Download v0.5.1](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.5.1)   [📘 Installation guide](RELEASE.md)
+[🌐 Experiment preview](https://patrickstar-cmd.github.io/random-signal-agent/)   [📦 Download v0.5.2](https://github.com/PatrickStar-cmd/random-signal-agent/releases/tag/v0.5.2)   [📘 Installation guide](RELEASE.md)
 
 ## 🧭 Explore
 
@@ -39,7 +39,7 @@ Diting brings Random Signals and Communication Principles experiments into one o
 | Capability | What you can do |
 | --- | --- |
 | 🐳 Ocean UI | Layered ocean/lilac gradients and AI-generated 3D whale art for desktop, tablet and mobile. |
-| 📡 Communication lab (v0.5.1) | 233 signal blocks, 128 presets, 4 experiment tools and 12 courses: Scratch-style assembly, whole-graph experiments, baseline replay and verified bundles. |
+| 📡 Communication lab (v0.5.2) | 234 addable blocks, 131 presets, 4 experiment tools and 12 courses: Scratch-style assembly, whole-graph experiments, baseline replay and verified bundles. |
 | 🔑 Model API setup | Choose a provider/model, enter a key and test/apply in the UI; optional per-session persistence. |
 | 📄 PDF analysis reports (v0.4.12) | Preview and export Chinese brief/standard reports with vector plots, measured metrics, optional diagnosis and reproduction details. |
 | 🩺 Diagnostic laboratory | Linked STFT and event timeline, six seeded fault types, blind challenge evaluation, and reversible evidence-based processing trials. |
@@ -60,7 +60,7 @@ Diting brings Random Signals and Communication Principles experiments into one o
 
 ## 📡 Communication-principles lab   Build a transmitter and receiver with blocks
 
-Drag in blocks, edit their parameters, click **🔨 Build** to check the pipeline, then **▶️ Run** to inspect the transmission. Six block categories provide **233 addable blocks + a fixed sink and 128 presets**.
+Drag in blocks, edit their parameters, click **🔨 Build** to check the pipeline, then **▶️ Run** to inspect the transmission. Six block categories provide **234 addable blocks, a fixed sink and 131 presets**.
 
 **🎲 Sources → 🔀 Transmit converters → 📡 Modulators → 🌊 Channels → 🎛️ Demodulators → 🔄 Receive converters → 📺 Sink**
 
@@ -74,6 +74,7 @@ Drag in blocks, edit their parameters, click **🔨 Build** to check the pipelin
 | 🔄 Receive converters | Line decoding, deinterleaving, descrambling, CRC checks, repetition/Hamming correction, hard/soft Viterbi, iterative LDPC and PCM/companding/DPCM/delta reconstruction. Huffman/ADPCM/BCH/RS decoding, reassembly, code acquisition, despreading, RAKE, SC/MRC, Alamouti and MIMO ZF/MMSE. |
 | 📺 Sink | Received bits, text and analog waveforms, with source overlays, bit-error markers and full-sequence browsing. Audio playback, image reconstruction/PSNR and downloadable files with SHA256 comparison. |
 
+- 🔌 **v0.5.2 dual-board UART** Generate separate transmitter and receiver projects for Pico, Pico W and ESP32-S3, mix C++ with MicroPython, and inspect frames and CRC in the text, PRBS and Hamming experiments. [Dual-board lab guide](工程文件/代码/docs/communications-v052.md)
 - 🧪 **v0.5.1 board experiments** Send UTF-8 text or reproducible PRBS through UART, inject a bit error and inspect the Hamming syndrome, or compare QPSK I/Q symbols against desktop results. [Board experiments](工程文件/代码/docs/communications-v051.md)
 - 🔌 **v0.5.0 development boards** Generate standalone C++ or MicroPython for Pico and Pico W, navigate between blocks and source lines, and compare BPSK and wired UART runs against desktop results. [Pico guide](工程文件/代码/docs/communications-v050.md).
 
@@ -183,7 +184,7 @@ Use **Python 3.12–3.14** or **Docker Compose v2**. v0.4.12 uses FastAPI; deplo
 
 ### 1. Get the project
 
-Download the v0.5.1 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.5.1/random-signal-agent-v0.5.1-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
+Download the v0.5.2 [deployment ZIP](https://github.com/PatrickStar-cmd/random-signal-agent/releases/download/v0.5.2/random-signal-agent-v0.5.2-deploy.zip) and extract it, then open a terminal in `工程文件/代码` inside the extracted folder.
 
 Or clone the repository:
 

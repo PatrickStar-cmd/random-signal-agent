@@ -71,9 +71,12 @@ for scheme, label in analog_modulation.LABELS.items():
     detector = '包络或相干检波' if scheme == 'am' else '相位差鉴频' if scheme == 'fm' else '参考相位解缠' if scheme == 'pm' else '相干解调'
     block('demod_' + scheme, label + ' 模拟解调', 'demodulator', detector + '，恢复模拟样本；增益标定使用配对调制器的配置。', **receive)
 block('ideal', '理想信道', 'channel', '原样传输，适合先验证编译和收发配对。')
-block('uart_loopback', 'UART 实物回环', 'channel', '电脑按字节模拟回环。板端从 GP0 发出，经跳线从 GP1 回读，8N1，高位先装包。',
+block('uart_loopback', 'UART 实物回环', 'channel', '电脑按字节模拟回环。Pico 从 GP0 发送、GP1 回读，ESP32-S3 从 GPIO17 发送、GPIO18 回读。采用 8N1，高位先装包。',
       baudrate=field('串口波特率', 9600, 'select', choices=[9600, 19200, 38400, 57600, 115200]),
       timeout_ms=number('单字节接收超时 / ms', 250, 10, 2000, True))
+block('uart_link', '板间 UART', 'channel', '按帧通过 UART 连接两块开发板，序号、有效位数与 CRC-16 随载荷传输。',
+      baudrate=field('串口波特率', 115200, 'select', choices=[9600, 19200, 38400, 57600, 115200]),
+      timeout_ms=number('接收超时 / ms', 2000, 50, 8000, True))
 block('awgn', '高斯白噪声', 'channel', 'Es/N0 参考发送端单位符号能量；衰减会降低实际接收信噪比。', esn0_db=number('发送端 Es/N0 / dB', 12, -10, 60))
 block('analog_awgn', '模拟白噪声', 'channel', '模拟链路专用；按发送复包络整帧实测功率设置每采样点 SNR，前置衰减会降低接收 SNR。', snr_db=number('发送端采样 SNR / dB', 20, -10, 60))
 block('attenuation', '信道衰减', 'channel', '正 dB 表示衰减；作用于经过该积木的整个信号。', db=number('衰减 / dB', 3, 0, 60))
@@ -153,6 +156,9 @@ def preset(kinds, changes=None):
 
 
 PRESETS = {
+    'board_link_text': {'label': '双板传中文', 'program': preset(['text', 'uart_link', 'sink'], {0: {'text': '你好，ESP32'}})},
+    'board_link_pn': {'label': '双板 PN 序列', 'program': preset(['pn_bits', 'uart_link', 'sink'], {0: {'count': 127}})},
+    'board_link_hamming': {'label': '双板 Hamming 纠错', 'program': preset(['bit_pattern', 'hamming_encode', 'uart_link', 'bit_flip', 'hamming_decode', 'sink'], {0: {'pattern': '1011'}})},
     'board_bpsk': {'label': '开发板 BPSK 收发', 'program': preset(['bit_pattern', 'repeat_encode', 'mod_bpsk', 'ideal', 'demod_bpsk', 'repeat_decode', 'sink'], {0: {'pattern': '1011'}})},
     'board_uart': {'label': '开发板 UART 实物回环', 'program': preset(['bit_pattern', 'repeat_encode', 'uart_loopback', 'repeat_decode', 'sink'], {0: {'pattern': '1011'}})},
     'board_text_uart': {'label': '开发板 UTF-8 文本回环', 'program': preset(['text', 'uart_loopback', 'sink'], {0: {'text': '你好，Pico'}})},
@@ -250,12 +256,12 @@ def normalize(raw, draft=False):
 
 def build(raw):
     p = normalize(raw); items = p['blocks']; sources = []
-    uart = any(b['kind'] == 'uart_loopback' for b in items)
+    uart = any(b['kind'] in ('uart_loopback', 'uart_link') for b in items)
     if uart:
         for b in items:
             if b['kind'] not in ('bit_pattern', 'text', 'pn_bits', 'repeat_encode', 'hamming_encode',
-                                 'uart_loopback', 'bit_flip', 'hamming_decode', 'repeat_decode', 'sink'):
-                raise ValueError(f'UART 回环支持比特、文本、PN、重复码和 Hamming 码，请调整「{BLOCKS[b["kind"]]["label"]}」。')
+                                 'uart_loopback', 'uart_link', 'bit_flip', 'hamming_decode', 'repeat_decode', 'sink'):
+                raise ValueError(f'UART 链路支持比特、文本、PN、重复码和 Hamming 码，请调整「{BLOCKS[b["kind"]]["label"]}」。')
             if b['kind'] == 'pn_bits':
                 communication_codecs.pn(1, b['params']['degree'], b['params']['initial'])
     if any(b['kind'] == 'iq_source' for b in items): return iq.build(p)
@@ -304,8 +310,9 @@ def build(raw):
                 if domain != '比特': fail('数字调制器需要比特输入；模拟信源请先经 PCM 编码，或选择模拟调制器。')
                 count = math.ceil(count / {'bpsk': 1, 'qpsk': 2, 'qam16': 4}[scheme]); domain = '复基带符号'
             direction = 'channel'
-        elif k == 'uart_loopback':
-            if direction != 'tx' or domain != '比特': fail('每条回环链路在发送端与接收端之间放置一个 UART。')
+        elif k in ('uart_loopback', 'uart_link'):
+            if direction != 'tx' or domain != '比特': fail('每条串口链路在发送端与接收端之间放置一个 UART。')
+            if k == 'uart_link' and count > 65535: fail('一帧最多容纳 65535 个有效比特。')
             direction = 'rx'
         elif k in CHANNELS:
             if direction != 'channel': fail('信道须放在调制器与解调器之间。')
@@ -339,7 +346,7 @@ def build(raw):
     if analog_transmit is not None:
         result.update(transport='analog', model='模拟复包络   采样时钟   理想帧滤波   ' + analog_modulation.LABELS[scheme])
     if uart:
-        result.update(transport='uart', model='电脑参考 UART 字节回环 8N1')
+        result.update(transport='uart', model='电脑参考 UART 板间帧 8N1' if any(b['kind'] == 'uart_link' for b in items) else '电脑参考 UART 字节回环 8N1')
     return result
 
 

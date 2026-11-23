@@ -1,0 +1,22 @@
+#pragma once
+#include "pico/stdlib.h"
+#include "hardware/uart.h"
+
+static void link_open(unsigned baud) {
+    uart_init(uart0, baud);
+    gpio_set_function(0, GPIO_FUNC_UART);
+    gpio_set_function(1, GPIO_FUNC_UART);
+    gpio_pull_up(1);
+    uart_set_format(uart0, 8, 1, UART_PARITY_NONE);
+    while (uart_is_readable(uart0)) uart_getc(uart0);
+}
+
+static void link_write(const uint8_t *bytes, size_t count) {
+    uart_write_blocking(uart0, bytes, count);
+}
+
+static bool link_read(uint8_t &byte, unsigned timeout_ms) {
+    if (!uart_is_readable_within_us(uart0, timeout_ms * 1000u)) return false;
+    byte = uint8_t(uart_getc(uart0));
+    return true;
+}

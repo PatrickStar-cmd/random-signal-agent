@@ -52,3 +52,11 @@
   .cm-command-main>.cm-primary-actions{grid-template-columns:repeat(4,minmax(0,1fr))}
   .cm-command-main>.cm-primary-actions:not(:has(#cmGraphPartial:not([hidden]))){grid-template-columns:repeat(3,minmax(0,1fr))}
 }
+
+.cm-board-pair{display:grid;gap:8px;margin:4px 0 10px}
+.cm-board-endpoint{min-width:0;margin:0;padding:7px 10px 9px;border:2px solid #afc9db;border-radius:10px;background:#eef8fa}
+.cm-board-endpoint:nth-child(2){background:#f2f1fa;border-color:#beb8d9}
+.cm-board-endpoint legend{padding:0 5px;color:#294b73;font-size:13px;font-weight:700}
+.cm-board-endpoint .cm-board-fields{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);margin-bottom:6px}
+.cm-board-frame{padding:8px 10px;border:2px solid #b7d5dd;border-radius:9px;background:#edf7f8;color:#294b63;overflow-wrap:anywhere;font-size:12px}
+.cm-board-frame p{margin:3px 0}

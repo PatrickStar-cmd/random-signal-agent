@@ -16,11 +16,36 @@ window.createCommunicationBoard = function (core, ctx) {
   let generated = null, build = null, measured = null, inventory = null;
   let generation = 0, refreshId = 0, timer = 0, signature = '', working = false, pending = false;
   let issueIds = [], currentFile = '', probeId = '';
-  const target = () => ({language: field('Language').value, board: field('Target').value});
-  const isCpp = () => target().language === 'cpp';
+  const roles = ['tx','rx'];
+  const roleName = {tx:'发送端', rx:'接收端'};
+  const builds = {tx:null, rx:null};
+  let devicePane = false;
+  const paired = () => get().program?.blocks.some(b => b.kind === 'uart_link');
+  const choice = (role = '') => ({language:field(role+'Language').value, board:field(role+'Target').value});
+  const target = () => paired() ? {targets:{tx:choice('tx'), rx:choice('rx')}} : choice();
+  const isCpp = () => choice().language === 'cpp';
+  const isEsp = board => board === 'esp32s3';
+  const statusName = {ok:'通过', timeout:'接收超时', crc_error:'CRC 错误', sequence_error:'序号不匹配',
+    length_error:'有效位数不匹配', frame_error:'帧头错误'};
+  const pins = board => isEsp(board) ? ['GPIO17','GPIO18'] : ['GP0','GP1'];
+  function setupHint(c) {
+    if (isEsp(c.board)) return c.language === 'cpp' ? '从 ESP-IDF 终端启动工作台。选择 USB 转 UART 端口写入 BIN。' :
+      '安装 ESP32_GENERIC_S3 解释器后，通过固件控制台对应的 USB 串口上传 main.py。';
+    return c.language === 'cpp' ? '按住 BOOTSEL 接入 USB，选择启动盘写入 UF2，再选择运行态串口。' :
+      '首次安装时按住 BOOTSEL 接入 USB，将本板的 MicroPython UF2 复制到 RPI-RP2 盘。';
+  }
   const cardFor = id => id === 'graph' ? root.querySelector('.cm-scratch-parallel') :
     [...byId('cmProgram').querySelectorAll('[data-cm-id]')].find(el => el.dataset.cmId === id);
-  const device = () => inventory?.devices.find(d => d.id === field('Device').value);
+  const device = (role = '') => inventory?.devices.find(d => d.id === field(role+'Device').value);
+  function accepts(d, board) {
+    if (!d) return false;
+    if (d.kind === 'bootsel') return !isEsp(board);
+    return d.kind === 'serial' && (!d.family || d.family === (isEsp(board) ? 'esp32s3' : 'pico'));
+  }
+  function writable(d, c, firmware) {
+    return accepts(d, c.board) && (c.language === 'cpp' ?
+      firmware && d.kind === (isEsp(c.board) ? 'serial' : 'bootsel') : d.kind === 'serial');
+  }
   const status = message => {field('Status').textContent = message;};
   const nameFor = id => get().definitions[get().program?.blocks.find(b => b.id === id)?.kind]?.label || id;
 
@@ -57,18 +82,38 @@ window.createCommunicationBoard = function (core, ctx) {
     for (const id of ['Language','Target','Load','Preset','File','Generate','Device','Refresh']) field(id).disabled = locked;
     field('Refresh').disabled = locked || !local;
     field('Export').disabled = locked || !generated;
-    field('Build').hidden = !isCpp();
-    field('Build').disabled = locked || !local || !generated;
-    field('Deploy').disabled = locked || !generated || !local ||
-      (isCpp() ? !build || device()?.kind !== 'bootsel' : device()?.kind !== 'serial');
-    field('Measure').disabled = locked || !generated || !local || device()?.kind !== 'serial';
     field('Generate').disabled = locked || pending;
+    const pair = paired();
+    field('SingleTargets').hidden = field('SingleDevice').hidden = pair;
+    field('PairTargets').hidden = !pair;
+    field('Build').hidden = pair || !isCpp();
+    field('Deploy').hidden = pair;
+    field('Build').disabled = locked || !local || !generated || pair;
+    field('Deploy').disabled = locked || !local || !generated || !writable(device(), choice(), build);
     field('Deploy').textContent = isCpp() ? '烧录固件' : '上传程序';
-    field('Firmware').hidden = !build;
-    field('CppSetup').hidden = !isCpp();
-    field('MicroSetup').hidden = isCpp();
-    field('FirmwareHelp').href = target().board === 'pico' ?
-      'https://micropython.org/download/RPI_PICO/' : 'https://micropython.org/download/RPI_PICO_W/';
+    field('Firmware').hidden = pair || !build;
+    field('CppSetup').hidden = pair || !isCpp();
+    field('MicroSetup').hidden = pair || isCpp();
+    field('CppHint').textContent = field('MicroHint').textContent = setupHint(choice());
+    field('FirmwareHelp').href = 'https://micropython.org/download/' +
+      ({pico:'RPI_PICO',pico_w:'RPI_PICO_W',esp32s3:'ESP32_GENERIC_S3'}[choice().board]) + '/';
+    field('Measure').textContent = pair ? '运行双板实验' : '运行并回读';
+    const ready = role => device(role)?.kind === 'serial' && accepts(device(role), choice(role).board);
+    field('Measure').disabled = locked || !local || !generated || (pair ?
+      !roles.every(ready) || device('tx')?.id === device('rx')?.id : !ready(''));
+    if (pair) for (const role of roles) {
+      const c = choice(role), cpp = c.language === 'cpp';
+      for (const name of ['Target','Language','Device']) field(role+name).disabled = locked;
+      field(role+'DevicePane').hidden = !devicePane;
+      field(role+'Export').hidden = devicePane;
+      field(role+'Export').disabled = locked || !generated;
+      field(role+'Build').hidden = !cpp;
+      field(role+'Build').disabled = locked || !local || !generated;
+      field(role+'Deploy').disabled = locked || !local || !generated || !writable(device(role), c, builds[role]);
+      field(role+'Deploy').textContent = cpp ? '烧录固件' : '上传程序';
+      field(role+'Firmware').hidden = !builds[role];
+      field(role+'Setup').textContent = setupHint(c);
+    }
   }
   function sampleText(samples, iq) {
     const limit = iq ? 8 : 64;
@@ -151,6 +196,16 @@ window.createCommunicationBoard = function (core, ctx) {
   field('Index').onchange = probe;
   function showMeasurement() {
     field('Result').hidden = !measured;
+    const frame = measured?.frame;
+    field('Frame').hidden = !frame;
+    if (frame) {
+      const check = frame.crc_ok === null ? '待完整收帧' : frame.crc_ok ? '通过' : '错误';
+      const seq = frame.rx_sequence != null && frame.rx_sequence !== frame.sequence ? '  收到帧 '+frame.rx_sequence : '';
+      const checksum = frame.crc16 == null ? '' : '  0x'+frame.crc16.toString(16).toUpperCase().padStart(4,'0');
+      field('Frame').innerHTML = '<strong>帧 ' + esc(String(frame.sequence)+seq) + '  ' + esc(statusName[frame.status]) +
+        '  CRC ' + check + esc(checksum) + '</strong><p>发送  ' + esc(sampleText(frame.sent, false)) +
+        '</p><p>接收  ' + (frame.received ? esc(sampleText(frame.received, false)) : '本帧未交付') + '</p>';
+    }
     if (measured) {
       const m = measured.metrics;
       const metrics = [
@@ -164,21 +219,26 @@ window.createCommunicationBoard = function (core, ctx) {
     probe();
   }
   function showFile() {
-    const ranges = Object.entries(generated.source_map).filter(([,r]) => r.file === currentFile);
+    const role = currentFile.split('/')[0], ep = generated.endpoints?.[role];
+    const map = ep ? ep.source_map : generated.source_map;
+    const path = ep ? currentFile.slice(role.length+1) : currentFile;
+    const ranges = Object.entries(map).filter(([,r]) => r.file === path);
     const owners = new Map();
     for (const [id,r] of ranges) for (let n = r.start; n <= r.end; n++) owners.set(n,id);
     field('File').value = currentFile;
     field('Code').innerHTML = generated.files[currentFile].split('\n').map((line,i) => {
       const id = owners.get(i + 1);
       const attrs = id ? ' data-board-block="' + esc(id) + '" role="button" tabindex="' +
-        (generated.source_map[id].start === i + 1 ? '0' : '-1') + '" title="定位 ' + esc(nameFor(id)) + '"' : '';
+        (map[id].start === i + 1 ? '0' : '-1') + '" title="定位 ' + esc(nameFor(id)) + '"' : '';
       return '<div class="cm-board-line"' + attrs + '><span aria-hidden="true">' + (i + 1) +
         '</span><code>' + esc(line || ' ') + '</code></div>';
     }).join('');
   }
   function selectSource(scroll, follow = true) {
     if (!generated) return;
-    const id = get().selectedId, range = generated.source_map[id];
+    const id = get().selectedId, role = currentFile.split('/')[0];
+    const inRole = generated.endpoints?.[role]?.source_map[id];
+    const range = inRole ? {file:role+'/'+inRole.file} : generated.source_map[id];
     if (follow && range && range.file !== currentFile) {currentFile = range.file; showFile();}
     let first;
     for (const el of field('Code').querySelectorAll('[data-board-block]')) {
@@ -223,9 +283,15 @@ window.createCommunicationBoard = function (core, ctx) {
       field('Source').hidden = false;
       showFile();
       selectSource(true);
-      field('Wiring').textContent = generated.experiment === 'uart' ?
-        '用跳线连接 GP0（TX）与 GP1（RX）。USB 用于部署和回读结果。' :
-        '用数据线连接 USB。' + (generated.experiment === 'qpsk' ? 'QPSK 的 I/Q 分量' : 'BPSK 符号') + '在板内计算，各积木输出经 USB 回传。';
+      if (generated.endpoints) {
+        field('Wiring').textContent = '发送端 '+pins(choice('tx').board)[0]+'（TX）接接收端 '+pins(choice('rx').board)[1]+
+          '（RX），两板 GND 相连。两路 USB 分别连接电脑。';
+      } else if (generated.experiment === 'uart') {
+        const [tx,rx] = pins(choice().board);
+        field('Wiring').textContent = '用跳线连接 '+tx+'（TX）与 '+rx+'（RX）。USB 用于部署和回读结果。';
+      } else {
+        field('Wiring').textContent = '用数据线连接 USB。' + (generated.experiment === 'qpsk' ? 'QPSK 的 I/Q 分量' : 'BPSK 符号') + '在板内计算。';
+      }
       const hostTools = generated.host_tools?.length;
       status('已生成 ' + generated.steps.length + ' 块积木的源码' +
         (hostTools ? '  ' + hostTools + ' 个分析工具在电脑端运行' : ''));
@@ -240,6 +306,7 @@ window.createCommunicationBoard = function (core, ctx) {
     generation++;
     pending = false;
     generated = build = measured = null;
+    builds.tx = builds.rx = null;
     probeId = '';
     field('Source').hidden = true;
     field('Firmware').removeAttribute('href');
@@ -263,6 +330,8 @@ window.createCommunicationBoard = function (core, ctx) {
   }
   function invalidate() {if (!panel.hidden) render(); else if (generated || pending) {signature = ''; clearProject();}}
   function switchPane(toDevices) {
+    devicePane = toDevices;
+    buttons();
     field('CodePane').hidden = toDevices;
     field('DevicePane').hidden = !toDevices;
     field('CodeTab').setAttribute('aria-pressed', String(!toDevices));
@@ -286,7 +355,16 @@ window.createCommunicationBoard = function (core, ctx) {
   toggle.onclick = () => togglePanel(panel.hidden);
   field('Close').onclick = () => togglePanel(false);
   field('Language').onchange = render;
-  field('Target').onchange = render;
+  field('Target').onchange = changedTarget;
+  function changedTarget() { if (inventory) fillDevices(); render(); }
+  for (const role of roles) {
+    field(role+'Target').onchange = changedTarget;
+    field(role+'Language').onchange = render;
+    field(role+'Device').onchange = deviceChanged;
+    field(role+'Build').onclick = () => compileBoard(role);
+    field(role+'Deploy').onclick = () => deployBoard(role);
+    field(role+'Export').onclick = () => exportProject(role);
+  }
   field('CodeTab').onclick = () => switchPane(false);
   field('DeviceTab').onclick = () => switchPane(true);
   field('Load').onclick = async () => {
@@ -301,26 +379,33 @@ window.createCommunicationBoard = function (core, ctx) {
       field('Tools').textContent = '在连接开发板的电脑上打开本地工作台即可访问 USB。';
       return;
     }
-    const id = ++refreshId, previous = field('Device').value;
+    const id = ++refreshId;
     try {
       const value = await request('devices', {});
       if (id !== refreshId) return;
       inventory = value;
-      field('Device').innerHTML = '<option value="">' + (inventory.devices.length ? '请选择设备' : '未发现 Pico 设备') +
-        '</option>' + inventory.devices.map(d => '<option value="' + esc(d.id) + '">' + esc(d.label) + '</option>').join('');
-      if (inventory.devices.some(d => d.id === previous)) field('Device').value = previous;
-      const labels = {sdk:'Pico SDK', cmake:'CMake', ninja:'Ninja', compiler:'Arm 编译器', mpremote:'mpremote', serial:'pyserial'};
+      fillDevices();
+      const labels = {sdk:'Pico SDK', esp_idf:'ESP-IDF', cmake:'CMake', ninja:'Ninja', compiler:'Arm 编译器', mpremote:'mpremote', serial:'pyserial'};
       field('Tools').textContent = '已就绪工具  ' + (Object.keys(labels).filter(k => inventory.tools[k]).map(k => labels[k]).join(' / ') || '无');
     } catch (error) {
       if (id !== refreshId) return;
       inventory = null;
-      field('Device').innerHTML = '<option value="">设备列表读取失败</option>';
+      for (const role of ['', ...roles]) field(role+'Device').innerHTML = '<option value="">设备列表读取失败</option>';
       field('Tools').textContent = error.message;
     }
     deviceChanged();
   }
+  function fillDevices() {
+    for (const role of ['', ...roles]) {
+      const select = field(role+'Device'), previous = select.value;
+      const available = inventory.devices.filter(d => accepts(d, choice(role).board));
+      select.innerHTML = '<option value="">'+(available.length ? '请选择设备' : '未发现对应设备')+'</option>'+
+        available.map(d => '<option value="'+esc(d.id)+'">'+esc(d.label)+'</option>').join('');
+      if (available.some(d => d.id === previous)) select.value = previous;
+    }
+  }
   function deviceChanged() {
-    if (measured && measured.device_id !== device()?.id) {
+    if (measured && (paired() ? roles.some(role => measured.device_ids?.[role] !== device(role)?.id) : measured.device_id !== device()?.id)) {
       measured = null;
       showMeasurement();
       status('已切换设备  运行并回读可查看本设备的结果');
@@ -338,38 +423,53 @@ window.createCommunicationBoard = function (core, ctx) {
     catch (error) {report(error);}
     finally {working = false; core.setBusy(false); buttons();}
   }
-  field('Export').onclick = () => operation('正在打包源码…', async () => {
-    const blob = await request('export', payload(), true);
-    core.download([generated.experiment, generated.board, generated.language, generated.artifact_id.slice(0,8)].join('-') + '.zip', blob, 'application/zip');
-    status('源码工程已导出');
-  });
-  field('Build').onclick = () => operation('正在编译 Pico 固件…', async () => {
-    build = await request('build', payload());
-    field('Firmware').href = '/api/board/firmware/' + encodeURIComponent(build.build_id);
-    field('Firmware').download = build.filename;
-    status('固件编译通过  ' + build.size + ' 字节');
-  });
-  field('Deploy').onclick = () => {
-    const selected = device();
-    if (!selected || field('Deploy').disabled) return;
-    const verb = isCpp() ? '写入固件并替换当前程序' : '上传并替换 main.py';
-    if (!window.confirm('向 ' + selected.label + ' ' + verb + '？')) return;
-    return operation('正在向 ' + selected.label + ' 写入程序…', async () => {
-      await request('deploy', {...payload(), device_id:selected.id, build_id:build?.build_id});
+  const rolePayload = role => role ? {...payload(), role} : payload();
+  function exportProject(role) {
+    return operation('正在打包源码…', async () => {
+      const blob = await request('export', rolePayload(role), true);
+      const item = generated.endpoints?.[role] || generated;
+      const parts = item.endpoints ? ['dual-uart'] : [item.experiment,item.board,item.language];
+      core.download([...parts,role || '',(item.artifact_id || '').slice(0,8)].filter(Boolean).join('-')+'.zip', blob, 'application/zip');
+      status('源码工程已导出');
+    });
+  }
+  field('Export').onclick = () => exportProject('');
+  function compileBoard(role) {
+    return operation('正在编译'+(roleName[role] || '开发板')+'固件…', async () => {
+      const result = await request('build', rolePayload(role));
+      if (role) builds[role] = result; else build = result;
+      const link = field(role+'Firmware');
+      link.href = '/api/board/firmware/'+encodeURIComponent(result.build_id);
+      link.download = result.filename;
+      link.textContent = isEsp(choice(role).board) ? '下载 BIN' : '下载 UF2';
+      status((roleName[role] || '')+'固件编译通过  '+result.size+' 字节');
+    });
+  }
+  field('Build').onclick = () => compileBoard('');
+  function deployBoard(role) {
+    const selected = device(role);
+    if (!selected || field(role+'Deploy').disabled) return;
+    const verb = choice(role).language === 'cpp' ? '写入固件并替换当前程序' : '上传并替换 main.py';
+    if (!window.confirm('向 '+(roleName[role] || '')+' '+selected.label+' '+verb+'？')) return;
+    return operation('正在向 '+selected.label+' 写入程序…', async () => {
+      await request('deploy', {...rolePayload(role), device_id:selected.id, build_id:(role ? builds[role] : build)?.build_id});
       measured = null;
       showMeasurement();
-      status('程序已写入  刷新并选择串口以运行测量');
+      status('程序已写入  刷新并选择运行态串口');
       await refresh();
     });
-  };
+  }
+  field('Deploy').onclick = () => deployBoard('');
   field('Measure').onclick = () => operation('正在等待板端回读…', async () => {
     measured = null;
     showMeasurement();
-    measured = await request('run', {...payload(), device_id:device().id});
+    const ids = paired() ? {device_ids:{tx:device('tx').id, rx:device('rx').id}} : {device_id:device().id};
+    measured = await request('run', {...payload(), ...ids});
     showMeasurement();
-    const message = measured.status === 'timeout' ? 'UART 接收超时  已记录丢帧' :
-      measured.matches_reference ? '板端实测完成  各节点与电脑参考一致' : '板端实测完成  请对照节点数据';
-    status(message + '  ' + (device()?.label || measured.device_id));
+    const message = measured.status === 'ok' ?
+      (measured.matches_reference ? '板端实测完成  各节点与电脑参考一致' : '板端实测完成  请对照节点数据') :
+      'UART '+(statusName[measured.status] || measured.status)+'  已记录丢帧';
+    status(message);
   });
   field('ResultSave').onclick = () => {
     if (measured) core.download('开发板实测.json', JSON.stringify(measured,null,2), 'application/json');

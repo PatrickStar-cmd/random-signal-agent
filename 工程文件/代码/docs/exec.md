@@ -2,9 +2,11 @@
 
 以下命令均在包含 `server.py` 的“代码”目录执行，先激活 Python 3.12–3.14 虚拟环境。
 
+在通信实验室中载入双板示例，在两个端点分别选择板型与语言，导出或部署对应程序。ESP32-S3 的 C++ 后端使用已激活的 ESP-IDF 环境。[双板操作与接线](communications-v052.md)
+
 ## 安装与验证
 
-在通信实验室打开「开发板」，选择文字、PN、Hamming 或 QPSK 示例，可下载源码、构建并运行。UART 跳线连接 GP0 与 GP1。[板端实验步骤](communications-v051.md)
+在通信实验室打开「开发板」，选择文字、PN、Hamming 或 QPSK 示例，可下载源码、构建并运行。做单板 UART 回环时，Pico 和 Pico W 短接 GP0 与 GP1，ESP32-S3 短接 GPIO17 与 GPIO18。[板端实验步骤](communications-v051.md)
 
 开发板实验在本地工作台的「开发板」面板运行。选择实验、板型和语言后，可下载源码、构建、部署并读取结果。工具链安装、接线与回读方法见[开发板指南](communications-v050.md)。
 

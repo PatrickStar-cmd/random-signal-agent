@@ -167,3 +167,43 @@ test('UTF-8 text is decoded from the selected node bits including the sink',asyn
   assert.equal(f.field('ReferenceDetail').textContent,'你好，Pico');
   assert.equal(f.field('MeasuredDetail').textContent,'待板端实测');
 });
+
+test('dual deployment binds each build to its own role and compares the reported UART frame', async()=>{
+  const f=fixture(), base=f.sample('pico','cpp');
+  f.state.program.blocks.splice(1,0,{id:'link',kind:'uart_link'});
+  for(const [role,name] of [['tx','pico'],['rx','esp32s3']]){
+    f.field(role+'Target').value=name;
+    f.field(role+'Language').value='cpp';
+  }
+  const ep={source_map:{},files:{}};
+  const pair={...base, experiment:'link', endpoints:{tx:ep,rx:ep}};
+  const ports=[{id:'B',family:'pico',kind:'bootsel',label:'BOOTSEL'},
+    {id:'P',family:'pico',kind:'serial',label:'P USB'},
+    {id:'E',family:'esp32s3',kind:'serial',label:'E USB'}];
+  f.setResponse(async(name,body)=>{
+    if(name==='generate')return pair;
+    if(name==='devices')return {tools:{esp_idf:true},devices:ports};
+    if(name==='build')return {build_id:body.role,filename:'board.bin',size:123};
+    if(name==='deploy')return {status:'written'};
+    return {status:'crc_error',device_ids:body.device_ids,nodes:{},matches_reference:false,
+      frame:{sequence:5,rx_sequence:5,crc_ok:false,crc16:0x1111,sent:[1,0],received:[0,0],status:'crc_error'},
+      metrics:{received_frames:0,expected_frames:1,lost_frames:1,compared_bits:0,bit_errors:0,ber:null}};
+  });
+  await f.generate();
+  assert.equal(f.field('SingleTargets').hidden,true);
+  assert.equal(f.calls.at(-1).body.targets.rx.board,'esp32s3');
+  await f.field('Refresh').onclick();
+  f.field('rxDevice').value='E';f.field('rxDevice').onchange();
+  await f.field('rxBuild').onclick(); await f.field('rxDeploy').onclick();
+  const write=f.calls.find(c=>c.name==='deploy').body;
+  assert.equal(write.role,'rx');assert.equal(write.device_id,'E');assert.equal(write.build_id,'rx');
+  assert.equal(f.field('txDeploy').disabled,true);
+  f.field('txDevice').value='P';f.field('txDevice').onchange();
+  assert.equal(f.field('Measure').disabled,false);await f.field('Measure').onclick();
+  assert.match(f.field('Frame').innerHTML,/CRC 错误  0x1111/);
+  assert.match(f.field('Frame').innerHTML,/接收  0 0/);
+  f.field('rxTarget').value='pico';f.field('rxTarget').onchange();
+  assert.equal(f.field('Result').hidden,true);
+  f.field('rxDevice').value='P';f.field('rxDevice').onchange();await f.generate();
+  assert.equal(f.field('Measure').disabled,true);
+});

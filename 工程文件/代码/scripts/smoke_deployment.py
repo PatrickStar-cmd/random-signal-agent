@@ -74,12 +74,19 @@ def check(base_url):
         assert received['sink']['count']>0
     for preset in ('board_bpsk', 'board_uart', 'board_text_uart', 'board_pn', 'board_hamming_fault', 'board_qpsk'):
         document = {'document_schema': 2, 'program': communication_catalog['presets'][preset]['program']}
-        for language, board in [('cpp', 'pico'), ('micropython', 'pico_w')]:
+        for language, board in [('cpp', 'pico'), ('micropython', 'pico_w'), ('cpp', 'esp32s3'), ('micropython', 'esp32s3')]:
             payload = {'document': document, 'language': language, 'board': board}
             output = json.loads(request('/api/communications/board-generate', payload))
             assert len(output['source_map']) == len(document['program']['blocks'])
             assert output['expected']['metrics']['bit_errors'] == 0
             assert request('/api/communications/board-export', payload).startswith(b'PK')
+    for preset in ('board_link_text', 'board_link_pn', 'board_link_hamming'):
+        payload = {'document': communication_catalog['presets'][preset]['program'],
+                   'targets': {'tx': {'board': 'pico', 'language': 'cpp'},
+                               'rx': {'board': 'esp32s3', 'language': 'micropython'}}}
+        pair = json.loads(request('/api/communications/board-generate', payload))
+        assert set(pair['endpoints']) == {'tx', 'rx'} and pair['expected']['metrics']['ber'] == 0
+        assert request('/api/communications/board-export', payload).startswith(b'PK')
     program=communication_catalog['presets']['soft_viterbi']['program']
     compiled=json.loads(request('/api/communications/build',{'program':program}))
     scanned=json.loads(request('/api/communications/sweep',{'program':compiled['program'],'token':compiled['token'],'settings':{'block_id':'block-3','start':0,'stop':2,'step':2,'frames':2,'target_errors':100}}))
